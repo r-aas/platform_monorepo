@@ -1,0 +1,51 @@
+version: "3"
+
+vars:
+  PYTHON_VERSION: '{{.PYTHON_VERSION | default "3.12"}}'
+
+tasks:
+  sync:
+    desc: Install/sync dependencies
+    cmds:
+      - uv sync
+
+  add:
+    desc: "Add a dependency (usage: task uv:add -- package_name)"
+    cmds:
+      - uv add {{.CLI_ARGS}}
+
+  remove:
+    desc: "Remove a dependency (usage: task uv:remove -- package_name)"
+    cmds:
+      - uv remove {{.CLI_ARGS}}
+
+  run:
+    desc: "Run a command (usage: task uv:run -- command)"
+    cmds:
+      - uv run {{.CLI_ARGS}}
+
+  test:
+    desc: Run pytest
+    cmds:
+      - uv run pytest
+
+  lint:
+    desc: Run ruff linter
+    cmds:
+      - uv run ruff check .
+
+  format:
+    desc: Format with ruff
+    cmds:
+      - uv run ruff format .
+
+  lock:
+    desc: Update lock file
+    cmds:
+      - uv lock
+
+  init:
+    desc: Initialize new Python project
+    cmds:
+      - uv init --python {{.PYTHON_VERSION}}
+      - uv add --dev pytest ruff

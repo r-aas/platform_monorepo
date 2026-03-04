@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: APP_NAME
+  labels:
+    app: APP_NAME
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: APP_NAME
+  template:
+    metadata:
+      labels:
+        app: APP_NAME
+    spec:
+      containers:
+        - name: app
+          image: registry.mewtwo.127.0.0.1.nip.io/APP_NAME:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: OPENAI_BASE_URL
+              value: "http://host.docker.internal:11434/v1"
+            - name: OPENAI_API_KEY
+              value: "ollama"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: APP_NAME
+spec:
+  selector:
+    app: APP_NAME
+  ports:
+    - port: 80
+      targetPort: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: APP_NAME
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: APP_NAME.NAMESPACE.127.0.0.1.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: APP_NAME
+                port:
+                  number: 80

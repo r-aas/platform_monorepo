@@ -1,0 +1,52 @@
+version: "3"
+
+vars:
+  COMPOSE_FILE: '{{.COMPOSE_FILE | default "docker-compose.yml"}}'
+  COMPOSE_PROJECT: '{{.COMPOSE_PROJECT | default (base .ROOT_DIR)}}'
+
+tasks:
+  up:
+    desc: Start all services
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} -p {{.COMPOSE_PROJECT}} up -d
+
+  down:
+    desc: Stop and remove all services
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} -p {{.COMPOSE_PROJECT}} down
+
+  logs:
+    desc: "Tail logs (usage: task compose:logs -- service_name)"
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} -p {{.COMPOSE_PROJECT}} logs -f {{.CLI_ARGS}}
+
+  ps:
+    desc: List running services
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} -p {{.COMPOSE_PROJECT}} ps
+
+  restart:
+    desc: "Restart a service (usage: task compose:restart -- service_name)"
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} -p {{.COMPOSE_PROJECT}} restart {{.CLI_ARGS}}
+
+  build:
+    desc: Build all images
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} -p {{.COMPOSE_PROJECT}} build
+
+  shell:
+    desc: "Exec into service (usage: task compose:shell -- service_name)"
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} -p {{.COMPOSE_PROJECT}} exec {{.CLI_ARGS}} /bin/sh
+
+  pull:
+    desc: Pull latest images
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} -p {{.COMPOSE_PROJECT}} pull
+
+  reset:
+    desc: Tear down and remove volumes
+    prompt: "Remove all containers AND volumes for {{.COMPOSE_PROJECT}}?"
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} -p {{.COMPOSE_PROJECT}} down -v

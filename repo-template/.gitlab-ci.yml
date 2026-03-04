@@ -1,0 +1,50 @@
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  REGISTRY: registry.mewtwo.127.0.0.1.nip.io
+  IMAGE: $REGISTRY/$CI_PROJECT_PATH
+
+test:
+  stage: test
+  image: python:3.12-slim
+  before_script:
+    - pip install uv
+    - uv sync
+  script:
+    - uv run ruff check .
+    - uv run pytest
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+build:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - >-
+      /kaniko/executor
+      --context $CI_PROJECT_DIR
+      --dockerfile $CI_PROJECT_DIR/Dockerfile
+      --destination $IMAGE:$CI_COMMIT_SHORT_SHA
+      --destination $IMAGE:latest
+      --insecure
+      --skip-tls-verify
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+deploy-dev:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  script:
+    - kubectl set image -n dev deployment/$CI_PROJECT_NAME app=$IMAGE:$CI_COMMIT_SHORT_SHA
+    - kubectl rollout status -n dev deployment/$CI_PROJECT_NAME --timeout=120s
+  environment:
+    name: dev
+    url: http://$CI_PROJECT_NAME.dev.127.0.0.1.nip.io
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

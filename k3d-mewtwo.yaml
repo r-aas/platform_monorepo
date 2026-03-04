@@ -1,0 +1,23 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: mewtwo
+servers: 1
+agents: 2
+volumes:
+  - volume: ${HOME}/work/data/k3d/mewtwo:/var/lib/rancher/k3s/storage
+    nodeFilters:
+      - all
+ports:
+  - port: 80:80
+    nodeFilters:
+      - loadbalancer
+  - port: 443:443
+    nodeFilters:
+      - loadbalancer
+options:
+  k3s:
+    extraArgs:
+      - arg: --disable=traefik
+        nodeFilters:
+          - server:*

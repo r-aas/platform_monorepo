@@ -1,0 +1,53 @@
+version: "3"
+
+vars:
+  HELM_RELEASE: '{{.HELM_RELEASE | default .APP_NAME}}'
+  HELM_CHART: '{{.HELM_CHART | default ""}}'
+  HELM_REPO: '{{.HELM_REPO | default ""}}'
+  HELM_NAMESPACE: '{{.HELM_NAMESPACE | default .K8S_NAMESPACE}}'
+  HELM_VALUES: '{{.HELM_VALUES | default "values.yaml"}}'
+
+tasks:
+  install:
+    desc: "Install Helm chart (usage: task helm:install)"
+    cmds:
+      - >-
+        helm upgrade --install {{.HELM_RELEASE}} {{.HELM_CHART}}
+        --namespace {{.HELM_NAMESPACE}} --create-namespace
+        {{if .HELM_VALUES}}-f {{.HELM_VALUES}}{{end}}
+        --wait --timeout 120s
+
+  uninstall:
+    desc: "Uninstall Helm release"
+    prompt: "Uninstall {{.HELM_RELEASE}} from {{.HELM_NAMESPACE}}?"
+    cmds:
+      - helm uninstall {{.HELM_RELEASE}} --namespace {{.HELM_NAMESPACE}}
+
+  status:
+    desc: Show Helm release status
+    cmds:
+      - helm status {{.HELM_RELEASE}} --namespace {{.HELM_NAMESPACE}}
+
+  values:
+    desc: Show computed values for release
+    cmds:
+      - helm get values {{.HELM_RELEASE}} --namespace {{.HELM_NAMESPACE}} --all
+
+  list:
+    desc: List all Helm releases
+    cmds:
+      - helm list -A
+
+  repo-add:
+    desc: "Add Helm repo (usage: task helm:repo-add -- name url)"
+    cmds:
+      - helm repo add {{.CLI_ARGS}}
+      - helm repo update
+
+  template:
+    desc: Render chart templates locally (dry-run)
+    cmds:
+      - >-
+        helm template {{.HELM_RELEASE}} {{.HELM_CHART}}
+        --namespace {{.HELM_NAMESPACE}}
+        {{if .HELM_VALUES}}-f {{.HELM_VALUES}}{{end}}

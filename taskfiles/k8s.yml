@@ -1,0 +1,60 @@
+version: "3"
+
+vars:
+  K8S_NAMESPACE: '{{.K8S_NAMESPACE | default "dev"}}'
+  APP_NAME: '{{.APP_NAME | default (base .ROOT_DIR)}}'
+  NIP_DOMAIN: '{{.NIP_DOMAIN | default "127.0.0.1.nip.io"}}'
+
+tasks:
+  ns:
+    desc: "Set default namespace (usage: task k8s:ns -- dev)"
+    cmds:
+      - kubectl config set-context --current --namespace={{.CLI_ARGS | default .K8S_NAMESPACE}}
+      - echo "Default namespace set to {{.CLI_ARGS | default .K8S_NAMESPACE}}"
+
+  pods:
+    desc: List pods in current namespace
+    cmds:
+      - kubectl get pods -n {{.K8S_NAMESPACE}} -o wide
+
+  logs:
+    desc: "Tail logs for app (usage: task k8s:logs)"
+    cmds:
+      - kubectl logs -n {{.K8S_NAMESPACE}} -l app={{.APP_NAME}} --tail=100 -f
+
+  shell:
+    desc: "Exec into app pod (usage: task k8s:shell)"
+    cmds:
+      - kubectl exec -it -n {{.K8S_NAMESPACE}} deploy/{{.APP_NAME}} -- /bin/sh
+
+  events:
+    desc: Show recent events in namespace
+    cmds:
+      - kubectl get events -n {{.K8S_NAMESPACE}} --sort-by=.lastTimestamp | tail -20
+
+  restart:
+    desc: Rolling restart of app deployment
+    cmds:
+      - kubectl rollout restart deployment/{{.APP_NAME}} -n {{.K8S_NAMESPACE}}
+      - kubectl rollout status deployment/{{.APP_NAME}} -n {{.K8S_NAMESPACE}}
+
+  url:
+    desc: Print the nip.io URL for the app
+    cmds:
+      - echo "http://{{.APP_NAME}}.{{.K8S_NAMESPACE}}.{{.NIP_DOMAIN}}"
+
+  apply:
+    desc: Apply k8s manifests from k8s/ directory
+    cmds:
+      - kubectl apply -n {{.K8S_NAMESPACE}} -f k8s/
+
+  delete:
+    desc: Delete k8s resources for this app
+    prompt: "Delete {{.APP_NAME}} resources in {{.K8S_NAMESPACE}}?"
+    cmds:
+      - kubectl delete -n {{.K8S_NAMESPACE}} -f k8s/
+
+  port-forward:
+    desc: "Port forward to app (usage: task k8s:port-forward -- 8080:80)"
+    cmds:
+      - kubectl port-forward -n {{.K8S_NAMESPACE}} svc/{{.APP_NAME}} {{.CLI_ARGS}}

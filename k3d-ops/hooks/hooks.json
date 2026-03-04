@@ -1,0 +1,27 @@
+{
+  "description": "Safety hooks for k3d cluster operations — prevents accidental prod deploys and wrong-namespace operations",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__Kubernetes_MCP_Server__kubectl_apply|mcp__Kubernetes_MCP_Server__kubectl_create|mcp__Kubernetes_MCP_Server__kubectl_delete|mcp__Kubernetes_MCP_Server__kubectl_scale|mcp__Kubernetes_MCP_Server__kubectl_patch",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "You are a k3d cluster safety guard. Evaluate this Kubernetes operation:\n\nIMPORTANT RULES:\n1. If the namespace is 'prod' or 'production', DENY unless R explicitly confirmed prod deployment in the conversation. Say: 'BLOCKED: prod namespace requires explicit confirmation from R.'\n2. If the namespace is 'default', WARN that workloads should go in 'dev', 'stage', 'prod', or 'platform' — not 'default'. Ask if they meant 'dev'.\n3. If this is a DELETE operation on namespace 'platform', DENY — platform infrastructure should not be deleted casually.\n4. For all other operations, APPROVE.\n\nReturn 'approve', 'deny', or 'ask' with a brief reason.",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "You are a k3d cluster safety guard. Check if this bash command interacts with Kubernetes or k3d.\n\nIf it contains 'kubectl delete namespace', 'k3d cluster delete', or 'kubectl apply' targeting namespace 'prod' WITHOUT explicit user confirmation in the conversation, DENY with explanation.\n\nIf it contains 'kubectl' with '--all-namespaces' combined with 'delete', DENY — too dangerous.\n\nFor all other commands, APPROVE.\n\nReturn 'approve' or 'deny' with reason.",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,38 @@
+version: "3"
+
+vars:
+  K3D_CLUSTER: mewtwo
+  K3D_CONFIG: "${HOME}/work/k3d-mewtwo.yaml"
+  PLATFORM_DIR: "${HOME}/work/platform/repos/platform_monorepo/manifests"
+
+includes:
+  k3d:     ~/work/taskfiles/k3d.yml
+  gitlab:  ~/work/taskfiles/gitlab.yml
+  k8s:     ~/work/taskfiles/k8s.yml
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  bootstrap:
+    desc: Full platform bootstrap (cluster + GitLab)
+    cmds:
+      - task: k3d:cluster-up
+      - task: gitlab:deploy
+      - echo ""
+      - echo "Platform ready. GitLab will take ~3-5 min to boot."
+      - echo "Check status: task gitlab:status"
+      - echo "Get password: task gitlab:password"
+
+  status:
+    desc: Full platform status
+    cmds:
+      - task: k3d:status
+
+  teardown:
+    desc: Tear down entire platform
+    prompt: "Delete the shared cluster and all workloads?"
+    cmds:
+      - task: k3d:cluster-down

@@ -1,0 +1,92 @@
+version: "3"
+
+dotenv:
+  - .env.local
+  - .env
+  - .env.example
+  - ~/work/envs/global.env
+
+vars:
+  APP_NAME: '{{base .ROOT_DIR}}'
+
+includes:
+  uv:      ~/work/taskfiles/uv.yml
+  compose: ~/work/taskfiles/compose.yml
+  k8s:     ~/work/taskfiles/k8s.yml
+  helm:    ~/work/taskfiles/helm.yml
+  env:     ~/work/taskfiles/env.yml
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  setup:
+    desc: Bootstrap project
+    cmds:
+      - uv sync
+      - task: env:scaffold
+      - mkdir -p data
+
+  dev:
+    desc: Start local development
+    cmds:
+      - task: compose:up
+
+  stop:
+    desc: Stop local development
+    cmds:
+      - task: compose:down
+
+  doctor:
+    desc: Verify environment health
+    cmds:
+      - echo "=== Ollama ==="
+      - curl -sf http://localhost:11434/api/tags > /dev/null && echo "OK" || echo "FAIL — is Ollama running?"
+      - echo ""
+      - echo "=== Docker ==="
+      - docker info > /dev/null 2>&1 && echo "OK" || echo "FAIL — is Rancher Desktop running?"
+      - echo ""
+      - echo "=== k3d cluster ==="
+      - k3d cluster list 2>/dev/null | grep -q "mewtwo" && echo "OK — cluster 'mewtwo' exists" || echo "WARN — no 'mewtwo' cluster (run: task k3d:cluster-up from ~/work)"
+      - echo ""
+      - echo "=== Env vars ==="
+      - task: env:check
+
+  test:
+    desc: Run tests
+    cmds:
+      - uv run pytest
+
+  lint:
+    desc: Run linter
+    cmds:
+      - uv run ruff check .
+
+  format:
+    desc: Format code
+    cmds:
+      - uv run ruff format .
+
+  resume:
+    desc: Show session resume notes
+    cmds:
+      - cat RESUME.md 2>/dev/null || echo "No RESUME.md found"
+
+  readme:
+    desc: Show README
+    cmds:
+      - bat README.md 2>/dev/null || cat README.md
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - rm -rf .task/ __pycache__/ dist/ .pytest_cache/ .ruff_cache/
+
+  deploy:
+    desc: Deploy to k8s namespace
+    cmds:
+      - task: k8s:apply
+      - echo "Deployed to {{.K8S_NAMESPACE}}"
+      - echo "URL: http://{{.APP_NAME}}.{{.K8S_NAMESPACE}}.{{.NIP_DOMAIN}}"

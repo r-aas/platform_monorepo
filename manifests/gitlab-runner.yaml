@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gitlab-runner
+  namespace: platform
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: gitlab-runner
+subjects:
+  - kind: ServiceAccount
+    name: gitlab-runner
+    namespace: platform
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitlab-runner-config
+  namespace: platform
+data:
+  # After GitLab boots, get a runner token from:
+  # gitlab.mewtwo.127.0.0.1.nip.io/admin/runners
+  # Then: kubectl -n platform create secret generic gitlab-runner-token --from-literal=token=YOUR_TOKEN
+  config.toml: |
+    concurrent = 4
+    check_interval = 10
+
+    [[runners]]
+      name = "k3d-mewtwo-runner"
+      url = "http://gitlab.platform.svc.cluster.local"
+      executor = "kubernetes"
+      [runners.kubernetes]
+        namespace = "dev"
+        image = "alpine:latest"
+        privileged = false
+        service_account = "gitlab-runner"
+        [runners.kubernetes.node_selector]
+        [runners.kubernetes.volumes]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitlab-runner
+  namespace: platform
+  labels:
+    app: gitlab-runner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitlab-runner
+  template:
+    metadata:
+      labels:
+        app: gitlab-runner
+    spec:
+      serviceAccountName: gitlab-runner
+      containers:
+        - name: runner
+          image: gitlab/gitlab-runner:latest
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/gitlab-runner
+      volumes:
+        - name: config
+          configMap:
+            name: gitlab-runner-config

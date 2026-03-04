@@ -1,0 +1,84 @@
+version: "3"
+
+vars:
+  K3D_CLUSTER: '{{.K3D_CLUSTER | default "mewtwo"}}'
+  K3D_CONFIG: '{{.K3D_CONFIG | default "${HOME}/work/k3d-mewtwo.yaml"}}'
+  PLATFORM_DIR: '{{.PLATFORM_DIR | default "${HOME}/work/platform/repos/platform_monorepo/manifests"}}'
+
+tasks:
+  cluster-up:
+    desc: Create shared k3d cluster
+    cmds:
+      - k3d cluster create --config {{.K3D_CONFIG}}
+      - echo "Waiting for cluster to be ready..."
+      - kubectl wait --for=condition=Ready nodes --all --timeout=120s
+      - task: install-ingress
+      - task: init-namespaces
+      - echo "Cluster k3d-{{.K3D_CLUSTER}} is ready"
+      - echo "Ingress: *.127.0.0.1.nip.io"
+    status:
+      - k3d cluster list -o json | jq -e '.[] | select(.name == "{{.K3D_CLUSTER}}")'
+
+  cluster-down:
+    desc: Delete shared k3d cluster
+    prompt: "Delete cluster k3d-{{.K3D_CLUSTER}}? PV data in ~/work/data/k3d/{{.K3D_CLUSTER}}/ is preserved."
+    cmds:
+      - k3d cluster delete {{.K3D_CLUSTER}}
+
+  cluster-start:
+    desc: Start stopped cluster
+    cmds:
+      - k3d cluster start {{.K3D_CLUSTER}}
+
+  cluster-stop:
+    desc: Stop cluster without deleting
+    cmds:
+      - k3d cluster stop {{.K3D_CLUSTER}}
+
+  install-ingress:
+    desc: Install ingress-nginx controller
+    internal: true
+    cmds:
+      - helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx 2>/dev/null || true
+      - helm repo update ingress-nginx
+      - >-
+        helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx
+        --namespace ingress-nginx --create-namespace
+        --set controller.hostPort.enabled=true
+        --set controller.service.type=NodePort
+        --set controller.watchIngressWithoutClass=true
+        --wait --timeout 120s
+
+  init-namespaces:
+    desc: Create dev/stage/prod/platform namespaces
+    internal: true
+    cmds:
+      - kubectl apply -f {{.PLATFORM_DIR}}/namespace-init.yaml
+
+  status:
+    desc: Show cluster status and ingress endpoints
+    cmds:
+      - echo "=== Cluster ==="
+      - k3d cluster list
+      - echo ""
+      - echo "=== Nodes ==="
+      - kubectl get nodes -o wide
+      - echo ""
+      - echo "=== Namespaces ==="
+      - kubectl get namespaces
+      - echo ""
+      - echo "=== Ingresses (all namespaces) ==="
+      - kubectl get ingress -A
+      - echo ""
+      - echo "=== Pods (all namespaces) ==="
+      - kubectl get pods -A --sort-by=.metadata.namespace
+
+  kubeconfig:
+    desc: Print kubeconfig for shared cluster
+    cmds:
+      - k3d kubeconfig get {{.K3D_CLUSTER}}
+
+  context:
+    desc: Switch kubectl context to shared cluster
+    cmds:
+      - kubectl config use-context k3d-{{.K3D_CLUSTER}}

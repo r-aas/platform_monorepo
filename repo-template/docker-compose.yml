@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Override for container → host Ollama access
+      OPENAI_BASE_URL: http://host.docker.internal:11434/v1
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+    restart: unless-stopped

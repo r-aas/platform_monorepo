@@ -1,0 +1,10 @@
+# Local overrides
+envs/*.local
+.env
+.env.local
+
+# Task artifacts
+.task/
+
+# OS junk
+.DS_Store

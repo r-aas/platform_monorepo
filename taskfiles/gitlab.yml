@@ -1,0 +1,55 @@
+version: "3"
+
+vars:
+  GITLAB_URL: '{{.GITLAB_URL | default "http://gitlab.mewtwo.127.0.0.1.nip.io"}}'
+  REGISTRY_URL: '{{.REGISTRY_URL | default "registry.mewtwo.127.0.0.1.nip.io"}}'
+  GITLAB_NAMESPACE: '{{.GITLAB_NAMESPACE | default "platform"}}'
+
+tasks:
+  deploy:
+    desc: Deploy GitLab CE to cluster
+    cmds:
+      - kubectl apply -f {{.PLATFORM_DIR | default "${HOME}/work/platform/repos/platform_monorepo/manifests"}}/gitlab-ce.yaml
+      - kubectl apply -f {{.PLATFORM_DIR | default "${HOME}/work/platform/repos/platform_monorepo/manifests"}}/gitlab-runner.yaml
+      - echo "GitLab deploying to {{.GITLAB_NAMESPACE}} namespace"
+      - echo "URL: {{.GITLAB_URL}}"
+      - echo "Registry: http://{{.REGISTRY_URL}}"
+      - echo "Wait ~3-5 min for GitLab to boot. Check: task gitlab:status"
+
+  status:
+    desc: Check GitLab pod status
+    cmds:
+      - kubectl get pods -n {{.GITLAB_NAMESPACE}} -l app=gitlab
+      - kubectl get pods -n {{.GITLAB_NAMESPACE}} -l app=gitlab-runner
+
+  logs:
+    desc: Tail GitLab logs
+    cmds:
+      - kubectl logs -n {{.GITLAB_NAMESPACE}} -l app=gitlab --tail=50 -f
+
+  password:
+    desc: Get initial root password
+    cmds:
+      - kubectl exec -n {{.GITLAB_NAMESPACE}} deploy/gitlab -- grep 'Password:' /etc/gitlab/initial_root_password 2>/dev/null || echo "Password file expired. Reset with: task gitlab:reset-password"
+
+  reset-password:
+    desc: Reset GitLab root password
+    cmds:
+      - |
+        echo "Resetting root password to 'changeme123'..."
+        kubectl exec -n {{.GITLAB_NAMESPACE}} deploy/gitlab -- \
+          gitlab-rails runner "user = User.find_by(username: 'root'); user.password = 'changeme123'; user.password_confirmation = 'changeme123'; user.save!"
+        echo "Root password reset. Login: root / changeme123"
+
+  runner-token:
+    desc: "Register runner (usage: task gitlab:runner-token -- YOUR_TOKEN)"
+    cmds:
+      - kubectl -n {{.GITLAB_NAMESPACE}} create secret generic gitlab-runner-token --from-literal=token={{.CLI_ARGS}} --dry-run=client -o yaml | kubectl apply -f -
+      - kubectl rollout restart deployment/gitlab-runner -n {{.GITLAB_NAMESPACE}}
+      - echo "Runner token updated and restarted"
+
+  url:
+    desc: Print GitLab URLs
+    cmds:
+      - echo "GitLab:   {{.GITLAB_URL}}"
+      - echo "Registry: http://{{.REGISTRY_URL}}"
