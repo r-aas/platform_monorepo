@@ -23,8 +23,8 @@ tasks:
       - task: gitlab:deploy
       - echo ""
       - echo "Platform ready. GitLab will take ~3-5 min to boot."
-      - echo "Check status: task gitlab:status"
-      - echo "Get password: task gitlab:password"
+      - 'echo "Check status: task gitlab:status"'
+      - 'echo "Get password: task gitlab:password"'
 
   status:
     desc: Full platform status

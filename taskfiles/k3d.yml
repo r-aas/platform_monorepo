@@ -15,7 +15,7 @@ tasks:
       - task: install-ingress
       - task: init-namespaces
       - echo "Cluster k3d-{{.K3D_CLUSTER}} is ready"
-      - echo "Ingress: *.127.0.0.1.nip.io"
+      - 'echo "Ingress: *.127.0.0.1.nip.io"'
     status:
       - k3d cluster list -o json | jq -e '.[] | select(.name == "{{.K3D_CLUSTER}}")'
 
