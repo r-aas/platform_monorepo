@@ -1,24 +1,107 @@
+# DevSecOps CI/CD Pipeline — 6 stages, FOSS tools only (GitLab CE compatible)
+#
+# test → security → build → scan → deploy-dev → smoke
+#
+# Security stages use allow_failure: true (advisory).
+# Flip to false to enforce gating once codebase is clean.
+
 stages:
   - test
+  - security
   - build
-  - deploy
+  - scan
+  - deploy-dev
+  - smoke
 
 variables:
   REGISTRY: registry.mewtwo.127.0.0.1.nip.io
   IMAGE: $REGISTRY/$CI_PROJECT_PATH
 
-test:
+# ── Stage 1: TEST ─────────────────────────────────────────────
+
+lint:
   stage: test
   image: python:3.12-slim
   before_script:
     - pip install uv
-    - uv sync
+    - uv sync --frozen
   script:
     - uv run ruff check .
-    - uv run pytest
+    - uv run ruff format --check .
   rules:
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+unit-tests:
+  stage: test
+  image: python:3.12-slim
+  before_script:
+    - pip install uv
+    - uv sync --frozen
+  script:
+    - uv run pytest --junitxml=junit.xml
+  artifacts:
+    reports:
+      junit: junit.xml
+    expire_in: 30 days
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ── Stage 2: SECURITY ─────────────────────────────────────────
+
+sast-bandit:
+  stage: security
+  image: python:3.12-slim
+  before_script:
+    - pip install bandit
+  script:
+    - bandit -r src/ -f json -o bandit-report.json || true
+    - bandit -r src/ -f screen
+  artifacts:
+    paths: [bandit-report.json]
+    expire_in: 30 days
+  allow_failure: true
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+dependency-scan:
+  stage: security
+  image: python:3.12-slim
+  before_script:
+    - pip install uv pip-audit
+  script:
+    - uv export --no-hashes --frozen > requirements.txt
+    - pip-audit -r requirements.txt --format=json --output=pip-audit-report.json || true
+    - pip-audit -r requirements.txt
+  artifacts:
+    paths: [pip-audit-report.json]
+    expire_in: 30 days
+  allow_failure: true
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+secret-detection:
+  stage: security
+  image:
+    name: zricethezav/gitleaks:latest
+    entrypoint: [""]
+  variables:
+    GIT_DEPTH: 0
+  script:
+    - gitleaks detect --source . --report-format json --report-path gitleaks-report.json --no-banner -v
+  artifacts:
+    paths: [gitleaks-report.json]
+    when: always
+    expire_in: 30 days
+  allow_failure: true
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ── Stage 3: BUILD ─────────────────────────────────────────────
 
 build:
   stage: build
@@ -34,17 +117,69 @@ build:
       --destination $IMAGE:latest
       --insecure
       --skip-tls-verify
+      --insecure-registry=$REGISTRY
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
-deploy-dev:
-  stage: deploy
-  image: bitnami/kubectl:latest
+# ── Stage 4: SCAN (container image) ───────────────────────────
+
+container-scan:
+  stage: scan
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
   script:
-    - kubectl set image -n dev deployment/$CI_PROJECT_NAME app=$IMAGE:$CI_COMMIT_SHORT_SHA
-    - kubectl rollout status -n dev deployment/$CI_PROJECT_NAME --timeout=120s
+    - >-
+      trivy image
+      --severity HIGH,CRITICAL
+      --format json
+      --output trivy-report.json
+      --insecure
+      $IMAGE:$CI_COMMIT_SHORT_SHA
+    - >-
+      trivy image
+      --severity HIGH,CRITICAL
+      --insecure
+      $IMAGE:$CI_COMMIT_SHORT_SHA
+  artifacts:
+    paths: [trivy-report.json]
+    expire_in: 30 days
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ── Stage 5: DEPLOY ───────────────────────────────────────────
+
+deploy-dev:
+  stage: deploy-dev
+  image:
+    name: bitnami/kubectl:latest
+    entrypoint: [""]
+  script:
+    - kubectl --insecure-skip-tls-verify apply -n dev -f k8s/
+    - kubectl --insecure-skip-tls-verify set image -n dev deployment/$CI_PROJECT_NAME app=$IMAGE:$CI_COMMIT_SHORT_SHA
+    - kubectl --insecure-skip-tls-verify rollout status -n dev deployment/$CI_PROJECT_NAME --timeout=120s
   environment:
     name: dev
     url: http://$CI_PROJECT_NAME.dev.127.0.0.1.nip.io
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ── Stage 6: SMOKE ─────────────────────────────────────────────
+
+smoke-test:
+  stage: smoke
+  image: curlimages/curl:latest
+  variables:
+    APP_HOST: $CI_PROJECT_NAME.dev.127.0.0.1.nip.io
+  script:
+    - sleep 10
+    - |
+      URL="http://host.docker.internal"
+      HOSTOPT="-H Host:${APP_HOST}"
+      echo "--- Health check ---"
+      curl -sf $HOSTOPT "$URL/health" || exit 1
+      echo ""
+      echo "Smoke test passed"
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

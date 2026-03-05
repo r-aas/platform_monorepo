@@ -6,5 +6,8 @@ envs/*.local
 # Task artifacts
 .task/
 
+# Session state (may contain credentials)
+RESUME.md
+
 # OS junk
 .DS_Store

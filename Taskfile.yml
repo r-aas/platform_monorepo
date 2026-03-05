@@ -22,9 +22,10 @@ tasks:
     cmds:
       - task: k3d:cluster-up
       - task: gitlab:deploy
+      - task: gitlab:setup-registry
       - task: n8n:deploy-all
       - echo ""
-      - echo "Platform ready. GitLab will take ~3-5 min to boot."
+      - echo "Platform ready."
       - 'echo "Check status: task status"'
       - 'echo "Get password: task gitlab:password"'
 
@@ -32,6 +33,9 @@ tasks:
     desc: Full platform status
     cmds:
       - task: k3d:status
+      - echo ""
+      - echo "── GitLab ───────────────────────────────"
+      - task: gitlab:status
       - echo ""
       - echo "── n8n ──────────────────────────────────"
       - task: n8n:status

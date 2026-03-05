@@ -3,50 +3,110 @@ version: "3"
 vars:
   GITLAB_URL: '{{.GITLAB_URL | default "http://gitlab.mewtwo.127.0.0.1.nip.io"}}'
   REGISTRY_URL: '{{.REGISTRY_URL | default "registry.mewtwo.127.0.0.1.nip.io"}}'
-  GITLAB_NAMESPACE: '{{.GITLAB_NAMESPACE | default "platform"}}'
+  GITLAB_COMPOSE_FILE: '{{.GITLAB_COMPOSE_FILE | default "${HOME}/work/platform/repos/platform_monorepo/docker-compose.gitlab.yml"}}'
+  PLATFORM_MANIFESTS: '{{.PLATFORM_MANIFESTS | default "${HOME}/work/platform/repos/platform_monorepo/manifests"}}'
+  PLATFORM_SCRIPTS: '{{.PLATFORM_SCRIPTS | default "${HOME}/work/platform/repos/platform_monorepo/scripts"}}'
 
 tasks:
   deploy:
-    desc: Deploy GitLab CE to cluster
+    desc: Start GitLab CE + Runner (docker-compose) and apply k8s ingress proxy
     cmds:
-      - kubectl apply -f {{.PLATFORM_DIR | default "${HOME}/work/platform/repos/platform_monorepo/manifests"}}/gitlab-ce.yaml
-      - kubectl apply -f {{.PLATFORM_DIR | default "${HOME}/work/platform/repos/platform_monorepo/manifests"}}/gitlab-runner.yaml
-      - echo "GitLab deploying to {{.GITLAB_NAMESPACE}} namespace"
-      - 'echo "URL: {{.GITLAB_URL}}"'
+      - docker compose -f {{.GITLAB_COMPOSE_FILE}} up -d
+      - echo "Waiting for GitLab to start (up to 5 min)..."
+      - |
+        for i in $(seq 1 60); do
+          if curl -sf http://localhost:8929/-/readiness > /dev/null 2>&1; then
+            echo "GitLab is ready"
+            break
+          fi
+          if [ "$i" = "60" ]; then
+            echo "WARN: GitLab not ready after 5 min — check logs with: task gitlab:logs"
+          fi
+          sleep 5
+        done
+      - kubectl apply -f {{.PLATFORM_MANIFESTS}}/gitlab-proxy.yaml
+      - 'echo "GitLab: {{.GITLAB_URL}}"'
       - 'echo "Registry: http://{{.REGISTRY_URL}}"'
-      - 'echo "Wait ~3-5 min for GitLab to boot. Check: task gitlab:status"'
+
+  stop:
+    desc: Stop GitLab CE + Runner
+    cmds:
+      - docker compose -f {{.GITLAB_COMPOSE_FILE}} down
 
   status:
-    desc: Check GitLab pod status
+    desc: Check GitLab status
     cmds:
-      - kubectl get pods -n {{.GITLAB_NAMESPACE}} -l app=gitlab
-      - kubectl get pods -n {{.GITLAB_NAMESPACE}} -l app=gitlab-runner
+      - echo "=== Docker containers ==="
+      - docker compose -f {{.GITLAB_COMPOSE_FILE}} ps
+      - echo ""
+      - echo "=== k8s ingress proxy ==="
+      - kubectl get svc,endpoints,ingress -n platform -l '!app' 2>/dev/null || true
 
   logs:
     desc: Tail GitLab logs
     cmds:
-      - kubectl logs -n {{.GITLAB_NAMESPACE}} -l app=gitlab --tail=50 -f
+      - docker compose -f {{.GITLAB_COMPOSE_FILE}} logs -f --tail=50 gitlab
 
   password:
     desc: Get initial root password
     cmds:
-      - 'kubectl exec -n {{.GITLAB_NAMESPACE}} deploy/gitlab -- grep "Password:" /etc/gitlab/initial_root_password 2>/dev/null || echo "Password file expired. Reset with: task gitlab:reset-password"'
+      - 'docker exec gitlab grep "Password:" /etc/gitlab/initial_root_password 2>/dev/null || echo "Password file expired. Reset with: task gitlab:reset-password"'
 
   reset-password:
     desc: Reset GitLab root password
     cmds:
       - |
         echo "Resetting root password to 'changeme123'..."
-        kubectl exec -n {{.GITLAB_NAMESPACE}} deploy/gitlab -- \
-          gitlab-rails runner "user = User.find_by(username: 'root'); user.password = 'changeme123'; user.password_confirmation = 'changeme123'; user.save!"
+        docker exec gitlab gitlab-rails runner \
+          "user = User.find_by(username: 'root'); user.password = 'changeme123'; user.password_confirmation = 'changeme123'; user.save!"
         echo "Root password reset. Login: root / changeme123"
 
-  runner-token:
-    desc: "Register runner (usage: task gitlab:runner-token -- YOUR_TOKEN)"
+  runner-register:
+    desc: "Register runner with token (usage: task gitlab:runner-register -- TOKEN)"
     cmds:
-      - kubectl -n {{.GITLAB_NAMESPACE}} create secret generic gitlab-runner-token --from-literal=token={{.CLI_ARGS}} --dry-run=client -o yaml | kubectl apply -f -
-      - kubectl rollout restart deployment/gitlab-runner -n {{.GITLAB_NAMESPACE}}
-      - echo "Runner token updated and restarted"
+      - |
+        docker exec gitlab-runner gitlab-runner register \
+          --non-interactive \
+          --url "http://gitlab:80" \
+          --clone-url "http://gitlab:80" \
+          --token "{{.CLI_ARGS}}" \
+          --executor docker \
+          --docker-image alpine:latest \
+          --docker-network-mode platform_monorepo_gitlab \
+          --docker-pull-policy if-not-present \
+          --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" \
+          --docker-volumes "/cache"
+      - echo "Runner registered. Add extra_hosts manually to config.toml, then: task gitlab:runner-restart"
+      - echo "Required extra_hosts (get gitlab IP from: docker inspect gitlab --format '{{`{{.NetworkSettings.Networks.platform_monorepo_gitlab.IPAddress}}`}}'):"
+      - echo '  "gitlab.mewtwo.127.0.0.1.nip.io:<GITLAB_IP>"'
+      - echo '  "registry.mewtwo.127.0.0.1.nip.io:<GITLAB_IP>"'
+      - echo '  "host.docker.internal:host-gateway"'
+
+  runner-restart:
+    desc: Restart GitLab Runner
+    cmds:
+      - docker restart gitlab-runner
+
+  runner-config:
+    desc: Show runner config.toml
+    cmds:
+      - docker exec gitlab-runner cat /etc/gitlab-runner/config.toml
+
+  setup-registry:
+    desc: Configure k3d nodes to pull from GitLab registry (ephemeral /etc/hosts)
+    cmds:
+      - |
+        GATEWAY=$(docker network inspect k3d-mewtwo --format '{{`{{(index .IPAM.Config 0).Gateway}}`}}')
+        echo "k3d gateway: $GATEWAY"
+        for node in $(docker ps --filter name=k3d-mewtwo --format '{{`{{.Names}}`}}' | grep -v serverlb); do
+          docker exec "$node" sh -c "grep -q 'registry.mewtwo' /etc/hosts || echo '$GATEWAY registry.mewtwo.127.0.0.1.nip.io' >> /etc/hosts"
+          echo "  $node: registry host entry set"
+        done
+
+  setup-ci:
+    desc: "Set up CI kubeconfig for a GitLab project (usage: task gitlab:setup-ci -- root/myproject)"
+    cmds:
+      - bash {{.PLATFORM_SCRIPTS}}/setup-ci-kubeconfig.sh {{.CLI_ARGS}}
 
   url:
     desc: Print GitLab URLs
