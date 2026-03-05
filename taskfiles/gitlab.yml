@@ -76,11 +76,13 @@ tasks:
           --docker-pull-policy if-not-present \
           --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" \
           --docker-volumes "/cache"
-      - echo "Runner registered. Add extra_hosts manually to config.toml, then: task gitlab:runner-restart"
-      - echo "Required extra_hosts (get gitlab IP from: docker inspect gitlab --format '{{`{{.NetworkSettings.Networks.platform_monorepo_gitlab.IPAddress}}`}}'):"
-      - echo '  "gitlab.mewtwo.127.0.0.1.nip.io:<GITLAB_IP>"'
-      - echo '  "registry.mewtwo.127.0.0.1.nip.io:<GITLAB_IP>"'
-      - echo '  "host.docker.internal:host-gateway"'
+        echo ""
+        echo "Runner registered. Add extra_hosts manually to config.toml, then: task gitlab:runner-restart"
+        GITLAB_IP=$(docker inspect gitlab --format '{{`{{.NetworkSettings.Networks.platform_monorepo_gitlab.IPAddress}}`}}')
+        echo "Required extra_hosts (gitlab IP: $GITLAB_IP):"
+        echo "  \"gitlab.mewtwo.127.0.0.1.nip.io:$GITLAB_IP\""
+        echo "  \"registry.mewtwo.127.0.0.1.nip.io:$GITLAB_IP\""
+        echo "  \"host.docker.internal:host-gateway\""
 
   runner-restart:
     desc: Restart GitLab Runner
