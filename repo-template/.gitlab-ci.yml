@@ -1,6 +1,10 @@
-# DevSecOps CI/CD Pipeline — 6 stages, FOSS tools only (GitLab CE compatible)
+# DevSecOps CI/CD Pipeline — 8 stages, FOSS tools only (GitLab CE compatible)
 #
-# test → security → build → scan → deploy-dev → smoke
+# test → security → build → scan → deploy-dev → deploy-stage → deploy-prod → smoke
+#
+# Dev deploys automatically on default branch.
+# Stage and prod require manual approval (click ▶ in GitLab UI).
+# Smoke tests auto-run for each deployed environment.
 #
 # Security stages use allow_failure: true (advisory).
 # Flip to false to enforce gating once codebase is clean.
@@ -11,6 +15,8 @@ stages:
   - build
   - scan
   - deploy-dev
+  - deploy-stage
+  - deploy-prod
   - smoke
 
 variables:
@@ -148,7 +154,7 @@ container-scan:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
-# ── Stage 5: DEPLOY ───────────────────────────────────────────
+# ── Stage 5: DEPLOY DEV (automatic) ──────────────────────────
 
 deploy-dev:
   stage: deploy-dev
@@ -156,7 +162,7 @@ deploy-dev:
     name: bitnami/kubectl:latest
     entrypoint: [""]
   script:
-    - kubectl --insecure-skip-tls-verify apply -n dev -f k8s/
+    - kubectl --insecure-skip-tls-verify apply -k k8s/overlays/dev/
     - kubectl --insecure-skip-tls-verify set image -n dev deployment/$CI_PROJECT_NAME app=$IMAGE:$CI_COMMIT_SHORT_SHA
     - kubectl --insecure-skip-tls-verify rollout status -n dev deployment/$CI_PROJECT_NAME --timeout=120s
   environment:
@@ -165,21 +171,85 @@ deploy-dev:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
-# ── Stage 6: SMOKE ─────────────────────────────────────────────
+# ── Stage 6: DEPLOY STAGE (manual gate) ──────────────────────
 
-smoke-test:
+deploy-stage:
+  stage: deploy-stage
+  image:
+    name: bitnami/kubectl:latest
+    entrypoint: [""]
+  script:
+    - kubectl --insecure-skip-tls-verify apply -k k8s/overlays/stage/
+    - kubectl --insecure-skip-tls-verify set image -n stage deployment/$CI_PROJECT_NAME app=$IMAGE:$CI_COMMIT_SHORT_SHA
+    - kubectl --insecure-skip-tls-verify rollout status -n stage deployment/$CI_PROJECT_NAME --timeout=120s
+  environment:
+    name: stage
+    url: http://$CI_PROJECT_NAME.stage.127.0.0.1.nip.io
+  when: manual
+  allow_failure: false
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ── Stage 7: DEPLOY PROD (manual gate, requires stage first) ─
+
+deploy-prod:
+  stage: deploy-prod
+  image:
+    name: bitnami/kubectl:latest
+    entrypoint: [""]
+  script:
+    - kubectl --insecure-skip-tls-verify apply -k k8s/overlays/prod/
+    - kubectl --insecure-skip-tls-verify set image -n prod deployment/$CI_PROJECT_NAME app=$IMAGE:$CI_COMMIT_SHORT_SHA
+    - kubectl --insecure-skip-tls-verify rollout status -n prod deployment/$CI_PROJECT_NAME --timeout=120s
+  environment:
+    name: prod
+    url: http://$CI_PROJECT_NAME.prod.127.0.0.1.nip.io
+  needs: [deploy-stage]
+  when: manual
+  allow_failure: false
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ── Stage 8: SMOKE TESTS ─────────────────────────────────────
+
+.smoke-template: &smoke-template
   stage: smoke
   image: curlimages/curl:latest
-  variables:
-    APP_HOST: $CI_PROJECT_NAME.dev.127.0.0.1.nip.io
   script:
     - sleep 10
     - |
       URL="http://host.docker.internal"
       HOSTOPT="-H Host:${APP_HOST}"
-      echo "--- Health check ---"
+      echo "--- Health check (${DEPLOY_ENV}) ---"
       curl -sf $HOSTOPT "$URL/health" || exit 1
       echo ""
-      echo "Smoke test passed"
+      echo "Smoke test passed (${DEPLOY_ENV})"
+
+smoke-dev:
+  <<: *smoke-template
+  variables:
+    APP_HOST: $CI_PROJECT_NAME.dev.127.0.0.1.nip.io
+    DEPLOY_ENV: dev
+  needs: [deploy-dev]
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+smoke-stage:
+  <<: *smoke-template
+  variables:
+    APP_HOST: $CI_PROJECT_NAME.stage.127.0.0.1.nip.io
+    DEPLOY_ENV: stage
+  needs: [deploy-stage]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: on_success
+
+smoke-prod:
+  <<: *smoke-template
+  variables:
+    APP_HOST: $CI_PROJECT_NAME.prod.127.0.0.1.nip.io
+    DEPLOY_ENV: prod
+  needs: [deploy-prod]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: on_success

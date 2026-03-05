@@ -14,10 +14,15 @@ fi
 
 echo "Replacing APP_NAME → ${PROJECT_NAME} in k8s/ manifests..."
 
-if [[ "$(uname)" == "Darwin" ]]; then
-  sed -i '' "s/APP_NAME/${PROJECT_NAME}/g" k8s/*.yaml
-else
-  sed -i "s/APP_NAME/${PROJECT_NAME}/g" k8s/*.yaml
-fi
+# Find all YAML files in base and overlays
+FILES=$(find k8s -name '*.yaml' -type f)
 
-echo "Done. Verify with: cat k8s/deployment.yaml"
+for f in $FILES; do
+  if [[ "$(uname)" == "Darwin" ]]; then
+    sed -i '' "s/APP_NAME/${PROJECT_NAME}/g" "$f"
+  else
+    sed -i "s/APP_NAME/${PROJECT_NAME}/g" "$f"
+  fi
+done
+
+echo "Done. Verify with: kubectl kustomize k8s/overlays/dev/"
