@@ -1,0 +1,105 @@
+# n8n PostgreSQL — deploy per namespace with envsubst
+# Usage: NAMESPACE=dev envsubst < postgres.yaml | kubectl apply -n dev -f -
+#
+# macOS k3d gotcha: virtiofs reports all files as UID 501 (Mac user) and
+# doesn't support chown. Postgres requires data dir owned by running user.
+# Fix: run as UID 501 to match virtiofs ownership. Entrypoint skips chown
+# when not root, and postgres sees matching ownership → starts cleanly.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: n8n-postgres-data
+  namespace: ${NAMESPACE}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n-postgres
+  namespace: ${NAMESPACE}
+  labels:
+    app: n8n-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: n8n-postgres
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: n8n-postgres
+    spec:
+      initContainers:
+        - name: fix-permissions
+          image: busybox:1.36
+          command: ["sh", "-c", "chmod -R 777 /var/lib/postgresql/data || true"]
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      securityContext:
+        runAsUser: 501
+        fsGroup: 501
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: n8n
+            - name: POSTGRES_USER
+              value: n8n
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: postgres-password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 100m
+            limits:
+              memory: 512Mi
+              cpu: 500m
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "n8n"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "n8n"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: n8n-postgres-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n-postgres
+  namespace: ${NAMESPACE}
+  labels:
+    app: n8n-postgres
+spec:
+  selector:
+    app: n8n-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432

@@ -1,17 +1,6 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: gitlab-config
-  namespace: platform
-spec:
-  accessModes: [ReadWriteOnce]
-  resources:
-    requests:
-      storage: 1Gi
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
   name: gitlab-data
   namespace: platform
 spec:
@@ -19,17 +8,6 @@ spec:
   resources:
     requests:
       storage: 10Gi
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: gitlab-logs
-  namespace: platform
-spec:
-  accessModes: [ReadWriteOnce]
-  resources:
-    requests:
-      storage: 2Gi
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -48,15 +26,16 @@ data:
     registry_nginx['listen_https'] = false
     registry['enable'] = true
 
+    # Skip directory permission management (virtiofs on Colima/Rancher Desktop
+    # doesn't support chmod on bind-mounted paths from macOS host)
+    manage_storage_directories['enable'] = false
+    manage_accounts['enable'] = false
+
     # Performance tuning for local dev
     puma['workers'] = 2
     sidekiq['concurrency'] = 5
     postgresql['shared_buffers'] = '256MB'
     prometheus_monitoring['enable'] = false
-    grafana['enable'] = false
-
-    # GitLab Runner registration token (set after first boot)
-    # gitlab_rails['initial_root_password'] = 'changeme123'
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -77,9 +56,21 @@ spec:
       labels:
         app: gitlab
     spec:
+      # Pin to server node — image pre-loaded there only (saves disk on agents)
+      nodeName: k3d-mewtwo-server-0
+      initContainers:
+        - name: fix-permissions
+          image: busybox:latest
+          command: ["sh", "-c", "chmod 777 /mnt/data"]
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - name: data
+              mountPath: /mnt/data
       containers:
         - name: gitlab
           image: gitlab/gitlab-ce:latest
+          imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
                 name: gitlab-config
@@ -96,12 +87,8 @@ spec:
               memory: "4Gi"
               cpu: "4"
           volumeMounts:
-            - name: config
-              mountPath: /etc/gitlab
             - name: data
               mountPath: /var/opt/gitlab
-            - name: logs
-              mountPath: /var/log/gitlab
           readinessProbe:
             httpGet:
               path: /-/readiness
@@ -117,15 +104,9 @@ spec:
             periodSeconds: 30
             timeoutSeconds: 5
       volumes:
-        - name: config
-          persistentVolumeClaim:
-            claimName: gitlab-config
         - name: data
           persistentVolumeClaim:
             claimName: gitlab-data
-        - name: logs
-          persistentVolumeClaim:
-            claimName: gitlab-logs
 ---
 apiVersion: v1
 kind: Service

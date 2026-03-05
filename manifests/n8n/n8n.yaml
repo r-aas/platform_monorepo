@@ -1,0 +1,148 @@
+# n8n — deploy per namespace with envsubst
+# Usage: NAMESPACE=dev envsubst < n8n.yaml | kubectl apply -n dev -f -
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: n8n-data
+  namespace: ${NAMESPACE}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n
+  namespace: ${NAMESPACE}
+  labels:
+    app: n8n
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: n8n
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: n8n
+    spec:
+      containers:
+        - name: n8n
+          image: n8nio/n8n:2.10.3
+          ports:
+            - containerPort: 5678
+          env:
+            # ── Database ──
+            - name: DB_TYPE
+              value: postgresdb
+            - name: DB_POSTGRESDB_HOST
+              value: n8n-postgres
+            - name: DB_POSTGRESDB_PORT
+              value: "5432"
+            - name: DB_POSTGRESDB_DATABASE
+              value: n8n
+            - name: DB_POSTGRESDB_USER
+              value: n8n
+            - name: DB_POSTGRESDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: postgres-password
+            # ── n8n config ──
+            - name: N8N_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: encryption-key
+            - name: N8N_HOST
+              value: n8n.${NAMESPACE}.127.0.0.1.nip.io
+            - name: N8N_PROTOCOL
+              value: http
+            - name: N8N_PORT
+              value: "5678"
+            - name: WEBHOOK_URL
+              value: http://n8n.${NAMESPACE}.127.0.0.1.nip.io
+            - name: GENERIC_TIMEZONE
+              value: America/Denver
+            # ── Memory limits (prevent OOM on 8GB k3d VM) ──
+            # V8 heap limit — inherited by both main process AND task runner subprocess
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=256"
+            # Task runner heap override (may override NODE_OPTIONS for runner only)
+            - name: N8N_RUNNERS_MAX_OLD_SPACE_SIZE
+              value: "256"
+            # ── AI / Ollama ──
+            - name: OPENAI_BASE_URL
+              value: http://host.docker.internal:11434/v1
+            - name: OPENAI_API_KEY
+              value: ollama
+          volumeMounts:
+            - name: data
+              mountPath: /home/node/.n8n
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 200m
+            limits:
+              memory: 2Gi
+              cpu: "1"
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 5678
+            failureThreshold: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 5678
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 5678
+            periodSeconds: 30
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: n8n-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n
+  namespace: ${NAMESPACE}
+  labels:
+    app: n8n
+spec:
+  selector:
+    app: n8n
+  ports:
+    - port: 5678
+      targetPort: 5678
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: n8n
+  namespace: ${NAMESPACE}
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: n8n.${NAMESPACE}.127.0.0.1.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: n8n
+                port:
+                  number: 5678

@@ -1,0 +1,67 @@
+# ClusterIP service + Endpoints + Ingress to proxy nip.io traffic to docker-compose GitLab
+# GitLab runs via docker-compose on the Docker host (port 8929)
+#
+# ExternalName to host.k3d.internal doesn't work because ingress-nginx resolves
+# via CoreDNS (not /etc/hosts), and host.k3d.internal is a k3s node-level entry.
+# Solution: headless ClusterIP + static Endpoints pointing at the Docker gateway IP.
+#
+# The gateway IP (172.23.0.1) is the Docker bridge IP for the k3d network.
+# Find it with: docker network inspect k3d-mewtwo --format '{{(index .IPAM.Config 0).Gateway}}'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitlab-external
+  namespace: platform
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8929
+      targetPort: 8929
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: gitlab-external
+  namespace: platform
+subsets:
+  - addresses:
+      - ip: 172.23.0.1
+    ports:
+      - name: http
+        port: 8929
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gitlab
+  namespace: platform
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "900"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "900"
+    nginx.ingress.kubernetes.io/backend-protocol: HTTP
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: gitlab.mewtwo.127.0.0.1.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gitlab-external
+                port:
+                  number: 8929
+    - host: registry.mewtwo.127.0.0.1.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gitlab-external
+                port:
+                  number: 8929

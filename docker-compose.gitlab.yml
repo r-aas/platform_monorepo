@@ -1,0 +1,56 @@
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:latest
+    container_name: gitlab
+    hostname: gitlab.mewtwo.127.0.0.1.nip.io
+    restart: unless-stopped
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://gitlab.mewtwo.127.0.0.1.nip.io'
+        nginx['listen_port'] = 80
+        nginx['listen_https'] = false
+
+        # Registry
+        registry_external_url 'http://registry.mewtwo.127.0.0.1.nip.io'
+        registry_nginx['listen_port'] = 80
+        registry_nginx['listen_https'] = false
+        registry['enable'] = true
+
+        # Performance tuning for local dev
+        puma['workers'] = 2
+        sidekiq['concurrency'] = 5
+        postgresql['shared_buffers'] = '256MB'
+        prometheus_monitoring['enable'] = false
+    ports:
+      - "8929:80"     # GitLab web — proxied through k3d ingress
+      - "2222:22"     # SSH
+      - "5051:5050"   # Container registry (5050 taken)
+    volumes:
+      - gitlab-config:/etc/gitlab
+      - gitlab-logs:/var/log/gitlab
+      - gitlab-data:/var/opt/gitlab
+    shm_size: "256m"
+    networks:
+      - gitlab
+
+  gitlab-runner:
+    image: gitlab/gitlab-runner:latest
+    container_name: gitlab-runner
+    restart: unless-stopped
+    depends_on:
+      - gitlab
+    volumes:
+      - gitlab-runner-config:/etc/gitlab-runner
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - gitlab
+
+volumes:
+  gitlab-config:
+  gitlab-logs:
+  gitlab-data:
+  gitlab-runner-config:
+
+networks:
+  gitlab:
+    driver: bridge

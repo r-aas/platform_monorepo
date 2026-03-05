@@ -1,0 +1,112 @@
+version: "3"
+
+vars:
+  NS: dev
+  N8N_MANIFESTS: "{{.PLATFORM_DIR}}/n8n"
+  N8N_SCRIPTS: "{{.PLATFORM_DIR}}/../scripts"
+  NAMESPACES: "dev stage prod"
+
+tasks:
+  preflight:
+    desc: "Check VM has enough free memory for n8n stack"
+    silent: true
+    cmds:
+      - |
+        AVAIL=$(docker exec k3d-mewtwo-server-0 awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo 2>/dev/null || echo 0)
+        if [ "$AVAIL" -lt 1500 ]; then
+          echo "⚠ Only ${AVAIL}MB available on k3d VM (need ≥1500MB)"
+          echo "  Stop competing containers: docker stop deathco-backend deathco-litellm deathco-mongodb deathco-pgvector"
+          echo "  Or stop genai-mlops:       docker compose -f ~/work/code/genai-mlops/docker-compose.yml stop"
+          exit 1
+        fi
+        echo "✓ ${AVAIL}MB available on k3d VM — sufficient"
+
+  deploy:
+    desc: "Deploy n8n + postgres to a namespace (NS=dev|stage|prod)"
+    deps: [preflight]
+    cmds:
+      - bash {{.N8N_SCRIPTS}}/n8n-init-secrets.sh {{.NS}}
+      - cmd: NAMESPACE={{.NS}} envsubst < {{.N8N_MANIFESTS}}/postgres.yaml | kubectl apply -f -
+      - cmd: NAMESPACE={{.NS}} envsubst < {{.N8N_MANIFESTS}}/n8n.yaml | kubectl apply -f -
+      - 'echo "✓ n8n deployed to {{.NS}} → http://n8n.{{.NS}}.127.0.0.1.nip.io"'
+
+  deploy-all:
+    desc: "Deploy n8n to all namespaces (dev, stage, prod)"
+    deps: [preflight]
+    cmds:
+      - for: {var: NAMESPACES}
+        task: deploy
+        vars:
+          NS: "{{.ITEM}}"
+
+  teardown:
+    desc: "Remove n8n + postgres from a namespace (NS=dev|stage|prod)"
+    prompt: "Delete n8n from {{.NS}}?"
+    cmds:
+      - cmd: NAMESPACE={{.NS}} envsubst < {{.N8N_MANIFESTS}}/n8n.yaml | kubectl delete --ignore-not-found -f -
+      - cmd: NAMESPACE={{.NS}} envsubst < {{.N8N_MANIFESTS}}/postgres.yaml | kubectl delete --ignore-not-found -f -
+      - kubectl delete secret n8n-secrets -n {{.NS}} --ignore-not-found
+      - 'echo "✓ n8n removed from {{.NS}}"'
+
+  teardown-all:
+    desc: "Remove n8n from all namespaces"
+    prompt: "Delete n8n from ALL namespaces (dev, stage, prod)?"
+    cmds:
+      - for: {var: NAMESPACES}
+        task: teardown
+        vars:
+          NS: "{{.ITEM}}"
+
+  status:
+    desc: "Show n8n status across all namespaces"
+    cmds:
+      - |
+        for NS in dev stage prod; do
+          echo "── $NS ──────────────────────────────────"
+          kubectl get pods,svc,ingress -n "$NS" -l app=n8n 2>/dev/null || true
+          kubectl get pods,svc -n "$NS" -l app=n8n-postgres 2>/dev/null || true
+          echo ""
+        done
+
+  logs:
+    desc: "Tail n8n logs (NS=dev|stage|prod)"
+    cmds:
+      - kubectl logs -n {{.NS}} deploy/n8n -f --tail=100
+
+  logs-postgres:
+    desc: "Tail postgres logs (NS=dev|stage|prod)"
+    cmds:
+      - kubectl logs -n {{.NS}} deploy/n8n-postgres -f --tail=100
+
+  shell:
+    desc: "Shell into n8n pod (NS=dev|stage|prod)"
+    cmds:
+      - kubectl exec -it -n {{.NS}} deploy/n8n -- sh
+
+  url:
+    desc: "Print n8n URLs for all namespaces"
+    cmds:
+      - |
+        echo "n8n URLs:"
+        echo "  dev:   http://n8n.dev.127.0.0.1.nip.io"
+        echo "  stage: http://n8n.stage.127.0.0.1.nip.io"
+        echo "  prod:  http://n8n.prod.127.0.0.1.nip.io"
+
+  restart:
+    desc: "Restart n8n in a namespace (NS=dev|stage|prod)"
+    cmds:
+      - kubectl rollout restart -n {{.NS}} deploy/n8n
+      - kubectl rollout status -n {{.NS}} deploy/n8n --timeout=120s
+
+  health:
+    desc: "Check n8n health across all namespaces"
+    cmds:
+      - |
+        for NS in dev stage prod; do
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://n8n.$NS.127.0.0.1.nip.io/healthz" 2>/dev/null || echo "000")
+          if [ "$STATUS" = "200" ]; then
+            echo "✓ $NS: healthy (200)"
+          else
+            echo "✗ $NS: unhealthy ($STATUS)"
+          fi
+        done

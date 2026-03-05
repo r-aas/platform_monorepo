@@ -9,6 +9,7 @@ includes:
   k3d:     ~/work/taskfiles/k3d.yml
   gitlab:  ~/work/taskfiles/gitlab.yml
   k8s:     ~/work/taskfiles/k8s.yml
+  n8n:     ~/work/taskfiles/n8n.yml
 
 tasks:
   default:
@@ -17,19 +18,23 @@ tasks:
       - task --list
 
   bootstrap:
-    desc: Full platform bootstrap (cluster + GitLab)
+    desc: Full platform bootstrap (cluster + GitLab + n8n)
     cmds:
       - task: k3d:cluster-up
       - task: gitlab:deploy
+      - task: n8n:deploy-all
       - echo ""
       - echo "Platform ready. GitLab will take ~3-5 min to boot."
-      - 'echo "Check status: task gitlab:status"'
+      - 'echo "Check status: task status"'
       - 'echo "Get password: task gitlab:password"'
 
   status:
     desc: Full platform status
     cmds:
       - task: k3d:status
+      - echo ""
+      - echo "── n8n ──────────────────────────────────"
+      - task: n8n:status
 
   teardown:
     desc: Tear down entire platform
