@@ -116,3 +116,46 @@ tasks:
             echo "✗ $NS: unhealthy ($STATUS)"
           fi
         done
+
+  promote:
+    desc: "Promote genai-mlops workflows to k8s n8n (NS=dev|stage|prod)"
+    vars:
+      GENAI_DIR: '{{.GENAI_DIR | default "${HOME}/work/repos/genai-mlops"}}'
+    cmds:
+      - bash {{.GENAI_DIR}}/scripts/n8n-promote.sh {{.NS}}
+      - bash {{.GENAI_DIR}}/scripts/n8n-verify.sh {{.NS}}
+
+  promote-all:
+    desc: "Promote workflows to all namespaces"
+    cmds:
+      - for: {var: NAMESPACES}
+        task: promote
+        vars: { NS: "{{.ITEM}}" }
+
+  setup-credentials:
+    desc: "Create Ollama credential in n8n (NS=dev|stage|prod)"
+    cmds:
+      - |
+        API_KEY=$(kubectl get secret n8n-secrets -n {{.NS}} -o jsonpath='{.data.api-key}' | base64 -d)
+        if [ -z "$API_KEY" ]; then
+          echo "✗ No API key in n8n-secrets/{{.NS}}. Run: task n8n:setup"
+          exit 1
+        fi
+        HOST="n8n.{{.NS}}.127.0.0.1.nip.io"
+        # Check if Ollama credential exists
+        EXISTS=$(curl -s "http://$HOST/api/v1/credentials" -H "X-N8N-API-KEY: $API_KEY" | \
+          python3 -c "import sys,json; d=json.load(sys.stdin); creds=d.get('data',d); print('yes' if any(c.get('name')=='Ollama Local' and c.get('type')=='ollamaApi' for c in (creds if isinstance(creds,list) else [])) else 'no')" 2>/dev/null || echo "no")
+        if [ "$EXISTS" = "yes" ]; then
+          echo "✓ Ollama credential already exists in {{.NS}}"
+          exit 0
+        fi
+        # Create it
+        HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://$HOST/api/v1/credentials" \
+          -H "Content-Type: application/json" -H "X-N8N-API-KEY: $API_KEY" \
+          -d '{"name":"Ollama Local","type":"ollamaApi","data":{"baseUrl":"http://host.docker.internal:11434"}}')
+        if [ "$HTTP" = "200" ] || [ "$HTTP" = "201" ]; then
+          echo "✓ Ollama credential created in {{.NS}}"
+        else
+          echo "✗ Failed to create credential (HTTP $HTTP)"
+          exit 1
+        fi
