@@ -3,9 +3,9 @@ version: "3"
 vars:
   GITLAB_URL: '{{.GITLAB_URL | default "http://gitlab.mewtwo.127.0.0.1.nip.io"}}'
   REGISTRY_URL: '{{.REGISTRY_URL | default "registry.mewtwo.127.0.0.1.nip.io"}}'
-  GITLAB_COMPOSE_FILE: '{{.GITLAB_COMPOSE_FILE | default "${HOME}/work/platform/repos/platform_monorepo/docker-compose.gitlab.yml"}}'
-  PLATFORM_MANIFESTS: '{{.PLATFORM_MANIFESTS | default "${HOME}/work/platform/repos/platform_monorepo/manifests"}}'
-  PLATFORM_SCRIPTS: '{{.PLATFORM_SCRIPTS | default "${HOME}/work/platform/repos/platform_monorepo/scripts"}}'
+  GITLAB_COMPOSE_FILE: '{{.GITLAB_COMPOSE_FILE | default "${HOME}/work/repos/platform_monorepo/docker-compose.gitlab.yml"}}'
+  PLATFORM_MANIFESTS: '{{.PLATFORM_MANIFESTS | default "${HOME}/work/repos/platform_monorepo/manifests"}}'
+  PLATFORM_SCRIPTS: '{{.PLATFORM_SCRIPTS | default "${HOME}/work/repos/platform_monorepo/scripts"}}'
 
 tasks:
   deploy:

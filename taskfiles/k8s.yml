@@ -44,15 +44,15 @@ tasks:
       - echo "http://{{.APP_NAME}}.{{.K8S_NAMESPACE}}.{{.NIP_DOMAIN}}"
 
   apply:
-    desc: Apply k8s manifests from k8s/ directory
+    desc: Apply kustomize overlay for namespace
     cmds:
-      - kubectl apply -n {{.K8S_NAMESPACE}} -f k8s/
+      - kubectl apply -k k8s/overlays/{{.K8S_NAMESPACE}}/
 
   delete:
     desc: Delete k8s resources for this app
     prompt: "Delete {{.APP_NAME}} resources in {{.K8S_NAMESPACE}}?"
     cmds:
-      - kubectl delete -n {{.K8S_NAMESPACE}} -f k8s/
+      - kubectl delete -k k8s/overlays/{{.K8S_NAMESPACE}}/
 
   port-forward:
     desc: "Port forward to app (usage: task k8s:port-forward -- 8080:80)"

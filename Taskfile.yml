@@ -3,7 +3,7 @@ version: "3"
 vars:
   K3D_CLUSTER: mewtwo
   K3D_CONFIG: "${HOME}/work/k3d-mewtwo.yaml"
-  PLATFORM_DIR: "${HOME}/work/platform/repos/platform_monorepo/manifests"
+  PLATFORM_DIR: "${HOME}/work/repos/platform_monorepo/manifests"
 
 includes:
   k3d:     ~/work/taskfiles/k3d.yml
@@ -39,6 +39,54 @@ tasks:
       - echo ""
       - echo "── n8n ──────────────────────────────────"
       - task: n8n:status
+
+  project:new:
+    desc: "Scaffold a new project from repo-template (usage: task project:new -- myapp)"
+    vars:
+      PROJECT_NAME: "{{.CLI_ARGS}}"
+      REPOS_DIR: "${HOME}/work/repos"
+      TEMPLATE_DIR: "${HOME}/work/repos/platform_monorepo/repo-template"
+      GITLAB_URL: '{{.GITLAB_URL | default "http://gitlab.mewtwo.127.0.0.1.nip.io"}}'
+      GITLAB_PAT: '{{.GITLAB_PAT | default ""}}'
+    preconditions:
+      - sh: '[ -n "{{.CLI_ARGS}}" ]'
+        msg: "Usage: task project:new -- <project-name>"
+      - sh: '[ ! -d "{{.REPOS_DIR}}/{{.PROJECT_NAME}}" ]'
+        msg: "Directory {{.REPOS_DIR}}/{{.PROJECT_NAME}} already exists"
+      - sh: '[ -d "{{.TEMPLATE_DIR}}" ]'
+        msg: "repo-template not found at {{.TEMPLATE_DIR}}"
+    cmds:
+      - echo "Scaffolding {{.PROJECT_NAME}} from repo-template..."
+
+      # 1. Copy template
+      - cp -r {{.TEMPLATE_DIR}} {{.REPOS_DIR}}/{{.PROJECT_NAME}}
+
+      # 2. Replace APP_NAME placeholders in k8s manifests
+      - bash {{.REPOS_DIR}}/{{.PROJECT_NAME}}/scripts/init-k8s.sh {{.PROJECT_NAME}}
+
+      # 3. Initialize git repo
+      - cd {{.REPOS_DIR}}/{{.PROJECT_NAME}} && git init && git add -A && git commit -m "Initial scaffold from repo-template"
+
+      # 4. Create GitLab project + push
+      - |
+        if [ -z "{{.GITLAB_PAT}}" ]; then
+          echo "SKIP: GITLAB_PAT not set — create project manually at {{.GITLAB_URL}}"
+          echo "  Then: cd {{.REPOS_DIR}}/{{.PROJECT_NAME}} && git remote add origin {{.GITLAB_URL}}/root/{{.PROJECT_NAME}}.git && git push -u origin master"
+        else
+          echo "Creating GitLab project {{.PROJECT_NAME}}..."
+          curl -sf --request POST "{{.GITLAB_URL}}/api/v4/projects" \
+            --header "PRIVATE-TOKEN: {{.GITLAB_PAT}}" \
+            --data "name={{.PROJECT_NAME}}&visibility=private&initialize_with_readme=false" > /dev/null
+          cd {{.REPOS_DIR}}/{{.PROJECT_NAME}} && \
+            git remote add origin "http://oauth2:{{.GITLAB_PAT}}@localhost:8929/root/{{.PROJECT_NAME}}.git" && \
+            git push -u origin master
+          echo "Setting up CI kubeconfig..."
+          GITLAB_PAT={{.GITLAB_PAT}} bash {{.REPOS_DIR}}/platform_monorepo/scripts/setup-ci-kubeconfig.sh root/{{.PROJECT_NAME}}
+        fi
+
+      - echo ""
+      - echo "✓ Project {{.PROJECT_NAME}} created at {{.REPOS_DIR}}/{{.PROJECT_NAME}}"
+      - echo "  cd {{.REPOS_DIR}}/{{.PROJECT_NAME}} && task setup"
 
   teardown:
     desc: Tear down entire platform
