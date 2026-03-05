@@ -38,6 +38,7 @@ tasks:
         task: deploy
         vars:
           NS: "{{.ITEM}}"
+      - task: setup
 
   teardown:
     desc: "Remove n8n + postgres from a namespace (NS=dev|stage|prod)"
@@ -97,6 +98,11 @@ tasks:
     cmds:
       - kubectl rollout restart -n {{.NS}} deploy/n8n
       - kubectl rollout status -n {{.NS}} deploy/n8n --timeout=120s
+
+  setup:
+    desc: "Create owner accounts + API keys for all n8n instances"
+    cmds:
+      - bash {{.N8N_SCRIPTS}}/n8n-setup-api.sh {{.NAMESPACES}}
 
   health:
     desc: "Check n8n health across all namespaces"
