@@ -20,6 +20,7 @@ global:
 
 # -- n8n (workflow engine)
 n8n:
+  encryptionKey: "genai-mlops-n8n-encryption-key-k3d"
   image:
     tag: "1.123.21"
   resources:
@@ -89,6 +90,13 @@ langfuse:
   redis:
     deploy: true
     host: "genai-apps-redis-primary"
+    auth:
+      password: redis123
+  # Pass the same password to the Valkey subchart so auth aligns
+  valkey:
+    auth:
+      enabled: true
+      password: redis123
   s3:
     deploy: false
     endpoint: "http://genai-infra-minio.genai.svc.cluster.local:9000"
