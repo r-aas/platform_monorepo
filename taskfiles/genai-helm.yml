@@ -80,3 +80,30 @@ tasks:
     desc: "Show logs for a genai pod (usage: task genai-helm:logs -- <pod-name-prefix>)"
     cmds:
       - kubectl logs -n {{.GENAI_NS}} -l app.kubernetes.io/name={{.CLI_ARGS}} --tail=100 -f
+
+  # ── Terraform (declarative alternative to helm CLI) ──
+
+  tf-init:
+    desc: Initialize Terraform for genai Helm deployment
+    dir: "{{.ROOT_DIR}}/terraform"
+    cmds:
+      - terraform init
+
+  tf-plan:
+    desc: Plan genai stack deployment via Terraform
+    dir: "{{.ROOT_DIR}}/terraform"
+    cmds:
+      - terraform plan -var-file=environments/k3d.tfvars
+
+  tf-apply:
+    desc: Apply genai stack deployment via Terraform
+    dir: "{{.ROOT_DIR}}/terraform"
+    cmds:
+      - terraform apply -var-file=environments/k3d.tfvars
+
+  tf-destroy:
+    desc: Destroy genai stack via Terraform
+    dir: "{{.ROOT_DIR}}/terraform"
+    prompt: "Terraform destroy genai stack?"
+    cmds:
+      - terraform destroy -var-file=environments/k3d.tfvars

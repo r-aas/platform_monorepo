@@ -1,0 +1,9 @@
+# AWS EKS deployment (future)
+# Requires: aws-auth configured, EKS cluster provisioned separately
+#
+# kubeconfig_path    = "~/.kube/config"
+# kubeconfig_context = "arn:aws:eks:us-east-1:ACCOUNT:cluster/genai-prod"
+# namespace          = "genai"
+# charts_dir         = "../charts"
+# infra_values_files = ["values.yaml", "values-aws.yaml"]
+# apps_values_files  = ["values.yaml", "values-aws.yaml"]
