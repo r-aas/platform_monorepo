@@ -6,10 +6,12 @@ vars:
   PLATFORM_DIR: "${HOME}/work/repos/platform_monorepo/manifests"
 
 includes:
-  k3d:     ~/work/taskfiles/k3d.yml
-  gitlab:  ~/work/taskfiles/gitlab.yml
-  k8s:     ~/work/taskfiles/k8s.yml
-  n8n:     ~/work/taskfiles/n8n.yml
+  k3d:        ~/work/taskfiles/k3d.yml
+  gitlab:     ~/work/taskfiles/gitlab.yml
+  k8s:        ~/work/taskfiles/k8s.yml
+  helm:       ~/work/taskfiles/helm.yml
+  genai-helm: ~/work/taskfiles/genai-helm.yml
+  n8n:        ~/work/taskfiles/n8n.yml
 
 tasks:
   default:
@@ -36,6 +38,10 @@ tasks:
       - echo ""
       - echo "── GitLab ───────────────────────────────"
       - task: gitlab:status
+      - echo ""
+      - echo "── GenAI Helm ───────────────────────────"
+      - task: genai-helm:status
+        ignore_error: true
       - echo ""
       - echo "── n8n ──────────────────────────────────"
       - task: n8n:status

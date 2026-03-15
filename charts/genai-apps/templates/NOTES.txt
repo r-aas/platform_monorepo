@@ -1,0 +1,17 @@
+GenAI MLOps — Application Tier deployed.
+
+Services:
+  n8n:              {{ if .Values.n8n.enabled }}enabled{{ else }}disabled{{ end }}
+  MLflow:           {{ if .Values.mlflow.enabled }}enabled{{ else }}disabled{{ end }}
+  Langfuse:         {{ if .Values.langfuse.enabled }}enabled{{ else }}disabled{{ end }}
+  LiteLLM:          {{ if .Values.litellm.enabled }}enabled{{ else }}disabled{{ end }}
+  Streaming Proxy:  {{ if (index .Values "streaming-proxy" "enabled") }}enabled{{ else }}disabled{{ end }}
+  MCP Gateway:      {{ if (index .Values "mcp-gateway" "enabled") }}enabled{{ else }}disabled{{ end }}
+
+Check pods:
+  kubectl get pods -n {{ .Release.Namespace }}
+
+Access via ingress:
+  n8n:      http://n8n.genai.127.0.0.1.nip.io
+  MLflow:   http://mlflow.genai.127.0.0.1.nip.io
+  Langfuse: http://langfuse.genai.127.0.0.1.nip.io

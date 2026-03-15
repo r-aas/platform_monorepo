@@ -1,0 +1,15 @@
+GenAI MLOps — Infrastructure Tier deployed.
+
+Services:
+  MinIO:      {{ if .Values.minio.enabled }}enabled{{ else }}disabled{{ end }}
+  n8n PG:     {{ if (index .Values "n8n-postgresql" "enabled") }}enabled{{ else }}disabled{{ end }}
+  MLflow PG:  {{ if (index .Values "mlflow-postgresql" "enabled") }}enabled{{ else }}disabled{{ end }}
+  Langfuse PG:{{ if (index .Values "langfuse-postgresql" "enabled") }}enabled{{ else }}disabled{{ end }}
+  pgvector:   {{ if .Values.pgvector.enabled }}enabled{{ else }}disabled{{ end }}
+  Neo4j:      {{ if .Values.neo4j.enabled }}enabled{{ else }}disabled{{ end }}
+
+Check pods:
+  kubectl get pods -n {{ .Release.Namespace }}
+
+Next: Deploy the application tier:
+  task genai-helm:apps-up

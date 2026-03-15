@@ -1,0 +1,148 @@
+# GenAI MLOps — Infrastructure Tier
+# Production defaults. Override with values-k3d.yaml for local dev.
+
+# -- MinIO (S3-compatible object storage)
+minio:
+  enabled: true
+  mode: standalone
+  replicas: 1
+  rootUser: minio
+  rootPassword: minio123
+  persistence:
+    enabled: true
+    size: 10Gi
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: "1.0"
+  buckets:
+    - name: mlflow
+      policy: none
+    - name: langfuse
+      policy: none
+  consoleIngress:
+    enabled: false
+  ingress:
+    enabled: false
+
+# -- n8n PostgreSQL
+n8n-postgresql:
+  enabled: true
+  auth:
+    username: n8n
+    password: n8n
+    database: n8n
+  primary:
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 100m
+      limits:
+        memory: 256Mi
+        cpu: "0.5"
+    persistence:
+      enabled: true
+      size: 1Gi
+
+# -- MLflow PostgreSQL
+mlflow-postgresql:
+  enabled: true
+  auth:
+    username: mlflow
+    password: mlflow
+    database: mlflow
+  primary:
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 100m
+      limits:
+        memory: 256Mi
+        cpu: "0.5"
+    persistence:
+      enabled: true
+      size: 1Gi
+
+# -- Langfuse PostgreSQL
+langfuse-postgresql:
+  enabled: true
+  auth:
+    username: langfuse
+    password: langfuse
+    database: langfuse
+  primary:
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 100m
+      limits:
+        memory: 256Mi
+        cpu: "0.5"
+    persistence:
+      enabled: true
+      size: 1Gi
+
+# -- pgvector (PostgreSQL + vector extension)
+# Uses pgvector/pgvector image (non-Bitnami) so needs relaxed security context
+# and extra volumes for /var/run/postgresql (read-only root FS workaround)
+pgvector:
+  enabled: true
+  global:
+    security:
+      allowInsecureImages: true
+  image:
+    registry: docker.io
+    repository: pgvector/pgvector
+    tag: pg16
+  auth:
+    username: pgvector
+    password: pgvector
+    database: vectors
+  primary:
+    initdb:
+      scripts:
+        init-pgvector.sql: |
+          CREATE EXTENSION IF NOT EXISTS vector;
+    containerSecurityContext:
+      readOnlyRootFilesystem: false
+    extraVolumes:
+      - name: run-postgresql
+        emptyDir: {}
+    extraVolumeMounts:
+      - name: run-postgresql
+        mountPath: /var/run/postgresql
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 200m
+      limits:
+        memory: 512Mi
+        cpu: "1.0"
+    persistence:
+      enabled: true
+      size: 2Gi
+
+# -- Neo4j (GraphRAG knowledge graph)
+neo4j:
+  enabled: true
+  neo4j:
+    name: neo4j
+    edition: community
+    password: neo4j123
+    acceptLicenseAgreement: "yes"
+  volumes:
+    data:
+      mode: defaultStorageClass
+      defaultStorageClass:
+        requests:
+          storage: 5Gi
+  resources:
+    requests:
+      memory: 1Gi
+      cpu: 500m
+    limits:
+      memory: 4Gi
+      cpu: "2.0"

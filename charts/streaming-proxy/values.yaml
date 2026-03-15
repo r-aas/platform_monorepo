@@ -1,0 +1,39 @@
+replicaCount: 1
+
+image:
+  repository: ""  # Built from genai-mlops repo, pushed to registry
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 4010
+
+resources:
+  requests:
+    memory: 128Mi
+    cpu: 100m
+  limits:
+    memory: 256Mi
+    cpu: "0.5"
+
+env:
+  N8N_BASE_URL: ""
+  LITELLM_BASE_URL: ""
+  WEBHOOK_API_KEY: ""
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 4010
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  failureThreshold: 10
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 4010
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 5

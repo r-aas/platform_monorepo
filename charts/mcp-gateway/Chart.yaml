@@ -1,0 +1,6 @@
+apiVersion: v2
+name: mcp-gateway
+description: Docker MCP Gateway for on-demand MCP server management
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

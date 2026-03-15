@@ -1,0 +1,44 @@
+replicaCount: 1
+
+image:
+  repository: docker/mcp-gateway
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8811
+
+resources:
+  requests:
+    memory: 128Mi
+    cpu: 100m
+  limits:
+    memory: 256Mi
+    cpu: "0.5"
+
+# MCP Gateway needs Docker socket access for managing MCP server containers.
+# In k8s, this requires mounting the host Docker socket or using a sidecar.
+# For k3d, the Docker socket is inside the k3d node container.
+dockerSocket:
+  enabled: true
+  hostPath: /var/run/docker.sock
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8811
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  failureThreshold: 30
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 8811
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 10
+
+# Catalog config mounted as /config/catalog.yaml
+catalog: {}

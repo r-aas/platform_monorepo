@@ -1,0 +1,57 @@
+# GenAI MLOps — Infrastructure Tier (k3d local overrides)
+# Reduced resources, local-path storage, nip.io ingress
+#
+# NOTE: local-path provisioner reconfigured to use /var/lib/rancher/k3s/local-storage
+# (container overlay FS) instead of /var/lib/rancher/k3s/storage (sshfs → Mac).
+# This is required because Bitnami PG init needs chown which fails on sshfs.
+
+minio:
+  persistence:
+    storageClass: local-path
+    size: 5Gi
+  consoleIngress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - minio-console.genai.127.0.0.1.nip.io
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - minio.genai.127.0.0.1.nip.io
+
+n8n-postgresql:
+  primary:
+    persistence:
+      storageClass: local-path
+
+mlflow-postgresql:
+  primary:
+    persistence:
+      storageClass: local-path
+
+langfuse-postgresql:
+  primary:
+    persistence:
+      storageClass: local-path
+
+pgvector:
+  primary:
+    persistence:
+      storageClass: local-path
+
+neo4j:
+  volumes:
+    data:
+      mode: defaultStorageClass
+      defaultStorageClass:
+        requests:
+          storage: 2Gi
+  neo4j:
+    resources:
+      requests:
+        memory: 2Gi
+        cpu: 500m
+      limits:
+        memory: 2Gi
+        cpu: "1.0"

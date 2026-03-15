@@ -9,5 +9,8 @@ envs/*.local
 # Session state (may contain credentials)
 RESUME.md
 
+# Helm chart dependencies (downloaded by `helm dep update`)
+charts/*/charts/*.tgz
+
 # OS junk
 .DS_Store

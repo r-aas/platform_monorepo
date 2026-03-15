@@ -1,0 +1,62 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/berriai/litellm
+  tag: "main-latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 4000
+
+resources:
+  requests:
+    memory: 256Mi
+    cpu: 200m
+  limits:
+    memory: 1Gi
+    cpu: "1.0"
+
+# LiteLLM config — mounted as /app/config.yaml
+config:
+  model_list:
+    - model_name: "qwen2.5:14b"
+      litellm_params:
+        model: "openai/qwen2.5:14b"
+        api_base: "http://host.docker.internal:11434/v1"
+        api_key: "ollama"
+    - model_name: "nomic-embed-text"
+      litellm_params:
+        model: "openai/nomic-embed-text"
+        api_base: "http://host.docker.internal:11434/v1"
+        api_key: "ollama"
+  litellm_settings:
+    drop_params: true
+    num_retries: 2
+    request_timeout: 120
+    success_callback: ["mlflow", "langfuse"]
+  general_settings:
+    master_key: ""
+
+# External service URLs (set via global or per-value)
+env:
+  MLFLOW_TRACKING_URI: ""
+  LANGFUSE_HOST: ""
+  LANGFUSE_PUBLIC_KEY: ""
+  LANGFUSE_SECRET_KEY: ""
+
+livenessProbe:
+  httpGet:
+    path: /health/liveliness
+    port: 4000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  failureThreshold: 30
+
+readinessProbe:
+  httpGet:
+    path: /health/readiness
+    port: 4000
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  failureThreshold: 10

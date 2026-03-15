@@ -1,0 +1,6 @@
+apiVersion: v2
+name: streaming-proxy
+description: SSE streaming proxy for OpenAI-compatible /v1/chat/completions
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
