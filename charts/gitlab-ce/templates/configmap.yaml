@@ -26,6 +26,9 @@ data:
     # Disable Prometheus (saves resources)
     prometheus_monitoring['enable'] = {{ .Values.omnibus.prometheusMonitoring }}
 
+    # Health check monitoring whitelist (pod network for kube-probes)
+    gitlab_rails['monitoring_whitelist'] = ['127.0.0.0/8', '10.42.0.0/16']
+
     # Container registry
     registry['enable'] = true
     gitlab_rails['registry_enabled'] = true

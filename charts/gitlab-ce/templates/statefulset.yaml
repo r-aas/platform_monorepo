@@ -40,19 +40,34 @@ spec:
                 secretKeyRef:
                   name: {{ include "gitlab-ce.fullname" . }}-initial-password
                   key: initial_root_password
+          startupProbe:
+            httpGet:
+              path: /-/readiness
+              port: http
+              httpHeaders:
+                - name: Host
+                  value: {{ .Values.externalUrl | trimPrefix "http://" | trimPrefix "https://" }}
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 60
           readinessProbe:
             httpGet:
               path: /-/readiness
               port: http
-            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+              httpHeaders:
+                - name: Host
+                  value: {{ .Values.externalUrl | trimPrefix "http://" | trimPrefix "https://" }}
             periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
             timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
-            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+            failureThreshold: 3
           livenessProbe:
             httpGet:
               path: /-/liveness
               port: http
-            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+              httpHeaders:
+                - name: Host
+                  value: {{ .Values.externalUrl | trimPrefix "http://" | trimPrefix "https://" }}
             periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
             timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
             failureThreshold: {{ .Values.probes.liveness.failureThreshold }}

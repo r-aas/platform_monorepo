@@ -55,15 +55,15 @@ ingress:
     gitlab: gitlab.local
     registry: registry.local
 
-# Health probes
+# Health probes — omnibus first-boot takes ~8 min
 probes:
   readiness:
     initialDelaySeconds: 180
     periodSeconds: 15
     timeoutSeconds: 5
-    failureThreshold: 20
+    failureThreshold: 40
   liveness:
-    initialDelaySeconds: 300
+    initialDelaySeconds: 600
     periodSeconds: 30
     timeoutSeconds: 5
     failureThreshold: 10
