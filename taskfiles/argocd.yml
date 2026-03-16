@@ -49,7 +49,7 @@ tasks:
       - kubectl apply -f {{.MANIFESTS_DIR}}/argocd-apps-platform.yaml
       - echo ""
       - echo "AppProjects and Applications created."
-      - echo "Sync manually: task argocd:sync -- genai-infra"
+      - 'echo "Sync manually: task argocd:sync -- genai-infra"'
 
   setup-repo:
     desc: "Configure GitLab repo connection (usage: task argocd:setup-repo -- GITLAB_PAT)"
