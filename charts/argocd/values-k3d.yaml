@@ -1,10 +1,12 @@
 # ArgoCD — k3d local overrides
 
+global:
+  domain: argocd.mewtwo.127.0.0.1.nip.io
+
 server:
   ingress:
     enabled: true
     ingressClassName: nginx
     annotations:
       nginx.ingress.kubernetes.io/backend-protocol: HTTP
-    hosts:
-      - argocd.mewtwo.127.0.0.1.nip.io
+    hostname: argocd.mewtwo.127.0.0.1.nip.io
