@@ -1,0 +1,84 @@
+# GitLab CE Omnibus Helm Chart — Default Values
+
+image:
+  repository: gitlab/gitlab-ce
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# External URLs (override in values-k3d.yaml)
+externalUrl: "http://gitlab.local"
+registryExternalUrl: "http://registry.local"
+sshPort: 2222
+
+# gitlab.rb performance tuning
+omnibus:
+  pumaWorkers: 2
+  sidekiqConcurrency: 5
+  sharedBuffers: "256MB"
+  prometheusMonitoring: false
+
+# Initial root password (override via --set or secret)
+initialRootPassword: "changeme123"
+
+# Resource limits
+resources:
+  requests:
+    cpu: "1"
+    memory: 2Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+
+# Storage
+persistence:
+  storageClass: ""
+  config:
+    size: 1Gi
+  data:
+    size: 10Gi
+  logs:
+    size: 1Gi
+
+# Service
+service:
+  type: ClusterIP
+  webPort: 80
+  sshPort: 2222
+  registryPort: 5050
+
+# Ingress
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    gitlab: gitlab.local
+    registry: registry.local
+
+# Health probes
+probes:
+  readiness:
+    initialDelaySeconds: 180
+    periodSeconds: 15
+    timeoutSeconds: 5
+    failureThreshold: 20
+  liveness:
+    initialDelaySeconds: 300
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 10
+
+# GitLab Runner (separate deployment)
+runner:
+  enabled: true
+  image:
+    repository: gitlab/gitlab-runner
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi

@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "gitlab-ce.fullname" . }}-config
+  labels:
+    {{- include "gitlab-ce.labels" . | nindent 4 }}
+data:
+  GITLAB_OMNIBUS_CONFIG: |
+    external_url '{{ .Values.externalUrl }}'
+    registry_external_url '{{ .Values.registryExternalUrl }}'
+
+    # Listen on port 80 (behind ingress, no TLS)
+    nginx['listen_port'] = 80
+    nginx['listen_https'] = false
+    registry_nginx['listen_port'] = 5050
+    registry_nginx['listen_https'] = false
+
+    # SSH
+    gitlab_rails['gitlab_shell_ssh_port'] = {{ .Values.sshPort }}
+
+    # Performance tuning
+    puma['workers'] = {{ .Values.omnibus.pumaWorkers }}
+    sidekiq['concurrency'] = {{ .Values.omnibus.sidekiqConcurrency }}
+    postgresql['shared_buffers'] = '{{ .Values.omnibus.sharedBuffers }}'
+
+    # Disable Prometheus (saves resources)
+    prometheus_monitoring['enable'] = {{ .Values.omnibus.prometheusMonitoring }}
+
+    # Container registry
+    registry['enable'] = true
+    gitlab_rails['registry_enabled'] = true

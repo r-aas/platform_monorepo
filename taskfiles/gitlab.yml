@@ -3,115 +3,128 @@ version: "3"
 vars:
   GITLAB_URL: '{{.GITLAB_URL | default "http://gitlab.mewtwo.127.0.0.1.nip.io"}}'
   REGISTRY_URL: '{{.REGISTRY_URL | default "registry.mewtwo.127.0.0.1.nip.io"}}'
+  GITLAB_NS: '{{.GITLAB_NS | default "platform"}}'
+  CHARTS_DIR: '{{.ROOT_DIR}}/charts'
+  # Legacy docker-compose (fallback only)
   GITLAB_COMPOSE_FILE: '{{.GITLAB_COMPOSE_FILE | default "${HOME}/work/repos/platform_monorepo/docker-compose.gitlab.yml"}}'
-  PLATFORM_MANIFESTS: '{{.PLATFORM_MANIFESTS | default "${HOME}/work/repos/platform_monorepo/manifests"}}'
-  PLATFORM_SCRIPTS: '{{.PLATFORM_SCRIPTS | default "${HOME}/work/repos/platform_monorepo/scripts"}}'
 
 tasks:
   deploy:
-    desc: Start GitLab CE + Runner (docker-compose) and apply k8s ingress proxy
+    desc: Deploy GitLab CE + Runner to k3d via Helm
     cmds:
-      - docker compose -f {{.GITLAB_COMPOSE_FILE}} up -d
-      - echo "Waiting for GitLab to start (up to 5 min)..."
-      - |
-        for i in $(seq 1 60); do
-          if curl -sf http://localhost:8929/-/readiness > /dev/null 2>&1; then
-            echo "GitLab is ready"
-            break
-          fi
-          if [ "$i" = "60" ]; then
-            echo "WARN: GitLab not ready after 5 min — check logs with: task gitlab:logs"
-          fi
-          sleep 5
-        done
-      - kubectl apply -f {{.PLATFORM_MANIFESTS}}/gitlab-proxy.yaml
+      - >-
+        helm upgrade --install gitlab-ce {{.CHARTS_DIR}}/gitlab-ce
+        -f {{.CHARTS_DIR}}/gitlab-ce/values.yaml
+        -f {{.CHARTS_DIR}}/gitlab-ce/values-k3d.yaml
+        --namespace {{.GITLAB_NS}} --create-namespace
+        --timeout 600s
+      - echo ""
+      - echo "GitLab CE deploying to k3d (takes ~5 min for first boot)."
+      - echo "Monitor progress:"
+      - echo "  kubectl get pods -n {{.GITLAB_NS}} -l app.kubernetes.io/name=gitlab-ce -w"
+      - echo ""
       - 'echo "GitLab: {{.GITLAB_URL}}"'
       - 'echo "Registry: http://{{.REGISTRY_URL}}"'
 
   stop:
-    desc: Stop GitLab CE + Runner
+    desc: Uninstall GitLab CE from k3d
+    prompt: "Remove GitLab CE from k3d? PVC data will be retained."
     cmds:
-      - docker compose -f {{.GITLAB_COMPOSE_FILE}} down
+      - helm uninstall gitlab-ce --namespace {{.GITLAB_NS}} --ignore-not-found
+      - echo "GitLab removed. PVCs retained — data survives re-deploy."
 
   status:
-    desc: Check GitLab status
+    desc: Check GitLab CE status
     cmds:
-      - echo "=== Docker containers ==="
-      - docker compose -f {{.GITLAB_COMPOSE_FILE}} ps
+      - echo "=== Helm release ==="
+      - helm status gitlab-ce --namespace {{.GITLAB_NS}} 2>/dev/null || echo "Not installed"
       - echo ""
-      - echo "=== k8s ingress proxy ==="
-      - kubectl get svc,endpoints,ingress -n platform -l '!app' 2>/dev/null || true
+      - echo "=== Pods ==="
+      - kubectl get pods -n {{.GITLAB_NS}} -l app.kubernetes.io/name=gitlab-ce -o wide 2>/dev/null || true
+      - kubectl get pods -n {{.GITLAB_NS}} -l app.kubernetes.io/name=gitlab-runner -o wide 2>/dev/null || true
+      - echo ""
+      - echo "=== Ingress ==="
+      - kubectl get ingress -n {{.GITLAB_NS}} -l app.kubernetes.io/name=gitlab-ce 2>/dev/null || true
+      - echo ""
+      - echo "=== PVCs ==="
+      - kubectl get pvc -n {{.GITLAB_NS}} -l app.kubernetes.io/name=gitlab-ce 2>/dev/null || true
 
   logs:
-    desc: Tail GitLab logs
+    desc: Tail GitLab CE logs
     cmds:
-      - docker compose -f {{.GITLAB_COMPOSE_FILE}} logs -f --tail=50 gitlab
+      - kubectl logs -n {{.GITLAB_NS}} -l app.kubernetes.io/name=gitlab-ce --tail=100 -f
 
   password:
     desc: Get initial root password
     cmds:
-      - 'docker exec gitlab grep "Password:" /etc/gitlab/initial_root_password 2>/dev/null || echo "Password file expired. Reset with: task gitlab:reset-password"'
+      - |
+        POD=$(kubectl get pods -n {{.GITLAB_NS}} -l app.kubernetes.io/name=gitlab-ce -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+        if [ -n "$POD" ]; then
+          kubectl exec -n {{.GITLAB_NS}} "$POD" -- cat /etc/gitlab/initial_root_password 2>/dev/null | grep Password || \
+            echo "Password file expired. Use: task gitlab:reset-password"
+        else
+          echo "GitLab pod not found. Is it deployed? (task gitlab:deploy)"
+        fi
 
   reset-password:
     desc: Reset GitLab root password
     cmds:
       - |
-        echo "Resetting root password to 'changeme123'..."
-        docker exec gitlab gitlab-rails runner \
-          "user = User.find_by(username: 'root'); user.password = 'changeme123'; user.password_confirmation = 'changeme123'; user.save!"
+        POD=$(kubectl get pods -n {{.GITLAB_NS}} -l app.kubernetes.io/name=gitlab-ce -o jsonpath='{.items[0].metadata.name}')
+        kubectl exec -n {{.GITLAB_NS}} "$POD" -- \
+          gitlab-rails runner "user = User.find_by(username: 'root'); user.password = 'changeme123'; user.password_confirmation = 'changeme123'; user.save!"
         echo "Root password reset. Login: root / changeme123"
 
   runner-register:
     desc: "Register runner with token (usage: task gitlab:runner-register -- TOKEN)"
     cmds:
       - |
-        docker exec gitlab-runner gitlab-runner register \
-          --non-interactive \
-          --url "http://gitlab:80" \
-          --clone-url "http://gitlab:80" \
-          --token "{{.CLI_ARGS}}" \
-          --executor docker \
-          --docker-image alpine:latest \
-          --docker-network-mode platform_monorepo_gitlab \
-          --docker-pull-policy if-not-present \
-          --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" \
-          --docker-volumes "/cache"
-        echo ""
-        echo "Runner registered. Add extra_hosts manually to config.toml, then: task gitlab:runner-restart"
-        GITLAB_IP=$(docker inspect gitlab --format '{{`{{.NetworkSettings.Networks.platform_monorepo_gitlab.IPAddress}}`}}')
-        echo "Required extra_hosts (gitlab IP: $GITLAB_IP):"
-        echo "  \"gitlab.mewtwo.127.0.0.1.nip.io:$GITLAB_IP\""
-        echo "  \"registry.mewtwo.127.0.0.1.nip.io:$GITLAB_IP\""
-        echo "  \"host.docker.internal:host-gateway\""
+        RUNNER_POD=$(kubectl get pods -n {{.GITLAB_NS}} -l app.kubernetes.io/name=gitlab-runner -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+        if [ -z "$RUNNER_POD" ]; then
+          echo "Runner pod not found. Is GitLab deployed with runner.enabled=true?"
+          exit 1
+        fi
+        kubectl exec -n {{.GITLAB_NS}} "$RUNNER_POD" -- \
+          gitlab-runner register \
+            --non-interactive \
+            --url "http://gitlab-ce.{{.GITLAB_NS}}.svc.cluster.local" \
+            --token "{{.CLI_ARGS}}" \
+            --executor kubernetes \
+            --kubernetes-namespace {{.GITLAB_NS}} \
+            --kubernetes-image alpine:latest \
+            --kubernetes-pull-policy if-not-present
+        echo "Runner registered with kubernetes executor."
 
   runner-restart:
-    desc: Restart GitLab Runner
+    desc: Restart GitLab Runner pod
     cmds:
-      - docker restart gitlab-runner
+      - kubectl rollout restart deployment -n {{.GITLAB_NS}} -l app.kubernetes.io/name=gitlab-runner
 
-  runner-config:
-    desc: Show runner config.toml
-    cmds:
-      - docker exec gitlab-runner cat /etc/gitlab-runner/config.toml
-
-  setup-registry:
-    desc: Configure k3d nodes to pull from GitLab registry (ephemeral /etc/hosts)
+  wait:
+    desc: Wait for GitLab to be ready (up to 5 min)
     cmds:
       - |
-        GATEWAY=$(docker network inspect k3d-mewtwo --format '{{`{{(index .IPAM.Config 0).Gateway}}`}}')
-        echo "k3d gateway: $GATEWAY"
-        for node in $(docker ps --filter name=k3d-mewtwo --format '{{`{{.Names}}`}}' | grep -v serverlb); do
-          docker exec "$node" sh -c "grep -q 'registry.mewtwo' /etc/hosts || echo '$GATEWAY registry.mewtwo.127.0.0.1.nip.io' >> /etc/hosts"
-          echo "  $node: registry host entry set"
-        done
-
-  setup-ci:
-    desc: "Set up CI kubeconfig for a GitLab project (usage: task gitlab:setup-ci -- root/myproject)"
-    cmds:
-      - bash {{.PLATFORM_SCRIPTS}}/setup-ci-kubeconfig.sh {{.CLI_ARGS}}
+        echo "Waiting for GitLab readiness..."
+        kubectl wait --for=condition=ready pod \
+          -n {{.GITLAB_NS}} -l app.kubernetes.io/name=gitlab-ce \
+          --timeout=300s 2>/dev/null && echo "GitLab is ready!" || \
+          echo "WARN: GitLab not ready after 5 min — check: task gitlab:logs"
 
   url:
     desc: Print GitLab URLs
     cmds:
       - 'echo "GitLab:   {{.GITLAB_URL}}"'
       - 'echo "Registry: http://{{.REGISTRY_URL}}"'
+
+  # ── Legacy docker-compose (fallback) ──
+
+  deploy-compose:
+    desc: "[FALLBACK] Start GitLab via docker-compose (legacy)"
+    cmds:
+      - docker compose -f {{.GITLAB_COMPOSE_FILE}} up -d
+      - echo "Legacy docker-compose GitLab started."
+
+  stop-compose:
+    desc: "[FALLBACK] Stop GitLab docker-compose (legacy)"
+    cmds:
+      - docker compose -f {{.GITLAB_COMPOSE_FILE}} down

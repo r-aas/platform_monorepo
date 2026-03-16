@@ -8,6 +8,7 @@ vars:
 includes:
   k3d:        ~/work/taskfiles/k3d.yml
   gitlab:     ~/work/taskfiles/gitlab.yml
+  argocd:     ~/work/taskfiles/argocd.yml
   k8s:        ~/work/taskfiles/k8s.yml
   helm:       ~/work/taskfiles/helm.yml
   genai-helm: ~/work/taskfiles/genai-helm.yml
@@ -20,16 +21,18 @@ tasks:
       - task --list
 
   bootstrap:
-    desc: Full platform bootstrap (cluster + GitLab + n8n)
+    desc: Full platform bootstrap (cluster + ArgoCD + GitLab + genai stack)
     cmds:
       - task: k3d:cluster-up
+      - task: argocd:deploy
       - task: gitlab:deploy
-      - task: gitlab:setup-registry
-      - task: n8n:deploy-all
+      - task: gitlab:wait
       - echo ""
       - echo "Platform ready."
-      - 'echo "Check status: task status"'
-      - 'echo "Get password: task gitlab:password"'
+      - 'echo "Check status:      task status"'
+      - 'echo "GitLab password:   task gitlab:password"'
+      - 'echo "ArgoCD password:   task argocd:password"'
+      - 'echo "ArgoCD UI:         http://argocd.mewtwo.127.0.0.1.nip.io"'
 
   status:
     desc: Full platform status
@@ -38,6 +41,10 @@ tasks:
       - echo ""
       - echo "── GitLab ───────────────────────────────"
       - task: gitlab:status
+      - echo ""
+      - echo "── ArgoCD ───────────────────────────────"
+      - task: argocd:status
+        ignore_error: true
       - echo ""
       - echo "── GenAI Helm ───────────────────────────"
       - task: genai-helm:status

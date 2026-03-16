@@ -1,0 +1,30 @@
+{{- if .Values.runner.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gitlab-ce.fullname" . }}-runner
+  labels:
+    {{- include "gitlab-ce.runner.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "gitlab-ce.runner.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "gitlab-ce.runner.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: runner
+          image: "{{ .Values.runner.image.repository }}:{{ .Values.runner.image.tag }}"
+          imagePullPolicy: {{ .Values.runner.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.runner.resources | nindent 12 }}
+          volumeMounts:
+            - name: runner-config
+              mountPath: /etc/gitlab-runner
+      volumes:
+        - name: runner-config
+          emptyDir: {}
+{{- end }}

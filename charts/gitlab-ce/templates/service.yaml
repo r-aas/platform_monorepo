@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gitlab-ce.fullname" . }}
+  labels:
+    {{- include "gitlab-ce.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.service.webPort }}
+      targetPort: http
+      protocol: TCP
+    - name: ssh
+      port: {{ .Values.service.sshPort }}
+      targetPort: ssh
+      protocol: TCP
+    - name: registry
+      port: {{ .Values.service.registryPort }}
+      targetPort: registry
+      protocol: TCP
+  selector:
+    {{- include "gitlab-ce.selectorLabels" . | nindent 4 }}

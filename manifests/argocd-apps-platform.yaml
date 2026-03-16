@@ -1,0 +1,26 @@
+# ArgoCD Application — GitLab CE (platform namespace)
+#
+# Bootstrap note: GitLab must be deployed first via Helm CLI
+# (task gitlab:deploy), then this Application lets ArgoCD
+# manage it going forward.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gitlab-ce
+  namespace: platform
+spec:
+  project: platform-apps
+  source:
+    repoURL: http://gitlab-ce.platform.svc.cluster.local/root/platform_monorepo.git
+    targetRevision: HEAD
+    path: charts/gitlab-ce
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-k3d.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: platform
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true

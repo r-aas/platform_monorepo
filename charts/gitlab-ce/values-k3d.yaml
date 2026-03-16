@@ -1,0 +1,19 @@
+# GitLab CE — k3d local overrides
+
+externalUrl: "http://gitlab.mewtwo.127.0.0.1.nip.io"
+registryExternalUrl: "http://registry.mewtwo.127.0.0.1.nip.io"
+
+persistence:
+  storageClass: local-path
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "900"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "900"
+    nginx.ingress.kubernetes.io/backend-protocol: HTTP
+  hosts:
+    gitlab: gitlab.mewtwo.127.0.0.1.nip.io
+    registry: registry.mewtwo.127.0.0.1.nip.io

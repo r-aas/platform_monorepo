@@ -1,0 +1,112 @@
+version: "3"
+
+vars:
+  ARGOCD_NS: '{{.ARGOCD_NS | default "platform"}}'
+  ARGOCD_URL: '{{.ARGOCD_URL | default "http://argocd.mewtwo.127.0.0.1.nip.io"}}'
+  CHARTS_DIR: '{{.ROOT_DIR}}/charts'
+  MANIFESTS_DIR: '{{.ROOT_DIR}}/manifests'
+
+tasks:
+  deploy:
+    desc: Install ArgoCD via Helm
+    cmds:
+      - helm repo add argo https://argoproj.github.io/argo-helm --force-update
+      - >-
+        helm upgrade --install argocd argo/argo-cd
+        -f {{.CHARTS_DIR}}/argocd/values.yaml
+        -f {{.CHARTS_DIR}}/argocd/values-k3d.yaml
+        --namespace {{.ARGOCD_NS}} --create-namespace
+        --wait --timeout 300s
+      - echo ""
+      - echo "ArgoCD deployed!"
+      - task: password
+      - 'echo "UI: {{.ARGOCD_URL}}"'
+
+  teardown:
+    desc: Uninstall ArgoCD
+    prompt: "Remove ArgoCD from cluster?"
+    cmds:
+      - helm uninstall argocd --namespace {{.ARGOCD_NS}} --ignore-not-found
+      - echo "ArgoCD removed."
+
+  status:
+    desc: Show ArgoCD release and Application sync status
+    cmds:
+      - echo "=== Helm release ==="
+      - helm status argocd --namespace {{.ARGOCD_NS}} 2>/dev/null || echo "Not installed"
+      - echo ""
+      - echo "=== ArgoCD pods ==="
+      - kubectl get pods -n {{.ARGOCD_NS}} -l app.kubernetes.io/part-of=argocd -o wide 2>/dev/null || true
+      - echo ""
+      - echo "=== Applications ==="
+      - kubectl get applications -n {{.ARGOCD_NS}} 2>/dev/null || echo "No applications found"
+
+  setup:
+    desc: Apply AppProjects + Applications + repo secret (run after GitLab is up)
+    cmds:
+      - kubectl apply -f {{.MANIFESTS_DIR}}/argocd-appprojects.yaml
+      - kubectl apply -f {{.MANIFESTS_DIR}}/argocd-apps-genai.yaml
+      - kubectl apply -f {{.MANIFESTS_DIR}}/argocd-apps-platform.yaml
+      - echo ""
+      - echo "AppProjects and Applications created."
+      - echo "Sync manually: task argocd:sync -- genai-infra"
+
+  setup-repo:
+    desc: "Configure GitLab repo connection (usage: task argocd:setup-repo -- GITLAB_PAT)"
+    cmds:
+      - |
+        PAT="{{.CLI_ARGS}}"
+        if [ -z "$PAT" ]; then
+          echo "Usage: task argocd:setup-repo -- <gitlab-personal-access-token>"
+          exit 1
+        fi
+        kubectl create secret generic argocd-repo-gitlab \
+          --namespace {{.ARGOCD_NS}} \
+          --from-literal=type=git \
+          --from-literal=url=http://gitlab-ce.{{.ARGOCD_NS}}.svc.cluster.local \
+          --from-literal=username=root \
+          --from-literal=password="$PAT" \
+          --from-literal=insecure=true \
+          --dry-run=client -o yaml | \
+        kubectl label --local -f - argocd.argoproj.io/secret-type=repository -o yaml | \
+        kubectl apply -f -
+        echo "Repo credential configured."
+
+  sync:
+    desc: "Trigger sync for an application (usage: task argocd:sync -- genai-infra)"
+    cmds:
+      - |
+        APP="{{.CLI_ARGS}}"
+        if [ -z "$APP" ]; then
+          echo "Usage: task argocd:sync -- <app-name>"
+          echo "Apps: genai-infra, genai-apps, gitlab-ce"
+          exit 1
+        fi
+        # Try argocd CLI first, fall back to kubectl
+        if command -v argocd > /dev/null 2>&1; then
+          argocd app sync "$APP" --server {{.ARGOCD_URL}} --plaintext --grpc-web 2>/dev/null || \
+            kubectl patch application "$APP" -n {{.ARGOCD_NS}} --type merge -p '{"operation":{"initiatedBy":{"username":"task"},"sync":{"syncStrategy":{"hook":{}}}}}'
+        else
+          kubectl patch application "$APP" -n {{.ARGOCD_NS}} --type merge \
+            -p '{"operation":{"initiatedBy":{"username":"task"},"sync":{"syncStrategy":{"hook":{}}}}}'
+        fi
+
+  password:
+    desc: Get ArgoCD admin password
+    cmds:
+      - |
+        kubectl -n {{.ARGOCD_NS}} get secret argocd-initial-admin-secret \
+          -o jsonpath="{.data.password}" 2>/dev/null | base64 -d && echo "" || \
+          echo "ArgoCD not installed or password secret not found"
+
+  open:
+    desc: Print ArgoCD URL and login info
+    cmds:
+      - 'echo "ArgoCD UI: {{.ARGOCD_URL}}"'
+      - 'echo "Username:  admin"'
+      - task: password
+
+  logs:
+    desc: Tail ArgoCD server logs
+    cmds:
+      - kubectl logs -n {{.ARGOCD_NS}} -l app.kubernetes.io/name=argocd-server --tail=50 -f

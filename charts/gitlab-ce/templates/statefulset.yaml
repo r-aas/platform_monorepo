@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "gitlab-ce.fullname" . }}
+  labels:
+    {{- include "gitlab-ce.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "gitlab-ce.fullname" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "gitlab-ce.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "gitlab-ce.selectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: gitlab
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+            - name: ssh
+              containerPort: 22
+              protocol: TCP
+            - name: registry
+              containerPort: 5050
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "gitlab-ce.fullname" . }}-config
+          env:
+            - name: GITLAB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gitlab-ce.fullname" . }}-initial-password
+                  key: initial_root_password
+          readinessProbe:
+            httpGet:
+              path: /-/readiness
+              port: http
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          livenessProbe:
+            httpGet:
+              path: /-/liveness
+              port: http
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/gitlab
+            - name: data
+              mountPath: /var/opt/gitlab
+            - name: logs
+              mountPath: /var/log/gitlab
+  volumeClaimTemplates:
+    - metadata:
+        name: config
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.persistence.storageClass }}
+        storageClassName: {{ .Values.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.config.size }}
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.persistence.storageClass }}
+        storageClassName: {{ .Values.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.data.size }}
+    - metadata:
+        name: logs
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.persistence.storageClass }}
+        storageClassName: {{ .Values.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.logs.size }}

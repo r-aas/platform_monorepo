@@ -1,0 +1,62 @@
+# ArgoCD — Minimal local dev configuration
+# Uses official argo/argo-cd chart; these values override defaults.
+
+# Disable components not needed locally
+dex:
+  enabled: false
+notifications:
+  enabled: false
+applicationSet:
+  enabled: false
+
+# Server
+server:
+  extraArgs:
+    - --insecure
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# Repo server (clones git repos)
+repoServer:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# Application controller (reconciliation loop)
+controller:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Bundled Redis
+redis:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+configs:
+  params:
+    # Poll git repos every 3 minutes
+    timeout.reconciliation: 180s
+  cm:
+    # Allow insecure repos (HTTP GitLab, no TLS)
+    repositories: |
+      - url: http://gitlab-ce.platform.svc.cluster.local
+        insecure: "true"
