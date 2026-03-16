@@ -21,15 +21,16 @@ server:
       cpu: 500m
       memory: 256Mi
 
-# Repo server (clones git repos)
+# Repo server (clones git repos — needs headroom for Helm template rendering)
+# OOMKilled at 512Mi when rendering genai-infra (6 subchart dependencies)
 repoServer:
   resources:
     requests:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 200m
+      memory: 512Mi
     limits:
-      cpu: 500m
-      memory: 256Mi
+      cpu: "1"
+      memory: 1Gi
 
 # Application controller (reconciliation loop)
 controller:
