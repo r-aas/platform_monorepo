@@ -10,7 +10,7 @@ image:
 
 service:
   type: ClusterIP
-  port: 8000
+  port: 8080
 
 ingress:
   enabled: true
@@ -30,7 +30,7 @@ persistence:
   enabled: true
   size: 1Gi
   storageClass: ""
-  mountPath: /app/data
+  mountPath: /data/agents
 
 # Ollama on host — accessed via host.docker.internal from k3d pods
 ollama:
