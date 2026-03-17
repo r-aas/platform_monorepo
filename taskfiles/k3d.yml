@@ -38,15 +38,16 @@ tasks:
   install-ingress:
     desc: Install ingress-nginx controller
     internal: true
+    vars:
+      CHARTS_DIR: '{{.ROOT_DIR}}/charts'
     cmds:
       - helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx 2>/dev/null || true
       - helm repo update ingress-nginx
       - >-
         helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx
+        -f {{.CHARTS_DIR}}/ingress-nginx/values.yaml
+        -f {{.CHARTS_DIR}}/ingress-nginx/values-k3d.yaml
         --namespace ingress-nginx --create-namespace
-        --set controller.hostPort.enabled=true
-        --set controller.service.type=NodePort
-        --set controller.watchIngressWithoutClass=true
         --wait --timeout 120s
 
   init-namespaces:

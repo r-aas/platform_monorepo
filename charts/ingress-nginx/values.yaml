@@ -1,0 +1,9 @@
+# ingress-nginx — base values
+# Bootstrap-only: installed via Helm CLI during cluster-up, NOT managed by ArgoCD.
+# Kept here for version control and reproducibility.
+controller:
+  hostPort:
+    enabled: true
+  service:
+    type: NodePort
+  watchIngressWithoutClass: true

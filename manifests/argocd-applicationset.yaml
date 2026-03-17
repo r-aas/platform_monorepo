@@ -1,0 +1,131 @@
+# ArgoCD ApplicationSet — central registry of all managed workloads
+#
+# Pattern: List generator with one entry per service.
+# Adding a new service = add an entry to the list + ensure chart/values exist.
+#
+# Two ApplicationSets:
+#   1. git-path: charts that live in this repo (umbrella charts with Chart.yaml)
+#   2. helm-repo: charts from external Helm repos, values in this repo
+#
+# Prerequisites:
+#   1. ArgoCD deployed with ApplicationSet controller enabled
+#   2. GitLab CE running with platform_monorepo pushed
+#   3. Repo secret applied (task argocd:setup-repo -- PAT)
+#
+# Bootstrap-only (NOT managed here — applied via Helm CLI):
+#   - ingress-nginx (ArgoCD depends on it)
+#   - ArgoCD itself (chicken-egg)
+---
+# Git-path workloads: chart source is a path in the GitLab repo
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: workloads-git
+  namespace: platform
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - list:
+        elements:
+          # --- GenAI stack (infra must deploy before apps) ---
+          - appName: genai-infra
+            project: genai
+            path: charts/genai-infra
+            namespace: genai
+            syncWave: "0"
+
+          - appName: genai-apps
+            project: genai
+            path: charts/genai-apps
+            namespace: genai
+            syncWave: "1"
+
+          # --- Platform services ---
+          - appName: gitlab-ce
+            project: platform-apps
+            path: charts/gitlab-ce
+            namespace: platform
+            syncWave: "0"
+
+          # --- Add new git-path services here ---
+          # - appName: my-new-app
+          #   project: genai          # or platform-apps
+          #   path: charts/my-new-app
+          #   namespace: genai        # or platform, dev, etc.
+          #   syncWave: "0"
+
+  template:
+    metadata:
+      name: "{{.appName}}"
+      namespace: platform
+      annotations:
+        argocd.argoproj.io/sync-wave: "{{.syncWave}}"
+    spec:
+      project: "{{.project}}"
+      source:
+        repoURL: http://gitlab-ce.platform.svc.cluster.local/root/platform_monorepo.git
+        targetRevision: HEAD
+        path: "{{.path}}"
+        helm:
+          valueFiles:
+            - values.yaml
+            - values-k3d.yaml
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{.namespace}}"
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+---
+# Helm-repo workloads: chart from external repo, values from git
+# Use this for services where we consume an upstream Helm chart directly
+# (no umbrella chart needed — just values.yaml overrides)
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: workloads-helm
+  namespace: platform
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - list:
+        elements: []
+          # --- Example: upstream Helm chart with local values ---
+          # - appName: keycloak
+          #   project: platform-apps
+          #   repoURL: https://charts.bitnami.com/bitnami
+          #   chart: keycloak
+          #   chartVersion: "24.*"
+          #   valuesPath: charts/keycloak   # path in git repo for values files
+          #   namespace: platform
+          #   syncWave: "0"
+
+          # --- Add new helm-repo services here ---
+
+  template:
+    metadata:
+      name: "{{.appName}}"
+      namespace: platform
+      annotations:
+        argocd.argoproj.io/sync-wave: "{{.syncWave}}"
+    spec:
+      project: "{{.project}}"
+      sources:
+        - repoURL: "{{.repoURL}}"
+          chart: "{{.chart}}"
+          targetRevision: "{{.chartVersion}}"
+          helm:
+            valueFiles:
+              - $values/{{.valuesPath}}/values.yaml
+              - $values/{{.valuesPath}}/values-k3d.yaml
+        - repoURL: http://gitlab-ce.platform.svc.cluster.local/root/platform_monorepo.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{.namespace}}"
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true

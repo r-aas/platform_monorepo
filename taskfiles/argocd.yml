@@ -38,17 +38,28 @@ tasks:
       - echo "=== ArgoCD pods ==="
       - kubectl get pods -n {{.ARGOCD_NS}} -l app.kubernetes.io/part-of=argocd -o wide 2>/dev/null || true
       - echo ""
+      - echo "=== ApplicationSets ==="
+      - kubectl get applicationsets -n {{.ARGOCD_NS}} 2>/dev/null || echo "No ApplicationSets found"
+      - echo ""
       - echo "=== Applications ==="
       - kubectl get applications -n {{.ARGOCD_NS}} 2>/dev/null || echo "No applications found"
 
   setup:
-    desc: Apply AppProjects + Applications + repo secret (run after GitLab is up)
+    desc: Apply AppProjects + ApplicationSets (run after GitLab is up)
     cmds:
       - kubectl apply -f {{.MANIFESTS_DIR}}/argocd-appprojects.yaml
-      - kubectl apply -f {{.MANIFESTS_DIR}}/argocd-apps-genai.yaml
-      - kubectl apply -f {{.MANIFESTS_DIR}}/argocd-apps-platform.yaml
+      - kubectl apply -f {{.MANIFESTS_DIR}}/argocd-applicationset.yaml
+      # Clean up legacy individual Application manifests (now managed by ApplicationSet)
+      - |
+        for app in genai-infra genai-apps gitlab-ce; do
+          if kubectl get application "$app" -n {{.ARGOCD_NS}} -o jsonpath='{.metadata.ownerReferences}' 2>/dev/null | grep -q ApplicationSet; then
+            echo "  $app: managed by ApplicationSet"
+          fi
+        done
       - echo ""
-      - echo "AppProjects and Applications created."
+      - echo "AppProjects and ApplicationSets created."
+      - kubectl get applicationsets -n {{.ARGOCD_NS}}
+      - 'echo ""'
       - 'echo "Sync manually: task argocd:sync -- genai-infra"'
 
   setup-repo:
@@ -79,7 +90,7 @@ tasks:
         APP="{{.CLI_ARGS}}"
         if [ -z "$APP" ]; then
           echo "Usage: task argocd:sync -- <app-name>"
-          echo "Apps: genai-infra, genai-apps, gitlab-ce"
+          kubectl get applications -n {{.ARGOCD_NS}} -o name 2>/dev/null | sed 's|application.argoproj.io/||' || echo "Apps: genai-infra, genai-apps, gitlab-ce"
           exit 1
         fi
         # Try argocd CLI first, fall back to kubectl
