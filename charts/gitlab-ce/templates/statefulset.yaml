@@ -31,10 +31,12 @@ spec:
             - name: registry
               containerPort: 5050
               protocol: TCP
-          envFrom:
-            - configMapRef:
-                name: {{ include "gitlab-ce.fullname" . }}-config
           env:
+            - name: GITLAB_OMNIBUS_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "gitlab-ce.fullname" . }}-config
+                  key: GITLAB_OMNIBUS_CONFIG
             - name: GITLAB_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:

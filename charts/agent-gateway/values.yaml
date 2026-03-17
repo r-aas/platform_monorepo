@@ -6,7 +6,7 @@ image:
   # Push to: registry.mewtwo.127.0.0.1.nip.io/root/agent-gateway:latest
   repository: registry.mewtwo.127.0.0.1.nip.io/root/agent-gateway
   tag: "latest"
-  pullPolicy: Always
+  pullPolicy: IfNotPresent
 
 service:
   type: ClusterIP
