@@ -48,6 +48,13 @@ spec:
             namespace: platform
             syncWave: "0"
 
+          # --- Agent Gateway (A2A + MCP + Ollama) ---
+          - appName: agent-gateway
+            project: platform-apps
+            path: charts/agent-gateway
+            namespace: dev
+            syncWave: "0"
+
           # --- Add new git-path services here ---
           # - appName: my-new-app
           #   project: genai          # or platform-apps

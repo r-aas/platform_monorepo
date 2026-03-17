@@ -27,6 +27,8 @@ spec:
   destinations:
     - namespace: platform
       server: https://kubernetes.default.svc
+    - namespace: dev
+      server: https://kubernetes.default.svc
   clusterResourceWhitelist:
     - group: ''
       kind: Namespace
