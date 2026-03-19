@@ -61,7 +61,7 @@ redis:
 
 configs:
   params:
-    # Poll git repos every 3 minutes
-    timeout.reconciliation: 180s
+    # Poll git repos every 30 seconds
+    timeout.reconciliation: 30s
   # Repo credentials managed via k8s secret (argocd-repo-gitlab),
   # created by scripts/gitlab-bootstrap.sh. Not in configmap.
