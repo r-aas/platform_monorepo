@@ -36,7 +36,6 @@ langfuse:
             - path: /
               pathType: Prefix
 
-# MCP Gateway — Docker socket not available inside k3d nodes
+# MCP Gateway — requires Docker daemon, not available inside k3d nodes
 mcp-gateway:
-  dockerSocket:
-    enabled: false
+  enabled: false
