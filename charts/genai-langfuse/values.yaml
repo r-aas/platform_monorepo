@@ -1,0 +1,44 @@
+# Langfuse LLM observability — bundles ClickHouse + Redis
+# Uses external PostgreSQL from genai-pg-langfuse, external MinIO from genai-minio
+langfuse:
+  langfuse:
+    fullnameOverride: genai-langfuse
+    image:
+      tag: "3"
+    salt:
+      value: "genai-mlops-langfuse-salt-k3d"
+    nextauth:
+      secret:
+        value: "genai-mlops-nextauth-secret-k3d"
+  postgresql:
+    deploy: false
+    host: "genai-pg-langfuse.genai.svc.cluster.local"
+    port: 5432
+    auth:
+      username: langfuse
+      password: langfuse
+      database: langfuse
+  clickhouse:
+    deploy: true
+    host: "genai-langfuse-clickhouse"
+    auth:
+      password: clickhouse123
+  redis:
+    deploy: true
+    host: "genai-langfuse-redis-primary"
+    auth:
+      password: redis123
+  valkey:
+    auth:
+      enabled: true
+      password: redis123
+  s3:
+    deploy: false
+    endpoint: "http://genai-minio.genai.svc.cluster.local:9000"
+    accessKeyId:
+      value: minio
+    secretAccessKey:
+      value: minio123
+    bucket: langfuse
+    region: us-east-1
+    forcePathStyle: true

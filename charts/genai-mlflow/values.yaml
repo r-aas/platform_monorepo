@@ -1,0 +1,21 @@
+# MLflow experiment tracking — uses external PostgreSQL + MinIO
+mlflow:
+  fullnameOverride: genai-mlflow
+  backendStore:
+    postgres:
+      enabled: true
+      host: "genai-pg-mlflow.genai.svc.cluster.local"
+      port: 5432
+      user: mlflow
+      password: mlflow
+      database: mlflow
+  postgresql:
+    enabled: false
+  artifactRoot:
+    s3:
+      enabled: true
+      bucket: mlflow
+      awsAccessKeyId: minio
+      awsSecretAccessKey: minio123
+  extraEnvVars:
+    MLFLOW_S3_ENDPOINT_URL: "http://genai-minio.genai.svc.cluster.local:9000"

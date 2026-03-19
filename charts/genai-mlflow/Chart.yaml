@@ -1,0 +1,11 @@
+apiVersion: v2
+name: genai-mlflow
+description: MLflow experiment tracking and model registry
+type: application
+version: 0.1.0
+appVersion: "2.21"
+
+dependencies:
+  - name: mlflow
+    version: "1.8.1"
+    repository: "https://community-charts.github.io/helm-charts"

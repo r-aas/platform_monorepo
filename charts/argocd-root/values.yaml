@@ -12,9 +12,8 @@ gitlabRepoUrl: http://gitlab-ce.platform.svc.cluster.local/root/platform_monorep
 targetRevision: HEAD
 
 # ── Git-path workloads ──
-# Charts in platform_monorepo (path relative to repo root).
-# extraValueFile: optional per-instance override file. "" = none.
-# ignoreMissingValueFiles is set, so "" is safe.
+# Each chart is a thin wrapper with its own Chart.yaml + values.
+# One service per chart — independent sync, independent health.
 gitWorkloads:
   # -- Platform tier --
   - appName: gitlab-ce
@@ -29,16 +28,77 @@ gitWorkloads:
     namespace: platform
     syncWave: "1"
 
-  # -- GenAI tier --
-  - appName: genai-infra
+  # -- GenAI infrastructure (syncWave 0 — databases first) --
+  - appName: genai-minio
     project: genai
-    path: charts/genai-infra
+    path: charts/genai-minio
     namespace: genai
     syncWave: "0"
 
-  - appName: genai-apps
+  - appName: genai-pg-n8n
     project: genai
-    path: charts/genai-apps
+    path: charts/genai-pg-n8n
+    namespace: genai
+    syncWave: "0"
+
+  - appName: genai-pg-mlflow
+    project: genai
+    path: charts/genai-pg-mlflow
+    namespace: genai
+    syncWave: "0"
+
+  - appName: genai-pg-langfuse
+    project: genai
+    path: charts/genai-pg-langfuse
+    namespace: genai
+    syncWave: "0"
+
+  - appName: genai-pgvector
+    project: genai
+    path: charts/genai-pgvector
+    namespace: genai
+    syncWave: "0"
+
+  - appName: genai-neo4j
+    project: genai
+    path: charts/genai-neo4j
+    namespace: genai
+    syncWave: "0"
+
+  # -- GenAI applications (syncWave 1 — after databases) --
+  - appName: genai-n8n
+    project: genai
+    path: charts/genai-n8n
+    namespace: genai
+    syncWave: "1"
+
+  - appName: genai-mlflow
+    project: genai
+    path: charts/genai-mlflow
+    namespace: genai
+    syncWave: "1"
+
+  - appName: genai-langfuse
+    project: genai
+    path: charts/genai-langfuse
+    namespace: genai
+    syncWave: "1"
+
+  - appName: genai-litellm
+    project: genai
+    path: charts/litellm
+    namespace: genai
+    syncWave: "1"
+
+  - appName: genai-streaming-proxy
+    project: genai
+    path: charts/streaming-proxy
+    namespace: genai
+    syncWave: "1"
+
+  - appName: genai-airflow
+    project: genai
+    path: charts/genai-airflow
     namespace: genai
     syncWave: "1"
 
@@ -65,9 +125,7 @@ gitWorkloads:
     extraValueFile: values-prod.yaml
 
 # ── Helm-repo workloads ──
-# Charts from external Helm repos, values in this git repo.
-# ArgoCD self-management: after helmfile seeds the initial install,
-# this Application manages ArgoCD upgrades via git push to values files.
+# ArgoCD self-management only. All other charts are git-path wrappers.
 helmWorkloads:
   - appName: argocd
     project: platform-apps
@@ -77,15 +135,6 @@ helmWorkloads:
     valuesPath: charts/argocd
     namespace: platform
     syncWave: "0"
-
-  - appName: airflow
-    project: genai
-    repoUrl: https://airflow.apache.org
-    chart: airflow
-    chartVersion: "1.19.0"
-    valuesPath: charts/airflow
-    namespace: genai
-    syncWave: "1"
 
 # ── Cross-repo workloads ──
 # Uncomment when these repos are pushed to in-cluster GitLab:

@@ -1,0 +1,11 @@
+apiVersion: v2
+name: genai-neo4j
+description: Neo4j graph database for GraphRAG knowledge graph
+type: application
+version: 0.1.0
+appVersion: "5"
+
+dependencies:
+  - name: neo4j
+    version: "2026.2.2"
+    repository: "https://helm.neo4j.com/neo4j"

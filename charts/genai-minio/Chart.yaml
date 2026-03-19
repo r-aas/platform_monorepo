@@ -1,0 +1,11 @@
+apiVersion: v2
+name: genai-minio
+description: MinIO S3-compatible object storage for GenAI platform
+type: application
+version: 0.1.0
+appVersion: "2024.0.0"
+
+dependencies:
+  - name: minio
+    version: "5.4.0"
+    repository: "https://charts.min.io"

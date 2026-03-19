@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-litellm
+  name: {{ .Release.Name }}
   labels:
     app.kubernetes.io/name: litellm
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -58,4 +58,4 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ .Release.Name }}-litellm-config
+            name: {{ .Release.Name }}-config

@@ -1,0 +1,13 @@
+n8n:
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: n8n.genai.127.0.0.1.nip.io
+        paths:
+          - path: /
+            pathType: Prefix
+  main:
+    persistence:
+      enabled: true
+      storageClass: local-path

@@ -1,0 +1,17 @@
+postgresql:
+  fullnameOverride: genai-pg-n8n
+  auth:
+    username: n8n
+    password: n8n
+    database: n8n
+  primary:
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 100m
+      limits:
+        memory: 256Mi
+        cpu: "0.5"
+    persistence:
+      enabled: true
+      size: 1Gi

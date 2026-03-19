@@ -18,8 +18,8 @@ resources:
     cpu: "0.5"
 
 env:
-  N8N_BASE_URL: ""
-  LITELLM_BASE_URL: ""
+  N8N_BASE_URL: "http://genai-n8n.genai.svc.cluster.local:5678"
+  LITELLM_BASE_URL: "http://genai-litellm.genai.svc.cluster.local:4000"
   WEBHOOK_API_KEY: ""
 
 livenessProbe:

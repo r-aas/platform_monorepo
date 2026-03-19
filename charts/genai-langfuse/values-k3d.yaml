@@ -1,0 +1,10 @@
+langfuse:
+  langfuse:
+    ingress:
+      enabled: true
+      className: nginx
+      hosts:
+        - host: langfuse.genai.127.0.0.1.nip.io
+          paths:
+            - path: /
+              pathType: Prefix

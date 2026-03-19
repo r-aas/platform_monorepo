@@ -1,0 +1,5 @@
+# Apache Airflow — base values
+airflow:
+  executor: LocalExecutor
+  migrateDatabaseJob:
+    enabled: true

@@ -1,0 +1,23 @@
+# n8n workflow engine — uses external PostgreSQL from genai-pg-n8n
+n8n:
+  fullnameOverride: genai-n8n
+  encryptionKey: "genai-mlops-n8n-encryption-key-k3d"
+  image:
+    tag: "1.123.21"
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 1Gi
+      cpu: "1.0"
+  db:
+    type: postgresdb
+  postgresql:
+    enabled: false
+  externalPostgresql:
+    host: "genai-pg-n8n.genai.svc.cluster.local"
+    port: 5432
+    username: n8n
+    password: n8n
+    database: n8n

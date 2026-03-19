@@ -1,0 +1,17 @@
+postgresql:
+  fullnameOverride: genai-pg-langfuse
+  auth:
+    username: langfuse
+    password: langfuse
+    database: langfuse
+  primary:
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 100m
+      limits:
+        memory: 256Mi
+        cpu: "0.5"
+    persistence:
+      enabled: true
+      size: 1Gi

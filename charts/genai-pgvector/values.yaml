@@ -1,0 +1,36 @@
+postgresql:
+  fullnameOverride: genai-pgvector
+  global:
+    security:
+      allowInsecureImages: true
+  image:
+    registry: docker.io
+    repository: pgvector/pgvector
+    tag: pg16
+  auth:
+    username: pgvector
+    password: pgvector
+    database: vectors
+  primary:
+    initdb:
+      scripts:
+        init-pgvector.sql: |
+          CREATE EXTENSION IF NOT EXISTS vector;
+    containerSecurityContext:
+      readOnlyRootFilesystem: false
+    extraVolumes:
+      - name: run-postgresql
+        emptyDir: {}
+    extraVolumeMounts:
+      - name: run-postgresql
+        mountPath: /var/run/postgresql
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 200m
+      limits:
+        memory: 512Mi
+        cpu: "1.0"
+    persistence:
+      enabled: true
+      size: 2Gi

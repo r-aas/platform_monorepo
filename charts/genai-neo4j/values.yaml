@@ -1,0 +1,19 @@
+neo4j:
+  neo4j:
+    name: neo4j
+    edition: community
+    password: neo4j123
+    acceptLicenseAgreement: "yes"
+  volumes:
+    data:
+      mode: defaultStorageClass
+      defaultStorageClass:
+        requests:
+          storage: 5Gi
+  resources:
+    requests:
+      memory: 1Gi
+      cpu: 500m
+    limits:
+      memory: 4Gi
+      cpu: "2.0"

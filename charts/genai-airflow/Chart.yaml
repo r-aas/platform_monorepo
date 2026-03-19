@@ -1,0 +1,11 @@
+apiVersion: v2
+name: genai-airflow
+description: Apache Airflow for DAG orchestration
+type: application
+version: 0.1.0
+appVersion: "3.1.7"
+
+dependencies:
+  - name: airflow
+    version: "1.19.0"
+    repository: "https://airflow.apache.org"

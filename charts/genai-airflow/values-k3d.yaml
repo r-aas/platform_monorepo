@@ -1,0 +1,57 @@
+airflow:
+  executor: LocalExecutor
+
+  migrateDatabaseJob:
+    enabled: true
+
+  redis:
+    enabled: false
+  flower:
+    enabled: false
+
+  triggerer:
+    enabled: true
+
+  webserver:
+    defaultUser:
+      enabled: true
+      username: admin
+      password: admin
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        memory: 1Gi
+
+  scheduler:
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        memory: 1Gi
+
+  postgresql:
+    enabled: true
+    primary:
+      persistence:
+        size: 2Gi
+        storageClass: local-path
+
+  dags:
+    persistence:
+      enabled: false
+
+  logs:
+    persistence:
+      enabled: false
+
+  ingress:
+    web:
+      enabled: true
+      ingressClassName: nginx
+      hosts:
+        - name: airflow.genai.127.0.0.1.nip.io
+          tls:
+            enabled: false

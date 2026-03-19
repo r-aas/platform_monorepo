@@ -1,0 +1,25 @@
+minio:
+  fullnameOverride: genai-minio
+  mode: standalone
+  replicas: 1
+  rootUser: minio
+  rootPassword: minio123
+  persistence:
+    enabled: true
+    size: 10Gi
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: "1.0"
+  buckets:
+    - name: mlflow
+      policy: none
+    - name: langfuse
+      policy: none
+  consoleIngress:
+    enabled: false
+  ingress:
+    enabled: false

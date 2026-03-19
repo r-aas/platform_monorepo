@@ -1,0 +1,4 @@
+postgresql:
+  primary:
+    persistence:
+      storageClass: local-path

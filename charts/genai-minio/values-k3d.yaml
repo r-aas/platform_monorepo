@@ -1,0 +1,14 @@
+minio:
+  persistence:
+    storageClass: local-path
+    size: 5Gi
+  consoleIngress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - minio-console.genai.127.0.0.1.nip.io
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - minio.genai.127.0.0.1.nip.io

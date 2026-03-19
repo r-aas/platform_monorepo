@@ -38,10 +38,10 @@ config:
   general_settings:
     master_key: ""
 
-# External service URLs (set via global or per-value)
+# External service URLs
 env:
-  MLFLOW_TRACKING_URI: ""
-  LANGFUSE_HOST: ""
+  MLFLOW_TRACKING_URI: "http://genai-mlflow.genai.svc.cluster.local:5000"
+  LANGFUSE_HOST: "http://genai-langfuse-web.genai.svc.cluster.local:3000"
   LANGFUSE_PUBLIC_KEY: ""
   LANGFUSE_SECRET_KEY: ""
 
