@@ -1,9 +1,9 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/berriai/litellm
-  tag: "main-latest"
-  pullPolicy: IfNotPresent
+  repository: litellm-mlflow
+  tag: "latest"
+  pullPolicy: Never  # pre-imported into k3d via k3d image import
 
 service:
   type: ClusterIP
@@ -34,7 +34,11 @@ config:
     drop_params: true
     num_retries: 2
     request_timeout: 120
-    # success_callback: ["mlflow"]  # requires mlflow pip pkg in image
+    success_callback: ["mlflow"]
+
+# MLflow tracking for LLM call logging
+env:
+  MLFLOW_TRACKING_URI: "http://genai-mlflow.genai.svc.cluster.local"
 
 ingress:
   enabled: true

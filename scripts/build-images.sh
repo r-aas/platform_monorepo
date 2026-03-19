@@ -18,8 +18,10 @@ err() { echo "✗ $*" >&2; exit 1; }
 # ── Image registry ──────────────────────────────────────────
 # Images that need local builds (not from public registries).
 # Format: name:tag:dockerfile_path:context_dir
+PLATFORM_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 IMAGES=(
   "genai-streaming-proxy:latest:${GENAI_MLOPS}/Dockerfile.streaming:${GENAI_MLOPS}"
+  "litellm-mlflow:latest:${PLATFORM_DIR}/images/litellm/Dockerfile:${PLATFORM_DIR}/images/litellm"
 )
 
 if [ "$CHECK_ONLY" = "--check" ]; then

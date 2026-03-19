@@ -126,12 +126,87 @@ if [ -n "$N8N_KEY" ]; then
     python3 -c "import sys,json; d=json.load(sys.stdin); wfs=d.get('data',[]); \
     print(f'{sum(1 for w in wfs if w.get(\"active\"))} active / {len(wfs)} total')" 2>/dev/null || echo "?")
   echo "  ✓ Workflows: ${ACTIVE}"
+
+  # ── Patch Ollama credential ──────────────────────────────────────────────
+  echo "  Patching Ollama credential..."
+  N8N_API_URL="http://localhost:${N8N_PORT}/api/v1"
+  export N8N_KEY N8N_API_URL K3D_OLLAMA
+
+  python3 << 'PYEOF'
+import json, os, urllib.request, urllib.error, sys
+
+API_URL = os.environ["N8N_API_URL"]
+API_KEY = os.environ["N8N_KEY"]
+OLLAMA_URL = os.environ["K3D_OLLAMA"]
+
+def api(method, path, data=None):
+    body = json.dumps(data).encode() if data else None
+    req = urllib.request.Request(
+        f"{API_URL}{path}", data=body,
+        headers={"X-N8N-API-KEY": API_KEY, "Content-Type": "application/json"},
+        method=method)
+    return json.loads(urllib.request.urlopen(req).read())
+
+# Create or find Ollama credential
+cred_id = None
+try:
+    resp = api("POST", "/credentials", {
+        "name": "Ollama Local",
+        "type": "ollamaApi",
+        "data": {"baseUrl": OLLAMA_URL}
+    })
+    cred_id = resp["id"]
+    print(f"  Created Ollama credential: {cred_id}", file=sys.stderr)
+except urllib.error.HTTPError as e:
+    if e.code == 409:
+        # Find existing via chat-v1 workflow
+        try:
+            wf = api("GET", "/workflows/chat-v1")
+            for n in wf.get("nodes", []):
+                if n.get("name") == "Ollama Chat Model":
+                    cid = n.get("credentials", {}).get("ollamaApi", {}).get("id", "")
+                    if cid:
+                        cred_id = cid
+                        break
+        except Exception:
+            pass
+        if cred_id:
+            print(f"  Found existing Ollama credential: {cred_id}", file=sys.stderr)
+    if not cred_id:
+        print(f"  ⚠ Ollama credential failed: {e}", file=sys.stderr)
+
+if cred_id:
+    # Patch chat-v1 workflow's Ollama Chat Model node
+    for wf_id in ["chat-v1"]:
+        try:
+            wf = api("GET", f"/workflows/{wf_id}")
+            patched = False
+            for node in wf.get("nodes", []):
+                if node.get("name") == "Ollama Chat Model":
+                    node.setdefault("credentials", {}).setdefault("ollamaApi", {})["id"] = cred_id
+                    patched = True
+            if patched:
+                api("PUT", f"/workflows/{wf_id}", {
+                    "name": wf["name"], "nodes": wf["nodes"],
+                    "connections": wf["connections"],
+                    "settings": wf.get("settings", {}),
+                    **({"staticData": wf["staticData"]} if "staticData" in wf else {})
+                })
+                print(f"  ✓ Patched {wf['name']} with Ollama credential", file=sys.stderr)
+        except Exception as e:
+            print(f"  ⚠ Failed to patch {wf_id}: {e}", file=sys.stderr)
+else:
+    print("  ⚠ Could not resolve Ollama credential — chat agent needs manual fix", file=sys.stderr)
+PYEOF
+
 else
   echo "  ⚠ No API key found — run n8n-setup.sh first for verification"
 fi
 
 # ── Cleanup ──────────────────────────────────────────────────────────────────
-kubectl exec -n ${NAMESPACE} ${N8N_POD} -- rm -rf /tmp/workflows 2>/dev/null || true
+N8N_POD_NEW=$(kubectl get pod -n ${NAMESPACE} -l app.kubernetes.io/instance=${N8N_SVC} \
+  --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | head -1)
+kubectl exec -n ${NAMESPACE} "${N8N_POD_NEW:-$N8N_POD}" -- rm -rf /tmp/workflows 2>/dev/null || true
 
 echo ""
 echo "Done. Workflows imported and activated."
