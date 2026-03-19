@@ -34,11 +34,7 @@ config:
     drop_params: true
     num_retries: 2
     request_timeout: 120
-    success_callback: ["mlflow"]
-
-# External service URLs
-env:
-  MLFLOW_TRACKING_URI: "http://genai-mlflow.genai.svc.cluster.local"
+    # success_callback: ["mlflow"]  # requires mlflow pip pkg in image
 
 ingress:
   enabled: true
