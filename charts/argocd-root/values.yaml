@@ -47,21 +47,9 @@ gitWorkloads:
     namespace: genai
     syncWave: "0"
 
-  - appName: genai-pg-langfuse
-    project: genai
-    path: charts/genai-pg-langfuse
-    namespace: genai
-    syncWave: "0"
-
   - appName: genai-pgvector
     project: genai
     path: charts/genai-pgvector
-    namespace: genai
-    syncWave: "0"
-
-  - appName: genai-neo4j
-    project: genai
-    path: charts/genai-neo4j
     namespace: genai
     syncWave: "0"
 
@@ -78,30 +66,18 @@ gitWorkloads:
     namespace: genai
     syncWave: "1"
 
-  - appName: genai-langfuse
-    project: genai
-    path: charts/genai-langfuse
-    namespace: genai
-    syncWave: "1"
-
   - appName: genai-litellm
     project: genai
     path: charts/litellm
     namespace: genai
     syncWave: "1"
 
-  # streaming-proxy disabled — requires image build from genai-mlops repo
-  # - appName: genai-streaming-proxy
-  #   project: genai
-  #   path: charts/streaming-proxy
-  #   namespace: genai
-  #   syncWave: "1"
-
-  - appName: genai-airflow
-    project: genai
-    path: charts/genai-airflow
-    namespace: genai
-    syncWave: "1"
+  # Disabled — not needed for core platform
+  # - appName: genai-pg-langfuse (dropped with langfuse)
+  # - appName: genai-langfuse
+  # - appName: genai-neo4j
+  # - appName: genai-airflow
+  # - appName: genai-streaming-proxy (needs image build)
 
 
 # ── Helm-repo workloads ──
