@@ -45,10 +45,9 @@ Phase 3: ArgoCD Takes Over (automatic)
   10. ArgoCD syncs all workloads                ~5 min
      ├── gitlab-ce (self-managed now)
      ├── gitlab-runner
-     ├── genai-infra (LiteLLM, postgres, etc.)
-     ├── genai-apps
-     ├── n8n-dev, n8n-stage, n8n-prod
-     ├── airflow
+     ├── genai-minio
+     ├── genai-pg-n8n, genai-pg-mlflow, genai-pgvector
+     ├── genai-n8n, genai-mlflow, genai-litellm
      └── argocd (self-upgrade)
 
 Phase 4: Post-deploy (manual / task-driven)
