@@ -12,8 +12,12 @@ airflow:
 
   triggerer:
     enabled: true
+    waitForMigrations:
+      enabled: false
 
   webserver:
+    waitForMigrations:
+      enabled: false
     defaultUser:
       enabled: true
       username: admin
@@ -26,6 +30,8 @@ airflow:
         memory: 1Gi
 
   scheduler:
+    waitForMigrations:
+      enabled: false
     resources:
       requests:
         cpu: 250m
