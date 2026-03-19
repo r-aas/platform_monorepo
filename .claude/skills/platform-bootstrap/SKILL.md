@@ -25,7 +25,7 @@ version: 1.0.0
 ```
 Phase 1: Infrastructure (task up)
   1. k3d cluster create (k3d-mewtwo.yaml)     ~30s
-  2. Patch local-path provisioner              ~5s (overlay FS for chown support)
+  2. Patch local-path provisioner              ~5s (CRITICAL — see below)
   3. helmfile sync                              ~12 min
      ├── ingress-nginx                          ~1 min
      ├── namespace-init                         ~5s
@@ -137,6 +137,36 @@ runners:
       [runners.kubernetes]
         namespace = "platform"
 ```
+
+## CRITICAL: Local-Path Provisioner Fix
+
+**Must run immediately after cluster creation, BEFORE any helmfile sync.**
+
+k3d's default local-path provisioner uses `/var/lib/rancher/k3s/storage` which is an sshfs
+bind-mount from the Mac host via Colima. sshfs does NOT support `chown`. All Bitnami
+PostgreSQL charts (and GitLab CE Omnibus) fail with "wrong ownership" on data dirs.
+
+Fix: change to `/var/lib/rancher/k3s/local-storage` (overlay FS, supports chown):
+
+```bash
+kubectl get configmap local-path-config -n kube-system -o json | \
+  python3 -c "
+import json, sys
+cm = json.load(sys.stdin)
+config = json.loads(cm['data']['config.json'])
+config['nodePathMap'][0]['paths'] = ['/var/lib/rancher/k3s/local-storage']
+cm['data']['config.json'] = json.dumps(config)
+json.dump(cm, sys.stdout)
+" | kubectl apply -f - && \
+kubectl rollout restart deploy local-path-provisioner -n kube-system
+```
+
+**Trade-off**: Data on overlay FS does NOT survive node re-creation (only cluster restart).
+This is acceptable for local dev — data is ephemeral and will be reprovisioned.
+
+**If you see CrashLoopBackOff on any PostgreSQL pod**: check the PV path. If it's
+`/var/lib/rancher/k3s/storage/...` (old path), delete the PVC and let it recreate.
+The StatefulSet will get a new PVC on the correct overlay path.
 
 ## Common Failure Modes
 

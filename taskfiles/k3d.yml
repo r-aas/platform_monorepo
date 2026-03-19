@@ -11,6 +11,7 @@ tasks:
       - k3d cluster create --config {{.K3D_CONFIG}}
       - echo "Waiting for nodes..."
       - kubectl wait --for=condition=Ready nodes --all --timeout=120s
+      - task: fix-local-path
       - task: fix-node-dns
       - echo "Cluster k3d-{{.K3D_CLUSTER}} is ready."
     status:
@@ -32,6 +33,23 @@ tasks:
     desc: Stop cluster without deleting
     cmds:
       - k3d cluster stop {{.K3D_CLUSTER}}
+
+  fix-local-path:
+    desc: Fix local-path provisioner to use overlay FS (supports chown)
+    internal: true
+    cmds:
+      - |
+        kubectl get configmap local-path-config -n kube-system -o json | \
+          python3 -c "
+        import json, sys
+        cm = json.load(sys.stdin)
+        config = json.loads(cm['data']['config.json'])
+        config['nodePathMap'][0]['paths'] = ['/var/lib/rancher/k3s/local-storage']
+        cm['data']['config.json'] = json.dumps(config)
+        json.dump(cm, sys.stdout)
+        " | kubectl apply --server-side -f -
+      - kubectl rollout restart deploy local-path-provisioner -n kube-system
+      - kubectl rollout status deploy local-path-provisioner -n kube-system --timeout=30s
 
   fix-node-dns:
     desc: Add fallback DNS + registry /etc/hosts to k3d nodes
