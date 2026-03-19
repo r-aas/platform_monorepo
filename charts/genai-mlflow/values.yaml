@@ -17,5 +17,8 @@ mlflow:
       bucket: mlflow
       awsAccessKeyId: minio
       awsSecretAccessKey: minio123
+  extraArgs:
+    # Allow requests from k8s service names (MLflow 3+ DNS rebinding protection)
+    allowedHosts: "genai-mlflow.genai.svc.cluster.local,mlflow.genai.127.0.0.1.nip.io,localhost"
   extraEnvVars:
     MLFLOW_S3_ENDPOINT_URL: "http://genai-minio.genai.svc.cluster.local:9000"
