@@ -34,16 +34,11 @@ config:
     drop_params: true
     num_retries: 2
     request_timeout: 120
-    success_callback: ["mlflow", "langfuse"]
-  general_settings:
-    master_key: ""
+    success_callback: ["mlflow"]
 
 # External service URLs
 env:
   MLFLOW_TRACKING_URI: "http://genai-mlflow.genai.svc.cluster.local:5000"
-  LANGFUSE_HOST: "http://genai-langfuse-web.genai.svc.cluster.local:3000"
-  LANGFUSE_PUBLIC_KEY: ""
-  LANGFUSE_SECRET_KEY: ""
 
 livenessProbe:
   httpGet:
