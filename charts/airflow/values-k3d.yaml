@@ -3,6 +3,10 @@
 
 executor: LocalExecutor
 
+# DB migration must run before other pods start
+migrateDatabaseJob:
+  enabled: true
+
 # Disable components not needed locally
 redis:
   enabled: false
