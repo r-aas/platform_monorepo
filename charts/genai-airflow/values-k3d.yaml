@@ -35,6 +35,8 @@ airflow:
 
   postgresql:
     enabled: true
+    auth:
+      database: airflow
     primary:
       persistence:
         size: 2Gi
