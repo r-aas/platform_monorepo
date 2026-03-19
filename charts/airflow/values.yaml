@@ -1,0 +1,6 @@
+# Airflow — base values (shared across environments)
+# k3d-specific overrides in values-k3d.yaml
+# Uses official apache/airflow Helm chart
+
+# Default to LocalExecutor for lightweight setups
+executor: LocalExecutor

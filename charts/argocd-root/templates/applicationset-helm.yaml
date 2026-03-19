@@ -36,6 +36,7 @@ spec:
           chart: "{{`{{ .chart }}`}}"
           targetRevision: "{{`{{ .chartVersion }}`}}"
           helm:
+            ignoreMissingValueFiles: true
             valueFiles:
               - $values/{{`{{ .valuesPath }}`}}/values.yaml
               - $values/{{`{{ .valuesPath }}`}}/values-k3d.yaml
@@ -46,6 +47,9 @@ spec:
         server: https://kubernetes.default.svc
         namespace: "{{`{{ .namespace }}`}}"
       syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
         syncOptions:
           - CreateNamespace=true
 {{- end }}
