@@ -1,0 +1,33 @@
+# Eval suite for platform-k3d-networking skill
+name: platform-k3d-networking
+runs_per_iteration: 3
+pass_threshold: 0.85
+
+scenarios:
+  - name: pod-cant-reach-gitlab
+    prompt: "My pod in the dev namespace can't reach GitLab. It's trying to curl http://gitlab.mewtwo.127.0.0.1.nip.io and getting connection refused. How do I fix this?"
+
+  - name: registry-pull-fails
+    prompt: "k3d nodes can't pull images from registry.mewtwo.127.0.0.1.nip.io. I get 'dial tcp 127.0.0.1:80: connection refused'. What's wrong?"
+
+  - name: dns-broken-after-restart
+    prompt: "After restarting Colima, my k3d pods can't resolve external hostnames. Docker containers also can't reach the internet. How do I fix DNS?"
+
+  - name: ci-smoke-test
+    prompt: "I need to write a CI pipeline smoke test that verifies my app is accessible via its ingress. The app is at app.dev.127.0.0.1.nip.io. How do I curl it from a CI container?"
+
+criteria:
+  - id: identifies-nip-trap
+    question: "Does the output correctly identify that nip.io resolves to 127.0.0.1 which is wrong inside containers/pods?"
+
+  - id: correct-fix
+    question: "Does the output provide a working fix (internal DNS, /etc/hosts, host.docker.internal, or Host header) rather than a wrong one?"
+
+  - id: no-registry-mirrors
+    question: "If the scenario involves registry access, does the output avoid recommending registry mirrors (which corrupt digests)?"
+
+  - id: explains-why
+    question: "Does the output explain WHY the problem occurs, not just what to do?"
+
+  - id: uses-internal-dns
+    question: "Does the output recommend k8s internal DNS (svc.cluster.local) for pod-to-pod communication?"

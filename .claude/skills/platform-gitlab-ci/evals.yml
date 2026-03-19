@@ -1,0 +1,33 @@
+# Eval suite for platform-gitlab-ci skill
+name: platform-gitlab-ci
+runs_per_iteration: 3
+pass_threshold: 0.85
+
+scenarios:
+  - name: write-ci-pipeline
+    prompt: "Write a .gitlab-ci.yml for a Python FastAPI project that lints, tests, builds a Docker image with Kaniko, deploys to k3d dev namespace, and runs a smoke test."
+
+  - name: fix-kubectl-ci
+    prompt: "My deploy stage uses bitnami/kubectl:latest but fails with 'kubectl: command not found' even though the image has kubectl. What's wrong?"
+
+  - name: fix-smoke-test
+    prompt: "My CI smoke test curls http://myapp.dev.127.0.0.1.nip.io but gets connection refused. The app works fine from my Mac browser. Why?"
+
+  - name: kaniko-push-fails
+    prompt: "Kaniko build succeeds but push to registry.mewtwo.127.0.0.1.nip.io fails with TLS handshake error. How do I fix it?"
+
+criteria:
+  - id: kaniko-not-dind
+    question: "Does the output use Kaniko for image builds (not Docker-in-Docker or privileged containers)?"
+
+  - id: entrypoint-override
+    question: "When using bitnami/kubectl, does the output include entrypoint: [''] to override the default entrypoint?"
+
+  - id: nip-workaround
+    question: "Does the output use host.docker.internal with Host header (or equivalent) instead of raw nip.io URLs for CI smoke tests?"
+
+  - id: insecure-flags
+    question: "Does the output include --insecure and/or --skip-tls-verify flags for Kaniko pushes to the local registry?"
+
+  - id: no-privileged
+    question: "Is the output free of privileged: true or Docker-in-Docker patterns?"

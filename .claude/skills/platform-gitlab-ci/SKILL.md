@@ -14,8 +14,32 @@ version: 1.0.0
 
 - GitLab CE runs in k3d `platform` namespace (Helm chart, not docker-compose)
 - GitLab Runner runs alongside (separate Helm chart in `platform` namespace)
-- CI job containers run in Docker (Colima VM), NOT in k8s pods
+- Runner uses Kubernetes executor: CI job pods run in-cluster
 - Builds use Kaniko (no Docker-in-Docker, no privileged containers)
+
+## GitLab Runner Registration (GitLab 16+ / 18.0 Required)
+
+The old registration token flow (`registration_token`) was **removed in GitLab 18.0**.
+
+### New Flow
+1. Create a PAT with `create_runner` scope
+2. `POST /api/v4/user/runners` with the PAT → returns `glrt-*` authentication token
+3. Store `glrt-*` token in a k8s Secret
+4. Runner Helm chart uses init container to inject token into config.toml
+
+```bash
+# Register runner via API
+RUNNER_TOKEN=$(curl -s --request POST \
+  --url "http://gitlab-ce.platform.svc.cluster.local/api/v4/user/runners" \
+  --header "PRIVATE-TOKEN: $GITLAB_PAT" \
+  --form "runner_type=instance_type" \
+  --form "description=k3d-runner" | jq -r '.token')
+
+# Create k8s secret
+kubectl create secret generic gitlab-runner-secret -n platform \
+  --from-literal=runner-registration-token="" \
+  --from-literal=runner-token="$RUNNER_TOKEN"
+```
 
 ## Runner Configuration
 

@@ -111,13 +111,39 @@ kubectl logs -n {namespace} {pod-name} --previous
 
 ArgoCD needs a GitLab PAT to pull from the in-cluster GitLab.
 
-**Setup** (done by `scripts/gitlab-bootstrap.sh`):
+### Credential Secret Types
+
+| Label | Type | Behavior |
+|-------|------|----------|
+| `argocd.argoproj.io/secret-type: repository` | Specific repo | Exact URL match only |
+| `argocd.argoproj.io/secret-type: repo-creds` | Credential template | Prefix URL match — **USE THIS for GitLab** |
+
+**Use `repo-creds`** (credential template) for GitLab so ArgoCD can access ALL repos
+under the same GitLab instance without adding each individually.
+
+### Critical: Don't Put Repos in Helm values `configs.cm.repositories`
+
+Putting repo config in `configs.cm.repositories` in ArgoCD Helm values creates entries
+WITHOUT credentials that take precedence over Secret-based credentials. This silently
+breaks auth. Always use Kubernetes Secrets with the `repo-creds` label.
+
+### Cache Invalidation
+
+After changing credentials, restart both ArgoCD components to clear the credential cache:
 ```bash
-# Create PAT in GitLab, then:
-argocd repo add http://gitlab-ce.platform.svc.cluster.local/root/platform_monorepo.git \
-  --username root --password $GITLAB_PAT \
-  --insecure-skip-server-verification \
-  --server argocd.platform.127.0.0.1.nip.io --insecure
+kubectl rollout restart deployment argocd-server -n platform
+kubectl rollout restart deployment argocd-repo-server -n platform
+```
+
+### Setup (done by `scripts/gitlab-bootstrap.sh`):
+```bash
+# Create PAT in GitLab, then create a repo-creds Secret:
+kubectl create secret generic argocd-gitlab-creds -n platform \
+  --from-literal=url=http://gitlab-ce.platform.svc.cluster.local/ \
+  --from-literal=username=root \
+  --from-literal=password=$GITLAB_PAT
+kubectl label secret argocd-gitlab-creds -n platform \
+  argocd.argoproj.io/secret-type=repo-creds
 ```
 
 **Note**: ArgoCD uses internal DNS (`gitlab-ce.platform.svc.cluster.local`), NOT nip.io.

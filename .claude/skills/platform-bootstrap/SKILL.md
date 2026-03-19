@@ -25,23 +25,24 @@ version: 1.0.0
 ```
 Phase 1: Infrastructure (task up)
   1. k3d cluster create (k3d-mewtwo.yaml)     ~30s
-  2. helmfile sync                              ~12 min
+  2. Patch local-path provisioner              ~5s (overlay FS for chown support)
+  3. helmfile sync                              ~12 min
      ├── ingress-nginx                          ~1 min
      ├── namespace-init                         ~5s
-     ├── gitlab-ce (first boot)                 ~8 min ← slowest
+     ├── gitlab-ce (first boot)                 ~2 min (M4 Max, overlay FS)
      ├── argocd                                 ~2 min
      └── argocd-root (ApplicationSets)          ~30s
 
 Phase 2: GitLab Setup (task gitlab-setup)
-  3. Wait for GitLab healthy                    ~2 min (after helm)
-  4. Create root PAT                            ~5s
-  5. Configure GitLab Runner                    ~30s
-  6. Push platform_monorepo to GitLab           ~10s
-  7. Configure ArgoCD repo credentials          ~5s
+  4. Wait for GitLab healthy                    ~2 min (after helm)
+  5. Create root PAT (GitLab 18+)              ~5s (hashed PATs, must use create! not set_token)
+  6. Register GitLab Runner (new flow)          ~30s (POST /api/v4/user/runners → glrt-* token)
+  7. Push platform_monorepo to GitLab           ~10s
+  8. Configure ArgoCD repo credentials          ~5s (repo-creds Secret, NOT configs.cm)
 
 Phase 3: ArgoCD Takes Over (automatic)
-  8. ArgoCD detects ApplicationSets             ~30s
-  9. ArgoCD syncs all workloads                 ~5 min
+  9. ArgoCD detects ApplicationSets             ~30s
+  10. ArgoCD syncs all workloads                ~5 min
      ├── gitlab-ce (self-managed now)
      ├── gitlab-runner
      ├── genai-infra (LiteLLM, postgres, etc.)
@@ -51,10 +52,10 @@ Phase 3: ArgoCD Takes Over (automatic)
      └── argocd (self-upgrade)
 
 Phase 4: Post-deploy (manual / task-driven)
-  10. n8n secrets provisioning                  task n8n-secrets
-  11. n8n API setup (owner + key)               task n8n-setup
-  12. Workflow import                            (per genai-mlops)
-  13. Smoke tests                               task doctor
+  11. n8n secrets provisioning                  task n8n-secrets
+  12. n8n API setup (owner + key)               task n8n-setup
+  13. Workflow import                            (per genai-mlops)
+  14. Smoke tests                               task doctor
 ```
 
 **Total time**: ~20 minutes from zero to all services.
@@ -97,16 +98,58 @@ kubectl get pods -n genai                            # genai services running
 kubectl get pods -n dev                              # n8n-dev running
 ```
 
+## GitLab CE in k3d
+
+### ARM64 Multi-Arch Support
+- GitLab CE multi-arch (ARM64) Docker images start at **18.1.0-ce.0**
+- ALL 17.x tags are amd64-only — they will either fail to pull or run under QEMU (very slow)
+- Always use 18.1.0+ when running on Apple Silicon
+
+### GitLab 18.x PAT Changes
+- GitLab 18.x hashes PATs on storage — cannot use `set_token()` to set a known token value
+- Must use `create!` method which auto-generates the token and returns it once
+- Bootstrap scripts must capture the token from the creation response
+
+### Omnibus Chef Reconfigure
+- GitLab Omnibus runs Chef reconfigure on boot, which needs `chown` on `/etc/gitlab`
+- This REQUIRES overlay FS — fails on sshfs bind-mounts
+- First boot: ~2 min on M4 Max with overlay FS (much slower on sshfs/QEMU)
+
+## GitLab Runner in k3d (GitLab 16+ Flow)
+
+### Old Registration Tokens Removed
+The old runner registration token flow (`registration_token` from GitLab settings) was
+removed in GitLab 18.0. New flow:
+
+1. `POST /api/v4/user/runners` with PAT (scope: `create_runner`) → returns `glrt-*` token
+2. Runner Helm chart uses init container to inject `glrt-*` token into config.toml from k8s Secret
+3. Kubernetes executor: runner creates CI job pods in-cluster (not Docker containers)
+
+### Runner Helm Chart Config
+```yaml
+# Key values for gitlab-runner Helm chart
+gitlabUrl: http://gitlab-ce.platform.svc.cluster.local
+runnerToken: glrt-xxxxxxxxxxxxxxxxxxxx  # from API, stored in Secret
+runners:
+  executor: kubernetes
+  config: |
+    [[runners]]
+      [runners.kubernetes]
+        namespace = "platform"
+```
+
 ## Common Failure Modes
 
 ### GitLab CE takes >15 minutes
 - Colima VM too small. Need ≥4 CPU, 8 GB RAM.
+- Check storage: local-path provisioner must use overlay FS, not sshfs (see platform-helm-authoring skill)
 - First boot runs DB migrations + asset compilation. Subsequent boots are faster.
 
 ### ArgoCD can't reach GitLab
 - Uses internal DNS: `gitlab-ce.platform.svc.cluster.local` (NOT nip.io)
 - Check: `kubectl exec -n platform deploy/argocd-server -- curl -s http://gitlab-ce.platform.svc.cluster.local/-/health`
 - If PAT expired: re-run `task gitlab-setup`
+- If credentials changed: restart argocd-server AND argocd-repo-server to clear cache
 
 ### Pods stuck in Pending
 - Check node resources: `kubectl describe node | grep -A5 Allocated`
@@ -149,9 +192,35 @@ helmfile -l tier=platform sync
 | LiteLLM | http://litellm.genai.127.0.0.1.nip.io | API key in secrets |
 | Ollama | http://localhost:11434 | none (host-native) |
 
+## Helmfile Architecture Pattern
+
+Helmfile is **bootstrap-only**. It installs the minimum to get ArgoCD running:
+
+```
+helmfile sync
+  → ingress-nginx       (tier: infra)
+  → namespace-init       (tier: infra)
+  → gitlab-ce            (tier: platform)
+  → argocd               (tier: platform)
+  → argocd-root          (tier: platform) — seeds ApplicationSets
+```
+
+After bootstrap, ArgoCD manages ALL day-2 operations via ApplicationSets, including
+upgrading itself. Never use helmfile for day-2 changes.
+
+### Multi-Arch Support
+`PLATFORM_ARCH` env var selects arch-specific values files:
+```bash
+PLATFORM_ARCH=arm64 helmfile sync  # default on Apple Silicon
+PLATFORM_ARCH=amd64 helmfile sync  # for Intel/cloud
+```
+
+Helmfile references: `values-{{ env "PLATFORM_ARCH" | default "arm64" }}.yaml`
+
 ## Rationalizations to Reject
 
 - "I'll skip helmfile and just kubectl apply" — NO, ordering and dependencies matter
 - "GitLab isn't ready yet but I'll push anyway" — NO, wait for health check
 - "I'll helm install after ArgoCD is running" — NO, ArgoCD will fight manual installs
 - "The cluster is broken, I'll delete everything" — NO, try restart/re-bootstrap first
+- "I'll use helmfile to update this service" — NO, helmfile is bootstrap-only, push to GitLab for ArgoCD

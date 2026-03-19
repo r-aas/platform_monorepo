@@ -1,0 +1,33 @@
+# Eval suite for platform-bootstrap skill
+name: platform-bootstrap
+runs_per_iteration: 3
+pass_threshold: 0.85
+
+scenarios:
+  - name: fresh-bootstrap
+    prompt: "I'm setting up the platform from scratch on a new M4 Mac. Walk me through the complete bootstrap sequence from zero to all services running."
+
+  - name: cluster-recovery
+    prompt: "My k3d cluster is broken — pods are in CrashLoopBackOff and I'm getting disk pressure taints. How do I recover without losing data?"
+
+  - name: gitlab-unreachable
+    prompt: "After running task up, GitLab isn't responding at http://gitlab.mewtwo.127.0.0.1.nip.io. ArgoCD also can't sync. How do I debug this?"
+
+  - name: resume-after-reboot
+    prompt: "I rebooted my Mac. How do I get the platform back up? What needs to be re-applied?"
+
+criteria:
+  - id: correct-order
+    question: "Does the output describe the correct bootstrap order (Colima → k3d → helmfile → GitLab setup → ArgoCD)?"
+
+  - id: verification-gates
+    question: "Does the output include verification steps between phases (health checks, kubectl checks)?"
+
+  - id: timing-awareness
+    question: "Does the output mention expected timing (GitLab first boot ~8 min, total ~20 min)?"
+
+  - id: non-destructive
+    question: "Does the output prefer non-destructive recovery (restart, re-sync) over destructive (delete cluster, wipe data)?"
+
+  - id: ollama-native
+    question: "Does the output keep Ollama as a native Mac process (not containerized)?"

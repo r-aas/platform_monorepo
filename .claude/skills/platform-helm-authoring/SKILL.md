@@ -87,16 +87,26 @@ resources:
 
 k3d bind-mounts from Mac via Colima's sshfs. sshfs does NOT support `chown`.
 
-**Impact**: Bitnami PostgreSQL (and any chart that chowns data dirs) fails.
+**Impact**: Bitnami PostgreSQL (and any chart that chowns data dirs) fails. GitLab Omnibus
+also fails (Chef reconfigure needs chown on /etc/gitlab).
 
-**Fix**: Use local-path provisioner pointed at `/var/lib/rancher/k3s/local-storage` (overlay FS,
-supports chown). Trade-off: data doesn't survive node re-creation.
+**Fix**: Reconfigure local-path provisioner to use overlay FS instead of sshfs:
 
 ```bash
-kubectl edit configmap local-path-config -n kube-system
-# Change paths to ["/var/lib/rancher/k3s/local-storage"]
-# Restart: kubectl rollout restart deployment local-path-provisioner -n kube-system
+# 1. Create the directory on ALL k3d nodes first
+for node in $(docker ps --filter name=k3d-mewtwo --format '{{.Names}}'); do
+  docker exec $node mkdir -p /var/lib/rancher/k3s/local-storage
+done
+
+# 2. Patch the configmap
+kubectl patch configmap local-path-config -n kube-system --type merge \
+  -p '{"data":{"config.json":"{\"nodePathMap\":[{\"node\":\"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\"paths\":[\"/var/lib/rancher/k3s/local-storage\"]}]}"}}'
+
+# 3. Restart the provisioner
+kubectl rollout restart deployment local-path-provisioner -n kube-system
 ```
+
+**Trade-off**: Data on overlay FS doesn't survive node re-creation (vs sshfs which persists to host).
 
 For charts needing persistent data across node recreation, use the bind-mount path BUT
 set `containerSecurityContext.readOnlyRootFilesystem: false` and skip chown via
@@ -132,9 +142,40 @@ gitWorkloads:
     syncWave: "0"
 ```
 
+## ApplicationSet Gotchas
+
+### Empty valueFiles
+Empty string in `valueFiles` resolves to directory path → "is a directory" error.
+
+**Fix**: Use `ignoreMissingValueFiles: true` with a fallback placeholder filename:
+```yaml
+ignoreMissingValueFiles: true
+valueFiles:
+  - values.yaml
+  - values-{{ env "PLATFORM_ARCH" | default "arm64" }}.yaml
+  - values-k3d.yaml
+```
+
+### Nested Go Templates
+ArgoCD ApplicationSets use Go templates rendered in two passes: Helm renders outer templates,
+ArgoCD renders inner (backtick-escaped) templates. Go template conditionals inside
+backtick-escaped ApplicationSet templates break Helm YAML parsing.
+
+**Fix**: Keep inner templates simple (variable substitution only). Move complex logic to
+the values file or use separate value files per variant.
+
+### PLATFORM_ARCH for Multi-Arch
+Use `PLATFORM_ARCH` env var to select arch-specific values:
+```yaml
+valueFiles:
+  - values.yaml
+  - 'values-{{ env "PLATFORM_ARCH" | default "arm64" }}.yaml'
+```
+
 ## Rationalizations to Reject
 
 - "I'll just use the default Bitnami tag" — NO, check if it still exists on Docker Hub
 - "ARM64 should work, it's Linux" — NO, verify with `docker manifest inspect`
 - "I don't need resource limits for local dev" — NO, k3d shares 8 CPU / 32 GB across all services
 - "I'll add the image and fix errors later" — NO, JRE SIGILL crashes show no useful error
+- "I'll put conditionals in the backtick-escaped template" — NO, Helm can't parse nested Go template logic

@@ -1,0 +1,38 @@
+# Eval suite for platform-helm-authoring skill
+# Binary criteria + diverse scenarios for autoresearch optimization
+
+name: platform-helm-authoring
+runs_per_iteration: 3
+pass_threshold: 0.85
+
+scenarios:
+  - name: new-redis-chart
+    prompt: "Create a Helm chart for Redis in charts/redis/ for the k3d mewtwo cluster in the dev namespace. Include values.yaml and a deployment template."
+
+  - name: new-api-chart
+    prompt: "Create a Helm chart for a FastAPI application called 'data-api' that needs a PostgreSQL database. Put it in charts/data-api/ for the dev namespace."
+
+  - name: add-to-argocd
+    prompt: "I have a new chart at charts/ml-pipeline/. Add it to ArgoCD so it deploys to the genai namespace with syncWave 1."
+
+  - name: fix-bitnami-failure
+    prompt: "My Bitnami PostgreSQL chart is failing with 'tag not found'. The values.yaml references image tag 16.4.0-debian-12-r0. Fix it."
+
+criteria:
+  - id: arm64-awareness
+    question: "Does the output acknowledge ARM64/Apple Silicon compatibility or verify image architecture?"
+
+  - id: resource-limits
+    question: "Does the output include resource requests and limits for containers?"
+
+  - id: values-layering
+    question: "Does the output follow the values.yaml / values-k3d.yaml layering pattern (or reference it)?"
+
+  - id: no-nip-in-templates
+    question: "Is the output free of hardcoded nip.io hostnames inside Helm templates (should use variables)?"
+
+  - id: correct-namespace
+    question: "Does the output use the correct namespace as specified in the scenario?"
+
+  - id: argocd-integration
+    question: "Does the output mention or integrate with ArgoCD (adding to argocd-root values, or noting it will auto-sync)?"

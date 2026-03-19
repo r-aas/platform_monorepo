@@ -1,0 +1,33 @@
+# Eval suite for platform-argocd skill
+name: platform-argocd
+runs_per_iteration: 3
+pass_threshold: 0.85
+
+scenarios:
+  - name: add-new-service
+    prompt: "I have a new Helm chart at charts/keycloak/. Walk me through adding it to ArgoCD so it deploys to the platform namespace."
+
+  - name: debug-outofsync
+    prompt: "ArgoCD shows genai-infra as OutOfSync/Missing. How do I diagnose and fix this?"
+
+  - name: after-bootstrap
+    prompt: "I just ran helmfile sync and everything is up. Now I want to push my repo to GitLab and have ArgoCD manage everything. What's the sequence?"
+
+  - name: self-upgrade
+    prompt: "I want to upgrade ArgoCD from 9.4.10 to 9.5.0. How do I do this safely given ArgoCD manages itself?"
+
+criteria:
+  - id: no-helm-install
+    question: "Does the output avoid recommending direct helm install/upgrade (which conflicts with ArgoCD)?"
+
+  - id: git-push-workflow
+    question: "Does the output describe a git-push workflow (edit values → commit → push → ArgoCD syncs)?"
+
+  - id: correct-values-location
+    question: "Does the output reference the correct file (charts/argocd-root/values.yaml) for adding workloads?"
+
+  - id: uses-internal-dns
+    question: "Does the output use internal DNS (gitlab-ce.platform.svc.cluster.local) for ArgoCD→GitLab communication, not nip.io?"
+
+  - id: sync-wave-awareness
+    question: "Does the output mention or correctly use syncWave for ordering dependencies?"

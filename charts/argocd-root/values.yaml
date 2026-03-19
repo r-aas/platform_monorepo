@@ -90,11 +90,12 @@ gitWorkloads:
     namespace: genai
     syncWave: "1"
 
-  - appName: genai-streaming-proxy
-    project: genai
-    path: charts/streaming-proxy
-    namespace: genai
-    syncWave: "1"
+  # streaming-proxy disabled — requires image build from genai-mlops repo
+  # - appName: genai-streaming-proxy
+  #   project: genai
+  #   path: charts/streaming-proxy
+  #   namespace: genai
+  #   syncWave: "1"
 
   - appName: genai-airflow
     project: genai
