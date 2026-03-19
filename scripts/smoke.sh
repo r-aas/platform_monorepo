@@ -66,26 +66,14 @@ app_exists "genai-n8n" && \
   http_check "http://n8n.mewtwo.127.0.0.1.nip.io"            "n8n"
 app_exists "genai-mlflow" && \
   http_check "http://mlflow.genai.127.0.0.1.nip.io/health"   "MLflow"
-app_exists "genai-langfuse" && \
-  http_check "http://langfuse.genai.127.0.0.1.nip.io"        "Langfuse"
 app_exists "genai-minio" && \
   http_check "http://minio.genai.127.0.0.1.nip.io/minio/health/live" "MinIO"
 app_exists "genai-minio" && \
   http_check "http://minio-console.genai.127.0.0.1.nip.io"   "MinIO Console"
-app_exists "genai-airflow" && \
-  http_check "http://airflow.genai.127.0.0.1.nip.io"         "Airflow"
 echo ""
 
 # ── Internal services (via kubectl) ───────────────────────
 echo "Internal services:"
-if app_exists "genai-airflow"; then
-  if kubectl exec -n genai deploy/genai-airflow-api-server -- curl -sf -o /dev/null -w '%{http_code}' http://localhost:8080/api/v2/version 2>/dev/null | grep -q "200"; then
-    ok "Airflow API"
-  else
-    fail "Airflow API unreachable"
-  fi
-fi
-
 if app_exists "genai-litellm"; then
   if kubectl get pod -n genai -l app.kubernetes.io/instance=genai-litellm --no-headers 2>/dev/null | grep -q "Running"; then
     ok "LiteLLM (pod running)"
@@ -94,13 +82,6 @@ if app_exists "genai-litellm"; then
   fi
 fi
 
-if app_exists "genai-neo4j"; then
-  if kubectl get pod -n genai genai-neo4j-0 --no-headers 2>/dev/null | grep -q "Running"; then
-    ok "Neo4j (pod running)"
-  else
-    fail "Neo4j pod not running"
-  fi
-fi
 echo ""
 
 # ── Databases ───────────────────────────────────────────────
@@ -115,8 +96,6 @@ db_check() {
 }
 app_exists "genai-pg-n8n"     && db_check "genai-pg-n8n"              "n8n"      "n8n"      "n8n"
 app_exists "genai-pg-mlflow"  && db_check "genai-pg-mlflow"           "mlflow"   "mlflow"   "mlflow"
-app_exists "genai-pg-langfuse" && db_check "genai-pg-langfuse"        "langfuse" "langfuse" "langfuse"
-app_exists "genai-airflow"    && db_check "genai-airflow-postgresql"  "postgres" "airflow"  "postgres"
 if app_exists "genai-pgvector"; then
   if kubectl get pod -n genai genai-pgvector-0 --no-headers 2>/dev/null | grep -q "Running"; then
     ok "genai-pgvector (pod running)"

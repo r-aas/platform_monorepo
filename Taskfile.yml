@@ -124,15 +124,13 @@ tasks:
         echo "  GitLab:       http://gitlab.mewtwo.127.0.0.1.nip.io"
         echo "  n8n:          http://n8n.mewtwo.127.0.0.1.nip.io"
         echo "  MLflow:       http://mlflow.genai.127.0.0.1.nip.io"
-        echo "  Langfuse:     http://langfuse.genai.127.0.0.1.nip.io"
+        echo "  LiteLLM:      http://litellm.genai.127.0.0.1.nip.io"
         echo "  MinIO:        http://minio-console.genai.127.0.0.1.nip.io"
-        echo "  Airflow:      http://airflow.genai.127.0.0.1.nip.io"
         echo ""
         echo "  Credentials:"
         echo "  ─────────────────────────────────────────"
         printf "  GitLab root:  " && task gitlab-password 2>/dev/null
         printf "  ArgoCD admin: " && task argocd-password 2>/dev/null
-        echo "  Airflow:      admin / admin"
         echo "  MinIO:        minioadmin / minioadmin"
         echo ""
 
