@@ -1,0 +1,53 @@
+# GitLab Runner — Kubernetes executor with auto-registration
+#
+# Requires a pre-created runner token (glrt-*) stored in a K8s secret.
+# The bootstrap task creates this automatically:
+#   task gitlab:setup -- <PAT>
+#
+# Architecture: same values work on ARM64 and AMD64.
+# The runner and job images are multi-arch.
+
+image:
+  repository: gitlab/gitlab-runner
+  tag: alpine-v18.9.0
+  pullPolicy: IfNotPresent
+
+# GitLab instance URL (in-cluster service)
+gitlabUrl: "http://gitlab-ce.platform.svc.cluster.local"
+
+# Secret containing the runner authentication token (glrt-*)
+# Key: runner-token
+tokenSecret: gitlab-runner-token
+
+# Runner configuration
+runner:
+  # Namespace where CI job pods are created
+  jobNamespace: platform
+  # Default image for CI jobs
+  defaultImage: alpine:latest
+  # Concurrent jobs
+  concurrent: 4
+  # Image pull policy for job pods
+  pullPolicy: if-not-present
+  # Tags for job matching
+  tags: "k8s,platform"
+  # Run untagged jobs
+  runUntagged: true
+
+# Resources for the runner manager pod (not job pods)
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# RBAC — runner needs permissions to create job pods
+rbac:
+  create: true
+
+# Service account
+serviceAccount:
+  create: true
+  name: gitlab-runner

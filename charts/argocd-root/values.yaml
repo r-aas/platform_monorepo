@@ -1,0 +1,103 @@
+# ArgoCD root configuration
+# Controls which workloads ArgoCD manages after bootstrap.
+#
+# Lifecycle:
+#   1. helmfile seeds: ingress-nginx, namespaces, gitlab-ce, argocd, argocd-root
+#   2. Push platform_monorepo to in-cluster GitLab
+#   3. Configure ArgoCD repo credentials (task argocd-setup-repo -- <PAT>)
+#   4. ArgoCD syncs all workloads below, including self-upgrades
+
+# GitLab in-cluster service (deployed by helmfile bootstrap)
+gitlabRepoUrl: http://gitlab-ce.platform.svc.cluster.local/root/platform_monorepo.git
+targetRevision: HEAD
+
+# ── Git-path workloads ──
+# Charts in platform_monorepo (path relative to repo root).
+# extraValueFile: optional per-instance override file. "" = none.
+# ignoreMissingValueFiles is set, so "" is safe.
+gitWorkloads:
+  # -- Platform tier --
+  - appName: gitlab-ce
+    project: platform-apps
+    path: charts/gitlab-ce
+    namespace: platform
+    syncWave: "0"
+
+  - appName: gitlab-runner
+    project: platform-apps
+    path: charts/gitlab-runner
+    namespace: platform
+    syncWave: "1"
+
+  # -- GenAI tier --
+  - appName: genai-infra
+    project: genai
+    path: charts/genai-infra
+    namespace: genai
+    syncWave: "0"
+
+  - appName: genai-apps
+    project: genai
+    path: charts/genai-apps
+    namespace: genai
+    syncWave: "1"
+
+  # -- Workloads tier (n8n per-namespace) --
+  - appName: n8n-dev
+    project: workloads
+    path: charts/n8n-standalone
+    namespace: dev
+    syncWave: "0"
+    extraValueFile: values-dev.yaml
+
+  - appName: n8n-stage
+    project: workloads
+    path: charts/n8n-standalone
+    namespace: stage
+    syncWave: "0"
+    extraValueFile: values-stage.yaml
+
+  - appName: n8n-prod
+    project: workloads
+    path: charts/n8n-standalone
+    namespace: prod
+    syncWave: "0"
+    extraValueFile: values-prod.yaml
+
+# ── Helm-repo workloads ──
+# Charts from external Helm repos, values in this git repo.
+# ArgoCD self-management: after helmfile seeds the initial install,
+# this Application manages ArgoCD upgrades via git push to values files.
+helmWorkloads:
+  - appName: argocd
+    project: platform-apps
+    repoUrl: https://argoproj.github.io/argo-helm
+    chart: argo-cd
+    chartVersion: "9.4.10"
+    valuesPath: charts/argocd
+    namespace: platform
+    syncWave: "0"
+
+  - appName: airflow
+    project: genai
+    repoUrl: https://airflow.apache.org
+    chart: airflow
+    chartVersion: "1.19.0"
+    valuesPath: charts/airflow
+    namespace: genai
+    syncWave: "1"
+
+# ── Cross-repo workloads ──
+# Uncomment when these repos are pushed to in-cluster GitLab:
+# crossRepoWorkloads:
+#   - appName: mcp-registry
+#     project: platform-apps
+#     repoUrl: http://gitlab-ce.platform.svc.cluster.local/root/AI-registry.git
+#     path: charts/mcp-gateway-registry-stack
+#     namespace: platform
+#
+#   - appName: orchestration
+#     project: workloads
+#     repoUrl: http://gitlab-ce.platform.svc.cluster.local/root/genai-mlops.git
+#     path: charts/orchestration
+#     namespace: dev

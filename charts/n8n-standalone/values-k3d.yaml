@@ -1,0 +1,3 @@
+# n8n-standalone — k3d overrides (base file for ArgoCD)
+# No k3d-specific overrides needed — defaults are already tuned for k3d.
+{}

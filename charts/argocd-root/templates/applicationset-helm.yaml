@@ -1,0 +1,51 @@
+# Helm-repo workloads: chart from external Helm repo, values from git
+# Includes ArgoCD self-management — after helmfile seeds the initial install,
+# this ApplicationSet creates an Application that manages ArgoCD upgrades.
+{{- if .Values.helmWorkloads }}
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: workloads-helm
+  namespace: {{ .Release.Namespace }}
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - list:
+        elements:
+          {{- range .Values.helmWorkloads }}
+          - appName: {{ .appName }}
+            project: {{ .project }}
+            repoUrl: {{ .repoUrl }}
+            chart: {{ .chart }}
+            chartVersion: {{ .chartVersion | quote }}
+            valuesPath: {{ .valuesPath }}
+            namespace: {{ .namespace }}
+            syncWave: {{ .syncWave | quote }}
+          {{- end }}
+  template:
+    metadata:
+      name: "{{`{{ .appName }}`}}"
+      namespace: {{ .Release.Namespace }}
+      annotations:
+        argocd.argoproj.io/sync-wave: "{{`{{ .syncWave }}`}}"
+    spec:
+      project: "{{`{{ .project }}`}}"
+      sources:
+        - repoURL: "{{`{{ .repoUrl }}`}}"
+          chart: "{{`{{ .chart }}`}}"
+          targetRevision: "{{`{{ .chartVersion }}`}}"
+          helm:
+            valueFiles:
+              - $values/{{`{{ .valuesPath }}`}}/values.yaml
+              - $values/{{`{{ .valuesPath }}`}}/values-k3d.yaml
+        - repoURL: {{ .Values.gitlabRepoUrl }}
+          targetRevision: {{ .Values.targetRevision }}
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{`{{ .namespace }}`}}"
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+{{- end }}

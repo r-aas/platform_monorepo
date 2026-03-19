@@ -63,8 +63,5 @@ configs:
   params:
     # Poll git repos every 3 minutes
     timeout.reconciliation: 180s
-  cm:
-    # Allow insecure repos (HTTP GitLab, no TLS)
-    repositories: |
-      - url: http://gitlab-ce.platform.svc.cluster.local
-        insecure: "true"
+  # Repo credentials managed via k8s secret (argocd-repo-gitlab),
+  # created by scripts/gitlab-bootstrap.sh. Not in configmap.

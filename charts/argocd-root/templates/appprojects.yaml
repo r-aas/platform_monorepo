@@ -1,0 +1,63 @@
+# AppProjects — isolate workload domains
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: genai
+  namespace: {{ .Release.Namespace }}
+spec:
+  description: GenAI MLOps platform applications
+  sourceRepos:
+    - '*'
+  destinations:
+    - namespace: genai
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform-apps
+  namespace: {{ .Release.Namespace }}
+spec:
+  description: Platform infrastructure (GitLab, ArgoCD)
+  sourceRepos:
+    - '*'
+  destinations:
+    - namespace: platform
+      server: https://kubernetes.default.svc
+    - namespace: ingress-nginx
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: workloads
+  namespace: {{ .Release.Namespace }}
+spec:
+  description: Application workloads (dev, stage, prod)
+  sourceRepos:
+    - '*'
+  destinations:
+    - namespace: dev
+      server: https://kubernetes.default.svc
+    - namespace: stage
+      server: https://kubernetes.default.svc
+    - namespace: prod
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace

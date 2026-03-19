@@ -1,0 +1,95 @@
+# Platform Helmfile — Bootstrap Only
+#
+# Seeds the cluster with infrastructure that ArgoCD cannot self-manage.
+# After bootstrap, ArgoCD owns ALL day-2 operations including self-upgrades.
+#
+# Tiers (strict ordering via needs:):
+#   0. ingress-nginx   — everything needs ingress
+#   1. namespaces       — must exist before workload deploys
+#   2. gitlab-ce        — ArgoCD needs a git source (first boot ~8 min)
+#   3. argocd           — seed install
+#   4. argocd-root      — AppProjects + ApplicationSets → hands control to ArgoCD
+#
+# Architecture:
+#   PLATFORM_ARCH=arm64 (default on Apple Silicon)
+#   PLATFORM_ARCH=amd64 (Intel/cloud/CI)
+#   Set in envs/global.env or export before running helmfile.
+#
+# Usage:
+#   helmfile sync                  # bootstrap everything
+#   helmfile diff                  # preview changes
+#   helmfile destroy               # tear down bootstrap components
+#   helmfile -l tier=infra sync    # just ingress + namespaces
+
+helmDefaults:
+  wait: true
+  timeout: 300
+  createNamespace: true
+
+repositories:
+  - name: ingress-nginx
+    url: https://kubernetes.github.io/ingress-nginx
+  - name: argo-cd
+    url: https://argoproj.github.io/argo-helm
+
+releases:
+  # Tier 0: Cluster ingress
+  - name: ingress-nginx
+    namespace: ingress-nginx
+    chart: ingress-nginx/ingress-nginx
+    version: 4.15.0
+    labels:
+      tier: infra
+    values:
+      - charts/ingress-nginx/values.yaml
+      - charts/ingress-nginx/values-k3d.yaml
+
+  # Tier 1: Namespaces
+  - name: namespace-init
+    namespace: default
+    chart: ./charts/namespace-init
+    labels:
+      tier: infra
+    needs:
+      - ingress-nginx/ingress-nginx
+
+  # Tier 2: GitLab CE seed (first boot ~8 min, needs longer timeout)
+  - name: gitlab-ce
+    namespace: platform
+    chart: ./charts/gitlab-ce
+    timeout: 900
+    labels:
+      tier: platform
+    needs:
+      - ingress-nginx/ingress-nginx
+      - default/namespace-init
+    values:
+      - charts/gitlab-ce/values.yaml
+      - charts/gitlab-ce/values-{{ env "PLATFORM_ARCH" | default "arm64" }}.yaml
+      - charts/gitlab-ce/values-k3d.yaml
+
+  # Tier 3: ArgoCD seed
+  - name: argocd
+    namespace: platform
+    chart: argo-cd/argo-cd
+    version: 9.4.10
+    labels:
+      tier: platform
+    needs:
+      - ingress-nginx/ingress-nginx
+      - default/namespace-init
+      - platform/gitlab-ce
+    values:
+      - charts/argocd/values.yaml
+      - charts/argocd/values-k3d.yaml
+
+  # Tier 4: ArgoCD root — hands control to ArgoCD
+  - name: argocd-root
+    namespace: platform
+    chart: ./charts/argocd-root
+    labels:
+      tier: platform
+    needs:
+      - platform/argocd
+    values:
+      - charts/argocd-root/values.yaml

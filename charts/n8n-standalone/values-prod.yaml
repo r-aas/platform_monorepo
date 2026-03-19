@@ -1,0 +1,10 @@
+# n8n-standalone — prod namespace overrides
+# Prod gets slightly more memory headroom
+n8n:
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 2Gi
+      cpu: "1"

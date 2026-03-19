@@ -1,0 +1,50 @@
+# Git-path workloads: chart source is a path in the platform_monorepo
+#
+# Each workload entry specifies a single extra valueFile (beyond the standard
+# values.yaml + values-k3d.yaml). Use "" for no extra file.
+# This avoids Go template range/fromJson which breaks Helm's YAML parser.
+{{- if .Values.gitWorkloads }}
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: workloads-git
+  namespace: {{ .Release.Namespace }}
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - list:
+        elements:
+          {{- range .Values.gitWorkloads }}
+          - appName: {{ .appName }}
+            project: {{ .project }}
+            path: {{ .path }}
+            namespace: {{ .namespace }}
+            syncWave: {{ .syncWave | quote }}
+            extraValueFile: {{ .extraValueFile | default "NONE" | quote }}
+          {{- end }}
+  template:
+    metadata:
+      name: "{{`{{ .appName }}`}}"
+      namespace: {{ .Release.Namespace }}
+      annotations:
+        argocd.argoproj.io/sync-wave: "{{`{{ .syncWave }}`}}"
+    spec:
+      project: "{{`{{ .project }}`}}"
+      source:
+        repoURL: {{ .Values.gitlabRepoUrl }}
+        targetRevision: {{ .Values.targetRevision }}
+        path: "{{`{{ .path }}`}}"
+        helm:
+          valueFiles:
+            - values.yaml
+            - values-k3d.yaml
+            - "{{`{{ .extraValueFile }}`}}"
+          ignoreMissingValueFiles: true
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{`{{ .namespace }}`}}"
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+{{- end }}

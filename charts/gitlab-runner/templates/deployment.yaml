@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gitlab-runner.fullname" . }}
+  labels:
+    {{- include "gitlab-runner.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "gitlab-runner.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "gitlab-runner.selectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "gitlab-runner.fullname" . }}
+      initContainers:
+        # Inject the runner token into config.toml
+        - name: inject-token
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["sh", "-c"]
+          args:
+            - |
+              cp /configmap/config.toml /etc/gitlab-runner/config.toml
+              TOKEN=$(cat /token/runner-token)
+              sed -i "s|executor = \"kubernetes\"|token = \"${TOKEN}\"\n      executor = \"kubernetes\"|" /etc/gitlab-runner/config.toml
+          volumeMounts:
+            - name: config-template
+              mountPath: /configmap
+              readOnly: true
+            - name: token
+              mountPath: /token
+              readOnly: true
+            - name: runner-config
+              mountPath: /etc/gitlab-runner
+      containers:
+        - name: runner
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["gitlab-runner", "run"]
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: runner-config
+              mountPath: /etc/gitlab-runner
+      volumes:
+        - name: config-template
+          configMap:
+            name: {{ include "gitlab-runner.fullname" . }}-config
+        - name: token
+          secret:
+            secretName: {{ .Values.tokenSecret }}
+        - name: runner-config
+          emptyDir: {}

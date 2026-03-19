@@ -1,0 +1,55 @@
+# n8n-standalone — default values
+# Per-namespace overrides in values-{env}.yaml
+
+n8n:
+  image:
+    repository: n8nio/n8n
+    tag: "2.10.3"
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 200m
+    limits:
+      memory: 2Gi
+      cpu: "1"
+  # V8 heap cap — prevents OOM when n8n spawns Task Runner subprocess.
+  # Both main process and runner inherit NODE_OPTIONS.
+  nodeMaxOldSpaceSize: "256"
+  runnersMaxOldSpaceSize: "256"
+  timezone: America/Denver
+  persistence:
+    size: 1Gi
+  # Ollama on host
+  ollama:
+    baseUrl: http://host.docker.internal:11434/v1
+    apiKey: ollama
+
+postgres:
+  image:
+    repository: postgres
+    tag: "16-alpine"
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+  persistence:
+    size: 1Gi
+  # UID 501: virtiofs on macOS reports all PVC files as Mac user UID.
+  # chown is no-op, so postgres must run as 501 to match ownership.
+  runAsUser: 501
+  fsGroup: 501
+
+ingress:
+  className: nginx
+  proxyBodySize: "50m"
+
+# Secret management: ArgoCD creates the release, but secrets are
+# pre-provisioned by scripts/n8n-init-secrets.sh (idempotent).
+# The chart does NOT generate secrets — it references existing ones.
+secrets:
+  existingSecret: n8n-secrets
+  postgresPasswordKey: postgres-password
+  encryptionKeyKey: encryption-key

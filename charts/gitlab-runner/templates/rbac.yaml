@@ -1,0 +1,47 @@
+{{- if .Values.rbac.create }}
+# ServiceAccount for the runner manager pod
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "gitlab-runner.fullname" . }}
+  labels:
+    {{- include "gitlab-runner.labels" . | nindent 4 }}
+---
+# ServiceAccount for CI job pods
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "gitlab-runner.fullname" . }}-job
+  labels:
+    {{- include "gitlab-runner.labels" . | nindent 4 }}
+---
+# Runner manager needs to create/watch/delete pods, secrets, configmaps for jobs
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "gitlab-runner.fullname" . }}
+  labels:
+    {{- include "gitlab-runner.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/exec", "pods/attach", "pods/log", "secrets", "configmaps", "serviceaccounts"]
+    verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "gitlab-runner.fullname" . }}
+  labels:
+    {{- include "gitlab-runner.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "gitlab-runner.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "gitlab-runner.fullname" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

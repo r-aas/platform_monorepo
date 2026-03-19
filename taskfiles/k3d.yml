@@ -3,25 +3,21 @@ version: "3"
 vars:
   K3D_CLUSTER: '{{.K3D_CLUSTER | default "mewtwo"}}'
   K3D_CONFIG: '{{.K3D_CONFIG | default "${HOME}/work/k3d-mewtwo.yaml"}}'
-  PLATFORM_DIR: '{{.PLATFORM_DIR | default "${HOME}/work/platform/repos/platform_monorepo/manifests"}}'
 
 tasks:
   cluster-up:
     desc: Create shared k3d cluster
     cmds:
       - k3d cluster create --config {{.K3D_CONFIG}}
-      - echo "Waiting for cluster to be ready..."
+      - echo "Waiting for nodes..."
       - kubectl wait --for=condition=Ready nodes --all --timeout=120s
-      - task: install-ingress
-      - task: init-namespaces
-      - echo "Cluster k3d-{{.K3D_CLUSTER}} is ready"
-      - 'echo "Ingress: *.127.0.0.1.nip.io"'
+      - task: fix-node-dns
+      - echo "Cluster k3d-{{.K3D_CLUSTER}} is ready."
     status:
       - k3d cluster list -o json | jq -e '.[] | select(.name == "{{.K3D_CLUSTER}}")'
 
   cluster-down:
-    desc: Delete shared k3d cluster
-    prompt: "Delete cluster k3d-{{.K3D_CLUSTER}}? PV data in ~/work/data/k3d/{{.K3D_CLUSTER}}/ is preserved."
+    desc: Delete shared k3d cluster (PV data preserved)
     cmds:
       - k3d cluster delete {{.K3D_CLUSTER}}
 
@@ -29,50 +25,31 @@ tasks:
     desc: Start stopped cluster
     cmds:
       - k3d cluster start {{.K3D_CLUSTER}}
+      - kubectl wait --for=condition=Ready nodes --all --timeout=120s
+      - task: fix-node-dns
 
   cluster-stop:
     desc: Stop cluster without deleting
     cmds:
       - k3d cluster stop {{.K3D_CLUSTER}}
 
-  install-ingress:
-    desc: Install ingress-nginx controller
-    internal: true
-    vars:
-      CHARTS_DIR: '{{.ROOT_DIR}}/charts'
-    cmds:
-      - helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx 2>/dev/null || true
-      - helm repo update ingress-nginx
-      - >-
-        helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx
-        -f {{.CHARTS_DIR}}/ingress-nginx/values.yaml
-        -f {{.CHARTS_DIR}}/ingress-nginx/values-k3d.yaml
-        --namespace ingress-nginx --create-namespace
-        --wait --timeout 120s
-
-  init-namespaces:
-    desc: Create dev/stage/prod/platform namespaces
+  fix-node-dns:
+    desc: Add fallback DNS (8.8.8.8) to k3d nodes — Colima resolver can timeout
     internal: true
     cmds:
-      - kubectl apply -f {{.PLATFORM_DIR}}/namespace-init.yaml
+      - |
+        for node in $(docker ps --filter name=k3d-{{.K3D_CLUSTER}} --format '{{`{{.Names}}`}}'); do
+          docker exec $node sh -c 'grep -q "8.8.8.8" /etc/resolv.conf || echo "nameserver 8.8.8.8" >> /etc/resolv.conf'
+        done
 
   status:
-    desc: Show cluster status and ingress endpoints
+    desc: Show cluster status
     cmds:
       - echo "=== Cluster ==="
       - k3d cluster list
       - echo ""
       - echo "=== Nodes ==="
       - kubectl get nodes -o wide
-      - echo ""
-      - echo "=== Namespaces ==="
-      - kubectl get namespaces
-      - echo ""
-      - echo "=== Ingresses (all namespaces) ==="
-      - kubectl get ingress -A
-      - echo ""
-      - echo "=== Pods (all namespaces) ==="
-      - kubectl get pods -A --sort-by=.metadata.namespace
 
   kubeconfig:
     desc: Print kubeconfig for shared cluster

@@ -2,12 +2,39 @@ apiVersion: k3d.io/v1alpha5
 kind: Simple
 metadata:
   name: mewtwo
+
+# --- Topology ---
 servers: 1
 agents: 2
+
+# --- Image ---
+# ARM64 native on Apple Silicon. For images without ARM64 variants,
+# set platform: linux/amd64 in Helm values (QEMU handles execution).
+# Full-cluster amd64 is not viable — k3s segfaults under QEMU on M4.
+image: rancher/k3s:v1.31.5-k3s1
+
+# --- Startup ---
+options:
+  k3d:
+    wait: true
+    timeout: 120s
+
+  # --- k3s options ---
+  k3s:
+    extraArgs:
+      # ingress-nginx via Helm (post-create step)
+      - arg: --disable=traefik
+        nodeFilters:
+          - server:*
+
+# --- Storage ---
 volumes:
   - volume: ${HOME}/work/data/k3d/mewtwo:/var/lib/rancher/k3s/storage
     nodeFilters:
       - all
+
+# --- Networking ---
+# nip.io wildcard DNS: {app}.{ns}.127.0.0.1.nip.io → 127.0.0.1
 ports:
   - port: 80:80
     nodeFilters:
@@ -15,9 +42,15 @@ ports:
   - port: 443:443
     nodeFilters:
       - loadbalancer
-options:
-  k3s:
-    extraArgs:
-      - arg: --disable=traefik
-        nodeFilters:
-          - server:*
+
+# --- Registries ---
+# GitLab container registry over HTTP (no TLS).
+# Post-create: add /etc/hosts entry on nodes for registry DNS
+# (see task k3d:registry-dns in platform Taskfile).
+registries:
+  config: |
+    mirrors: {}
+    configs:
+      "registry.mewtwo.127.0.0.1.nip.io":
+        tls:
+          insecure_skip_verify: true

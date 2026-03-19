@@ -1,0 +1,14 @@
+# GitLab CE — ARM64 (Apple Silicon native)
+# Used on: macOS ARM64 (M1/M2/M3/M4)
+# gitlab/gitlab-ce publishes linux/arm64 — runs native, no QEMU.
+
+image:
+  repository: gitlab/gitlab-ce
+  tag: 18.10.0-ce.0
+  pullPolicy: IfNotPresent
+
+runner:
+  image:
+    repository: gitlab/gitlab-runner
+    tag: latest
+    pullPolicy: IfNotPresent

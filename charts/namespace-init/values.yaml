@@ -1,0 +1,7 @@
+# Namespaces to create with env labels
+namespaces:
+  - name: dev
+  - name: stage
+  - name: prod
+  - name: platform
+  - name: genai

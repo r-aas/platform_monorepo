@@ -1,0 +1,14 @@
+# GitLab CE — AMD64 (x86_64 / Intel / cloud VMs)
+# Used on: Linux amd64, Intel Macs, CI runners
+# Same images, no platform override needed — amd64 is the default arch.
+
+image:
+  repository: gitlab/gitlab-ce
+  tag: 18.10.0-ce.0
+  pullPolicy: IfNotPresent
+
+runner:
+  image:
+    repository: gitlab/gitlab-runner
+    tag: latest
+    pullPolicy: IfNotPresent

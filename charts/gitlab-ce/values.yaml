@@ -2,7 +2,7 @@
 
 image:
   repository: gitlab/gitlab-ce
-  tag: latest
+  tag: 18.10.0-ce.0
   pullPolicy: IfNotPresent
 
 # External URLs (override in values-k3d.yaml)
@@ -68,17 +68,6 @@ probes:
     timeoutSeconds: 5
     failureThreshold: 10
 
-# GitLab Runner (separate deployment)
+# GitLab Runner — managed separately by ArgoCD (charts/gitlab-runner)
 runner:
-  enabled: true
-  image:
-    repository: gitlab/gitlab-runner
-    tag: latest
-    pullPolicy: IfNotPresent
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 500m
-      memory: 256Mi
+  enabled: false

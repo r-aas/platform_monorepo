@@ -1,18 +1,16 @@
 version: "3"
 
+dotenv:
+  - ~/work/envs/global.env
+
 vars:
   K3D_CLUSTER: mewtwo
   K3D_CONFIG: "${HOME}/work/k3d-mewtwo.yaml"
-  PLATFORM_DIR: "${HOME}/work/repos/platform_monorepo/manifests"
+  PLATFORM_DIR: "${HOME}/work/repos/platform_monorepo"
+  PLATFORM_ARCH: '{{.PLATFORM_ARCH | default "arm64"}}'
 
 includes:
-  k3d:        ~/work/taskfiles/k3d.yml
-  gitlab:     ~/work/taskfiles/gitlab.yml
-  argocd:     ~/work/taskfiles/argocd.yml
-  k8s:        ~/work/taskfiles/k8s.yml
-  helm:       ~/work/taskfiles/helm.yml
-  genai-helm: ~/work/taskfiles/genai-helm.yml
-  n8n:        ~/work/taskfiles/n8n.yml
+  k3d: ~/work/taskfiles/k3d.yml
 
 tasks:
   default:
@@ -20,45 +18,146 @@ tasks:
     cmds:
       - task --list
 
-  bootstrap:
-    desc: Full platform bootstrap (cluster + ArgoCD + GitLab + genai stack)
+  # ── Lifecycle ───────────────────────────────────────────────
+
+  up:
+    desc: "Full platform bootstrap: k3d → helmfile → GitLab setup → ArgoCD sync"
     cmds:
       - task: k3d:cluster-up
-      - task: argocd:deploy
-      - task: gitlab:deploy
-      - task: gitlab:wait
+      - task: sync
+      - task: gitlab-setup
       - echo ""
-      - echo "Platform ready."
-      - 'echo "Check status:      task status"'
-      - 'echo "GitLab password:   task gitlab:password"'
-      - 'echo "ArgoCD password:   task argocd:password"'
-      - 'echo "ArgoCD UI:         http://argocd.mewtwo.127.0.0.1.nip.io"'
+      - echo "Platform is up. ArgoCD is syncing workloads."
+      - echo ""
+      - task: urls
+
+  down:
+    desc: "Tear down everything (helmfile destroy + cluster delete)"
+    prompt: "Destroy cluster k3d-{{.K3D_CLUSTER}} and all releases? PV data preserved."
+    cmds:
+      - cd {{.PLATFORM_DIR}} && helmfile destroy || true
+      - task: k3d:cluster-down
+
+  stop:
+    desc: "Pause cluster (preserves state, frees resources)"
+    cmds:
+      - task: k3d:cluster-stop
+
+  start:
+    desc: "Resume paused cluster + re-sync helmfile"
+    cmds:
+      - task: k3d:cluster-start
+      - task: sync
+      - echo ""
+      - echo "Platform resumed."
+      - task: urls
+
+  # ── Helmfile ────────────────────────────────────────────────
+
+  sync:
+    desc: "Helmfile sync — bootstrap/reconcile cluster infrastructure"
+    dir: "{{.PLATFORM_DIR}}"
+    env:
+      PLATFORM_ARCH: "{{.PLATFORM_ARCH}}"
+    cmds:
+      - helmfile sync
+
+  diff:
+    desc: "Helmfile diff — preview changes before sync"
+    dir: "{{.PLATFORM_DIR}}"
+    env:
+      PLATFORM_ARCH: "{{.PLATFORM_ARCH}}"
+    cmds:
+      - helmfile diff
+
+  # ── Status ──────────────────────────────────────────────────
 
   status:
-    desc: Full platform status
+    desc: Full platform status (cluster, releases, ArgoCD apps, pods)
     cmds:
       - task: k3d:status
       - echo ""
-      - echo "── GitLab ───────────────────────────────"
-      - task: gitlab:status
+      - echo "── Helm Releases ──────────────────────────"
+      - helm list -A --output table 2>/dev/null || echo "None"
       - echo ""
-      - echo "── ArgoCD ───────────────────────────────"
-      - task: argocd:status
-        ignore_error: true
+      - echo "── ArgoCD Applications ────────────────────"
+      - kubectl get applications -n platform -o wide 2>/dev/null || echo "None"
       - echo ""
-      - echo "── GenAI Helm ───────────────────────────"
-      - task: genai-helm:status
-        ignore_error: true
-      - echo ""
-      - echo "── n8n ──────────────────────────────────"
-      - task: n8n:status
+      - echo "── Pods ───────────────────────────────────"
+      - kubectl get pods -A --sort-by=.metadata.namespace 2>/dev/null
+
+  urls:
+    desc: Print all platform URLs and credentials
+    cmds:
+      - |
+        echo "  GitLab:  http://gitlab.mewtwo.127.0.0.1.nip.io"
+        echo "  ArgoCD:  http://argocd.mewtwo.127.0.0.1.nip.io"
+        echo "  n8n dev: http://n8n.dev.127.0.0.1.nip.io"
+        echo ""
+        echo "  Passwords:"
+        printf "    GitLab root: " && task gitlab-password 2>/dev/null
+        printf "    ArgoCD admin: " && task argocd-password 2>/dev/null
+
+  # ── GitLab ──────────────────────────────────────────────────
+
+  gitlab-password:
+    desc: Get GitLab root initial password
+    silent: true
+    cmds:
+      - |
+        kubectl -n platform get secret gitlab-ce-initial-password \
+          -o jsonpath='{.data.initial_root_password}' 2>/dev/null | base64 -d && echo "" || \
+          echo "(not available)"
+
+  gitlab-setup:
+    desc: "Full GitLab bootstrap (PAT, runner, ArgoCD creds, push repo)"
+    dir: "{{.PLATFORM_DIR}}"
+    cmds:
+      - bash scripts/gitlab-bootstrap.sh
+
+  gitlab-wait:
+    desc: Wait for GitLab pod to be Ready (first boot ~8 min)
+    cmds:
+      - kubectl -n platform rollout status statefulset/gitlab-ce --timeout=600s
+
+  gitlab-logs:
+    desc: Tail GitLab pod logs
+    cmds:
+      - kubectl -n platform logs -l app.kubernetes.io/name=gitlab-ce --tail=50 -f
+
+  # ── ArgoCD ──────────────────────────────────────────────────
+
+  argocd-password:
+    desc: Get ArgoCD admin password
+    silent: true
+    cmds:
+      - |
+        kubectl -n platform get secret argocd-initial-admin-secret \
+          -o jsonpath="{.data.password}" 2>/dev/null | base64 -d && echo "" || \
+          echo "(not available)"
+
+  argocd-apps:
+    desc: Show ArgoCD Application sync status
+    cmds:
+      - kubectl get applications -n platform -o wide 2>/dev/null || echo "No applications"
+
+  # ── Pre-provision secrets ───────────────────────────────────
+
+  n8n-secrets:
+    desc: "Pre-provision n8n secrets for dev/stage/prod (run before ArgoCD deploys n8n)"
+    cmds:
+      - bash {{.PLATFORM_DIR}}/scripts/n8n-init-secrets.sh dev
+      - bash {{.PLATFORM_DIR}}/scripts/n8n-init-secrets.sh stage
+      - bash {{.PLATFORM_DIR}}/scripts/n8n-init-secrets.sh prod
+
+  # ── Project scaffolding ─────────────────────────────────────
 
   project:new:
     desc: "Scaffold a new project from repo-template (usage: task project:new -- myapp)"
     vars:
       PROJECT_NAME: "{{.CLI_ARGS}}"
       REPOS_DIR: "${HOME}/work/repos"
-      TEMPLATE_DIR: "${HOME}/work/repos/platform_monorepo/repo-template"
+      TEMPLATE_DIR: "{{.PLATFORM_DIR}}/repo-template"
       GITLAB_URL: '{{.GITLAB_URL | default "http://gitlab.mewtwo.127.0.0.1.nip.io"}}'
       GITLAB_PAT: '{{.GITLAB_PAT | default ""}}'
     preconditions:
@@ -66,43 +165,30 @@ tasks:
         msg: "Usage: task project:new -- <project-name>"
       - sh: '[ ! -d "{{.REPOS_DIR}}/{{.PROJECT_NAME}}" ]'
         msg: "Directory {{.REPOS_DIR}}/{{.PROJECT_NAME}} already exists"
-      - sh: '[ -d "{{.TEMPLATE_DIR}}" ]'
-        msg: "repo-template not found at {{.TEMPLATE_DIR}}"
     cmds:
-      - echo "Scaffolding {{.PROJECT_NAME}} from repo-template..."
-
-      # 1. Copy template
       - cp -r {{.TEMPLATE_DIR}} {{.REPOS_DIR}}/{{.PROJECT_NAME}}
-
-      # 2. Replace APP_NAME placeholders in k8s manifests
       - bash {{.REPOS_DIR}}/{{.PROJECT_NAME}}/scripts/init-k8s.sh {{.PROJECT_NAME}}
-
-      # 3. Initialize git repo
       - cd {{.REPOS_DIR}}/{{.PROJECT_NAME}} && git init && git add -A && git commit -m "Initial scaffold from repo-template"
+      - echo "Created {{.REPOS_DIR}}/{{.PROJECT_NAME}}"
 
-      # 4. Create GitLab project + push
-      - |
-        if [ -z "{{.GITLAB_PAT}}" ]; then
-          echo "SKIP: GITLAB_PAT not set — create project manually at {{.GITLAB_URL}}"
-          echo "  Then: cd {{.REPOS_DIR}}/{{.PROJECT_NAME}} && git remote add origin {{.GITLAB_URL}}/root/{{.PROJECT_NAME}}.git && git push -u origin master"
-        else
-          echo "Creating GitLab project {{.PROJECT_NAME}}..."
-          curl -sf --request POST "{{.GITLAB_URL}}/api/v4/projects" \
-            --header "PRIVATE-TOKEN: {{.GITLAB_PAT}}" \
-            --data "name={{.PROJECT_NAME}}&visibility=private&initialize_with_readme=false" > /dev/null
-          cd {{.REPOS_DIR}}/{{.PROJECT_NAME}} && \
-            git remote add origin "http://oauth2:{{.GITLAB_PAT}}@localhost:8929/root/{{.PROJECT_NAME}}.git" && \
-            git push -u origin master
-          echo "Setting up CI kubeconfig..."
-          GITLAB_PAT={{.GITLAB_PAT}} bash {{.REPOS_DIR}}/platform_monorepo/scripts/setup-ci-kubeconfig.sh root/{{.PROJECT_NAME}}
-        fi
+  # ── Utilities ───────────────────────────────────────────────
 
-      - echo ""
-      - echo "✓ Project {{.PROJECT_NAME}} created at {{.REPOS_DIR}}/{{.PROJECT_NAME}}"
-      - echo "  cd {{.REPOS_DIR}}/{{.PROJECT_NAME}} && task setup"
-
-  teardown:
-    desc: Tear down entire platform
-    prompt: "Delete the shared cluster and all workloads?"
+  resume:
+    desc: Show session resume notes
     cmds:
-      - task: k3d:cluster-down
+      - cat {{.PLATFORM_DIR}}/RESUME.md
+
+  doctor:
+    desc: Verify platform health
+    cmds:
+      - echo "=== k3d cluster ==="
+      - k3d cluster list | grep {{.K3D_CLUSTER}} && echo "OK" || echo "MISSING"
+      - echo ""
+      - echo "=== Helmfile releases ==="
+      - helm list -A --output table 2>/dev/null
+      - echo ""
+      - echo "=== Pod health ==="
+      - kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded 2>/dev/null || echo "All pods healthy"
+      - echo ""
+      - echo "=== Ollama ==="
+      - curl -sf http://localhost:11434/api/version | jq -r '.version' 2>/dev/null && echo "OK" || echo "NOT RUNNING"

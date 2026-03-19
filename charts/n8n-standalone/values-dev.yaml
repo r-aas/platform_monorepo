@@ -1,0 +1,3 @@
+# n8n-standalone — dev namespace overrides
+# Dev gets default resources (suitable for active development)
+{}

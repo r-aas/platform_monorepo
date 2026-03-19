@@ -134,11 +134,19 @@ litellm:
 
 # -- Streaming Proxy
 streaming-proxy:
-  enabled: false  # Requires custom image build first
+  enabled: true
+  image:
+    repository: genai-streaming-proxy
+    tag: latest
+    pullPolicy: Never  # Loaded via k3d image import
   env:
     N8N_BASE_URL: "http://genai-apps-n8n.genai.svc.cluster.local:5678"
     LITELLM_BASE_URL: "http://genai-apps-litellm.genai.svc.cluster.local:4000"
 
 # -- MCP Gateway
 mcp-gateway:
-  enabled: false  # Requires Docker socket access, complex in k8s
+  enabled: true
+  image:
+    repository: docker/mcp-gateway
+    tag: latest
+    pullPolicy: IfNotPresent
