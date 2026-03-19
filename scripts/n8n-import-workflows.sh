@@ -19,10 +19,11 @@ N8N_SVC="genai-n8n"
 N8N_PORT=5678
 WORKFLOWS_DIR="${HOME}/work/repos/genai-mlops/n8n-data/workflows"
 TMPDIR=$(mktemp -d)
-trap "rm -rf $TMPDIR; kill $PF_PID 2>/dev/null || true" EXIT
+PF_PID=""
+trap 'rm -rf "$TMPDIR"; [ -n "$PF_PID" ] && kill "$PF_PID" 2>/dev/null || true' EXIT
 
 # k3d service URLs (replace docker-compose service names)
-K3D_MLFLOW="http://genai-mlflow.genai.svc.cluster.local:5000"
+K3D_MLFLOW="http://genai-mlflow.genai.svc.cluster.local"
 K3D_LITELLM="http://genai-litellm.genai.svc.cluster.local:4000"
 K3D_N8N="http://genai-n8n.genai.svc.cluster.local:5678"
 K3D_OLLAMA="http://192.168.5.2:11434"
@@ -65,12 +66,16 @@ echo "  Pod: ${N8N_POD}"
 
 # ── Copy workflows to pod ────────────────────────────────────────────────────
 echo "  Copying workflows to pod..."
+kubectl exec -n ${NAMESPACE} ${N8N_POD} -- rm -rf /tmp/workflows
 kubectl exec -n ${NAMESPACE} ${N8N_POD} -- mkdir -p /tmp/workflows
-kubectl cp "$TMPDIR/" ${NAMESPACE}/${N8N_POD}:/tmp/workflows/
+for f in "$TMPDIR"/*.json; do
+  kubectl cp "$f" "${NAMESPACE}/${N8N_POD}:/tmp/workflows/$(basename "$f")"
+done
 echo "  ✓ Copied to /tmp/workflows/"
 
 # ── Import via n8n CLI ───────────────────────────────────────────────────────
 echo "  Importing workflows via n8n CLI..."
+kubectl exec -n ${NAMESPACE} ${N8N_POD} -- ls /tmp/workflows/ 2>&1 | sed 's/^/    /'
 kubectl exec -n ${NAMESPACE} ${N8N_POD} -- \
   n8n import:workflow --separate --input=/tmp/workflows 2>&1 | \
   sed 's/^/    /'

@@ -38,7 +38,7 @@ config:
 
 # External service URLs
 env:
-  MLFLOW_TRACKING_URI: "http://genai-mlflow.genai.svc.cluster.local:5000"
+  MLFLOW_TRACKING_URI: "http://genai-mlflow.genai.svc.cluster.local"
 
 ingress:
   enabled: true

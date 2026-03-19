@@ -15,7 +15,7 @@ NAMESPACE="genai"
 N8N_SVC="genai-n8n"
 N8N_PORT=5678
 N8N_OWNER_EMAIL="admin@platform.local"
-N8N_OWNER_PASSWORD="admin-k3d-local"
+N8N_OWNER_PASSWORD="Admin-k3d-L0cal"
 SECRET_NAME="n8n-api-credentials"
 
 echo "── n8n Setup ──"
@@ -102,6 +102,13 @@ if code == 200:
     if m:
         auth_cookie = m.group(1)
     print(f"  ✓ Owner created ({EMAIL})", file=sys.stderr)
+elif code == 400:
+    msg = resp.get("message", str(resp))
+    if "already setup" in msg.lower() or "already exists" in msg.lower():
+        print("  ⚠ Owner exists, logging in...", file=sys.stderr)
+    else:
+        print(f"  ✗ Setup rejected: {msg}", file=sys.stderr)
+        sys.exit(1)
 else:
     print("  ⚠ Owner exists, logging in...", file=sys.stderr)
 
