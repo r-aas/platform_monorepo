@@ -65,3 +65,29 @@ configs:
     timeout.reconciliation: 30s
   # Repo credentials managed via k8s secret (argocd-repo-gitlab),
   # created by scripts/gitlab-bootstrap.sh. Not in configmap.
+  # Helm repositories needed by wrapper charts (helm dependency build)
+  repositories:
+    bitnami:
+      url: https://charts.bitnami.com/bitnami
+      name: bitnami
+      type: helm
+    community-charts:
+      url: https://community-charts.github.io/helm-charts
+      name: community-charts
+      type: helm
+    airflow:
+      url: https://airflow.apache.org
+      name: airflow
+      type: helm
+    langfuse:
+      url: https://langfuse.github.io/langfuse-k8s
+      name: langfuse
+      type: helm
+    minio:
+      url: https://charts.min.io
+      name: minio
+      type: helm
+    neo4j:
+      url: https://helm.neo4j.com/neo4j
+      name: neo4j
+      type: helm

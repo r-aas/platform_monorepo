@@ -111,7 +111,7 @@ log "Configuring ArgoCD repo credentials..."
 kubectl create secret generic argocd-repo-gitlab \
   --namespace "$NAMESPACE" \
   --from-literal=type=git \
-  --from-literal=url="http://gitlab-ce.${NAMESPACE}.svc.cluster.local" \
+  --from-literal=url="http://gitlab-ce.${NAMESPACE}.svc.cluster.local/root/platform_monorepo.git" \
   --from-literal=username=root \
   --from-literal=password="$PAT" \
   --from-literal=insecure=true \
