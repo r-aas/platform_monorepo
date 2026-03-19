@@ -39,6 +39,14 @@ airflow:
       limits:
         memory: 1Gi
 
+  apiServer:
+    waitForMigrations:
+      enabled: false
+
+  dagProcessor:
+    waitForMigrations:
+      enabled: false
+
   postgresql:
     enabled: true
     auth:
