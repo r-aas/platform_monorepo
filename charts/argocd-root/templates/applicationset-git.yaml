@@ -1,9 +1,19 @@
-# Git-path workloads: chart source is a path in the platform_monorepo
+# Auto-discovered git-path workloads from charts/ directory.
 #
-# Each workload entry specifies a single extra valueFile (beyond the standard
-# values.yaml + values-k3d.yaml). Use "" for no extra file.
-# This avoids Go template range/fromJson which breaks Helm's YAML parser.
-{{- if .Values.gitWorkloads }}
+# Convention:
+#   charts/genai-*  → namespace: genai,    project: genai,         syncWave: infra(0) or app(1)
+#   charts/gitlab-* → namespace: platform, project: platform-apps, syncWave: 0 or 1
+#
+# Excluded (helmfile-managed):
+#   argocd, argocd-root, ingress-nginx, namespace-init
+#
+# SyncWave convention:
+#   Database/storage charts (pg-*, minio, pgvector) → wave 0
+#   Application charts → wave 1
+#
+# To add a new chart: just create charts/<name>/ with Chart.yaml + values.yaml.
+# ArgoCD discovers it automatically on next git sync (~3 min).
+
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -13,37 +23,44 @@ spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
   generators:
-    - list:
-        elements:
-          {{- range .Values.gitWorkloads }}
-          - appName: {{ .appName }}
-            project: {{ .project }}
-            path: {{ .path }}
-            namespace: {{ .namespace }}
-            syncWave: {{ .syncWave | quote }}
-            extraValueFile: {{ .extraValueFile | default "NONE" | quote }}
-          {{- end }}
+    - git:
+        repoURL: {{ .Values.gitlabRepoUrl }}
+        revision: {{ .Values.targetRevision }}
+        directories:
+          - path: charts/*
+          # Exclude helmfile-managed bootstrap charts
+          - path: charts/argocd
+            exclude: true
+          - path: charts/argocd-root
+            exclude: true
+          - path: charts/ingress-nginx
+            exclude: true
+          - path: charts/namespace-init
+            exclude: true
   template:
     metadata:
-      name: "{{`{{ .appName }}`}}"
+      name: '{{`{{ .path.basename }}`}}'
       namespace: {{ .Release.Namespace }}
       annotations:
-        argocd.argoproj.io/sync-wave: "{{`{{ .syncWave }}`}}"
+        # Databases/storage (pg-*, minio, pgvector) sync first, apps after
+        argocd.argoproj.io/sync-wave: |-
+          {{`{{ if or (hasPrefix "genai-pg" .path.basename) (eq .path.basename "genai-minio") (eq .path.basename "genai-pgvector") }}0{{ else }}1{{ end }}`}}
     spec:
-      project: "{{`{{ .project }}`}}"
+      project: |-
+        {{`{{ if hasPrefix "genai-" .path.basename }}genai{{ else if or (hasPrefix "gitlab-" .path.basename) (eq .path.basename "argocd") }}platform-apps{{ else }}genai{{ end }}`}}
       source:
         repoURL: {{ .Values.gitlabRepoUrl }}
         targetRevision: {{ .Values.targetRevision }}
-        path: "{{`{{ .path }}`}}"
+        path: '{{`{{ .path.path }}`}}'
         helm:
           valueFiles:
             - values.yaml
             - values-k3d.yaml
-            - "{{`{{ .extraValueFile }}`}}"
           ignoreMissingValueFiles: true
       destination:
         server: https://kubernetes.default.svc
-        namespace: "{{`{{ .namespace }}`}}"
+        namespace: |-
+          {{`{{ if hasPrefix "genai-" .path.basename }}genai{{ else if or (hasPrefix "gitlab-" .path.basename) (eq .path.basename "argocd") }}platform{{ else }}genai{{ end }}`}}
       syncPolicy:
         automated:
           prune: true
@@ -51,4 +68,3 @@ spec:
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
-{{- end }}

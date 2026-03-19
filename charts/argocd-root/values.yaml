@@ -5,83 +5,21 @@
 #   1. helmfile seeds: ingress-nginx, namespaces, gitlab-ce, argocd, argocd-root
 #   2. Push platform_monorepo to in-cluster GitLab
 #   3. Configure ArgoCD repo credentials (task argocd-setup-repo -- <PAT>)
-#   4. ArgoCD syncs all workloads below, including self-upgrades
+#   4. ArgoCD auto-discovers all charts/ directories and syncs them
+#
+# Auto-discovery:
+#   Any chart in charts/<name>/ with a Chart.yaml is auto-deployed.
+#   Namespace/project derived from name prefix:
+#     genai-*   → genai namespace, genai project
+#     gitlab-*  → platform namespace, platform-apps project
+#   Excluded (helmfile-managed): argocd, argocd-root, ingress-nginx, namespace-init
 
 # GitLab in-cluster service (deployed by helmfile bootstrap)
 gitlabRepoUrl: http://gitlab-ce.platform.svc.cluster.local/root/platform_monorepo.git
 targetRevision: HEAD
 
-# ── Git-path workloads ──
-# Each chart is a thin wrapper with its own Chart.yaml + values.
-# One service per chart — independent sync, independent health.
-gitWorkloads:
-  # -- Platform tier --
-  - appName: gitlab-ce
-    project: platform-apps
-    path: charts/gitlab-ce
-    namespace: platform
-    syncWave: "0"
-
-  - appName: gitlab-runner
-    project: platform-apps
-    path: charts/gitlab-runner
-    namespace: platform
-    syncWave: "1"
-
-  # -- GenAI infrastructure (syncWave 0 — databases first) --
-  - appName: genai-minio
-    project: genai
-    path: charts/genai-minio
-    namespace: genai
-    syncWave: "0"
-
-  - appName: genai-pg-n8n
-    project: genai
-    path: charts/genai-pg-n8n
-    namespace: genai
-    syncWave: "0"
-
-  - appName: genai-pg-mlflow
-    project: genai
-    path: charts/genai-pg-mlflow
-    namespace: genai
-    syncWave: "0"
-
-  - appName: genai-pgvector
-    project: genai
-    path: charts/genai-pgvector
-    namespace: genai
-    syncWave: "0"
-
-  # -- GenAI applications (syncWave 1 — after databases) --
-  - appName: genai-n8n
-    project: genai
-    path: charts/genai-n8n
-    namespace: genai
-    syncWave: "1"
-
-  - appName: genai-mlflow
-    project: genai
-    path: charts/genai-mlflow
-    namespace: genai
-    syncWave: "1"
-
-  - appName: genai-litellm
-    project: genai
-    path: charts/litellm
-    namespace: genai
-    syncWave: "1"
-
-  # Disabled — not needed for core platform
-  # - appName: genai-pg-langfuse (dropped with langfuse)
-  # - appName: genai-langfuse
-  # - appName: genai-neo4j
-  # - appName: genai-airflow
-  # - appName: genai-streaming-proxy (needs image build)
-
-
 # ── Helm-repo workloads ──
-# ArgoCD self-management only. All other charts are git-path wrappers.
+# ArgoCD self-management only. All other charts are git-path auto-discovered.
 helmWorkloads:
   - appName: argocd
     project: platform-apps
