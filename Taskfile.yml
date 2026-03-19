@@ -21,13 +21,18 @@ tasks:
   # ── Lifecycle ───────────────────────────────────────────────
 
   up:
-    desc: "Full platform bootstrap: k3d → helmfile → GitLab setup → ArgoCD sync"
+    desc: "Full platform bootstrap: preflight → k3d → helmfile → GitLab → images → ArgoCD → smoke"
     cmds:
+      - task: preflight
       - task: k3d:cluster-up
       - task: sync
       - task: gitlab-setup
+      - task: build-images
       - echo ""
-      - echo "Platform is up. ArgoCD is syncing workloads."
+      - echo "▸ Waiting for ArgoCD to sync all workloads..."
+      - bash {{.PLATFORM_DIR}}/scripts/wait-healthy.sh 600
+      - echo ""
+      - task: smoke
       - echo ""
       - task: urls
 
@@ -37,6 +42,8 @@ tasks:
     cmds:
       - cd {{.PLATFORM_DIR}} && helmfile destroy || true
       - task: k3d:cluster-down
+      - echo ""
+      - echo "Platform is down. PV data preserved at ~/work/data/k3d/{{.K3D_CLUSTER}}/"
 
   stop:
     desc: "Pause cluster (preserves state, frees resources)"
@@ -44,13 +51,33 @@ tasks:
       - task: k3d:cluster-stop
 
   start:
-    desc: "Resume paused cluster + re-sync helmfile"
+    desc: "Resume paused cluster + re-sync helmfile + smoke test"
     cmds:
       - task: k3d:cluster-start
       - task: sync
+      - bash {{.PLATFORM_DIR}}/scripts/wait-healthy.sh 300
       - echo ""
       - echo "Platform resumed."
       - task: urls
+
+  # ── Pre-flight & verification ──────────────────────────────
+
+  preflight:
+    desc: "Check all external dependencies before bootstrap"
+    cmds:
+      - bash {{.PLATFORM_DIR}}/scripts/preflight.sh
+
+  smoke:
+    desc: "Verify all platform services are reachable"
+    cmds:
+      - bash {{.PLATFORM_DIR}}/scripts/smoke.sh
+
+  build-images:
+    desc: "Build custom Docker images and import into k3d"
+    env:
+      K3D_CLUSTER: "{{.K3D_CLUSTER}}"
+    cmds:
+      - bash {{.PLATFORM_DIR}}/scripts/build-images.sh
 
   # ── Helmfile ────────────────────────────────────────────────
 
@@ -90,13 +117,24 @@ tasks:
     desc: Print all platform URLs and credentials
     cmds:
       - |
-        echo "  GitLab:  http://gitlab.mewtwo.127.0.0.1.nip.io"
-        echo "  ArgoCD:  http://argocd.mewtwo.127.0.0.1.nip.io"
-        echo "  n8n dev: http://n8n.dev.127.0.0.1.nip.io"
         echo ""
-        echo "  Passwords:"
-        printf "    GitLab root: " && task gitlab-password 2>/dev/null
-        printf "    ArgoCD admin: " && task argocd-password 2>/dev/null
+        echo "  Platform URLs:"
+        echo "  ─────────────────────────────────────────"
+        echo "  ArgoCD:       http://argocd.mewtwo.127.0.0.1.nip.io"
+        echo "  GitLab:       http://gitlab.mewtwo.127.0.0.1.nip.io"
+        echo "  n8n:          http://n8n.mewtwo.127.0.0.1.nip.io"
+        echo "  MLflow:       http://mlflow.genai.127.0.0.1.nip.io"
+        echo "  Langfuse:     http://langfuse.genai.127.0.0.1.nip.io"
+        echo "  MinIO:        http://minio-console.genai.127.0.0.1.nip.io"
+        echo "  Airflow:      http://airflow.genai.127.0.0.1.nip.io"
+        echo ""
+        echo "  Credentials:"
+        echo "  ─────────────────────────────────────────"
+        printf "  GitLab root:  " && task gitlab-password 2>/dev/null
+        printf "  ArgoCD admin: " && task argocd-password 2>/dev/null
+        echo "  Airflow:      admin / admin"
+        echo "  MinIO:        minioadmin / minioadmin"
+        echo ""
 
   # ── GitLab ──────────────────────────────────────────────────
 
@@ -141,15 +179,6 @@ tasks:
     cmds:
       - kubectl get applications -n platform -o wide 2>/dev/null || echo "No applications"
 
-  # ── Pre-provision secrets ───────────────────────────────────
-
-  n8n-secrets:
-    desc: "Pre-provision n8n secrets for dev/stage/prod (run before ArgoCD deploys n8n)"
-    cmds:
-      - bash {{.PLATFORM_DIR}}/scripts/n8n-init-secrets.sh dev
-      - bash {{.PLATFORM_DIR}}/scripts/n8n-init-secrets.sh stage
-      - bash {{.PLATFORM_DIR}}/scripts/n8n-init-secrets.sh prod
-
   # ── Project scaffolding ─────────────────────────────────────
 
   project:new:
@@ -179,16 +208,8 @@ tasks:
       - cat {{.PLATFORM_DIR}}/RESUME.md
 
   doctor:
-    desc: Verify platform health
+    desc: Verify platform health (preflight + smoke)
     cmds:
-      - echo "=== k3d cluster ==="
-      - k3d cluster list | grep {{.K3D_CLUSTER}} && echo "OK" || echo "MISSING"
+      - task: preflight
       - echo ""
-      - echo "=== Helmfile releases ==="
-      - helm list -A --output table 2>/dev/null
-      - echo ""
-      - echo "=== Pod health ==="
-      - kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded 2>/dev/null || echo "All pods healthy"
-      - echo ""
-      - echo "=== Ollama ==="
-      - curl -sf http://localhost:11434/api/version | jq -r '.version' 2>/dev/null && echo "OK" || echo "NOT RUNNING"
+      - task: smoke
