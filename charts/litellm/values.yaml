@@ -23,12 +23,12 @@ config:
     - model_name: "qwen2.5:14b"
       litellm_params:
         model: "openai/qwen2.5:14b"
-        api_base: "http://host.k3d.internal:11434/v1"
+        api_base: "http://192.168.5.2:11434/v1"
         api_key: "ollama"
     - model_name: "nomic-embed-text"
       litellm_params:
         model: "openai/nomic-embed-text"
-        api_base: "http://host.k3d.internal:11434/v1"
+        api_base: "http://192.168.5.2:11434/v1"
         api_key: "ollama"
   litellm_settings:
     drop_params: true
@@ -39,6 +39,12 @@ config:
 # External service URLs
 env:
   MLFLOW_TRACKING_URI: "http://genai-mlflow.genai.svc.cluster.local:5000"
+
+ingress:
+  enabled: true
+  className: nginx
+  host: litellm.genai.127.0.0.1.nip.io
+  annotations: {}
 
 livenessProbe:
   httpGet:
