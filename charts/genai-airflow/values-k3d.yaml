@@ -3,6 +3,7 @@ airflow:
 
   migrateDatabaseJob:
     enabled: true
+    useHelmHooks: false
 
   redis:
     enabled: false
