@@ -1,6 +1,8 @@
 # MLflow experiment tracking — uses external PostgreSQL + MinIO
 mlflow:
   fullnameOverride: genai-mlflow
+  log:
+    enabled: false
   backendStore:
     postgres:
       enabled: true
@@ -17,8 +19,8 @@ mlflow:
       bucket: mlflow
       awsAccessKeyId: minio
       awsSecretAccessKey: minio123
-  extraArgs:
-    # Allow requests from k8s service names (MLflow 3+ DNS rebinding protection)
-    allowedHosts: "genai-mlflow.genai.svc.cluster.local,mlflow.genai.127.0.0.1.nip.io,localhost"
+  extraFlags:
+    # Disable DNS rebinding protection (local dev cluster only)
+    - disableSecurityMiddleware
   extraEnvVars:
     MLFLOW_S3_ENDPOINT_URL: "http://genai-minio.genai.svc.cluster.local:9000"
