@@ -39,6 +39,7 @@ config:
 # MLflow tracking for LLM call logging
 env:
   MLFLOW_TRACKING_URI: "http://genai-mlflow.genai.svc.cluster.local"
+  MLFLOW_EXPERIMENT_NAME: "litellm-traces"
 
 ingress:
   enabled: true
