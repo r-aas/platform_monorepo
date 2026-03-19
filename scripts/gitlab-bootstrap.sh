@@ -116,7 +116,7 @@ kubectl create secret generic argocd-repo-gitlab \
   --from-literal=password="$PAT" \
   --from-literal=insecure=true \
   --dry-run=client -o yaml | \
-kubectl label --local -f - argocd.argoproj.io/secret-type=repository -o yaml | \
+kubectl label --local -f - argocd.argoproj.io/secret-type=repo-creds -o yaml | \
 kubectl apply -f -
 log "ArgoCD repo credential configured."
 
