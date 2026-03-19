@@ -3,7 +3,7 @@ n8n:
     enabled: true
     className: nginx
     hosts:
-      - host: n8n.genai.127.0.0.1.nip.io
+      - host: n8n.mewtwo.127.0.0.1.nip.io
         paths:
           - path: /
             pathType: Prefix

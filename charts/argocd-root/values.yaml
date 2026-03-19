@@ -102,27 +102,6 @@ gitWorkloads:
     namespace: genai
     syncWave: "1"
 
-  # -- Workloads tier (n8n per-namespace) --
-  - appName: n8n-dev
-    project: workloads
-    path: charts/n8n-standalone
-    namespace: dev
-    syncWave: "0"
-    extraValueFile: values-dev.yaml
-
-  - appName: n8n-stage
-    project: workloads
-    path: charts/n8n-standalone
-    namespace: stage
-    syncWave: "0"
-    extraValueFile: values-stage.yaml
-
-  - appName: n8n-prod
-    project: workloads
-    path: charts/n8n-standalone
-    namespace: prod
-    syncWave: "0"
-    extraValueFile: values-prod.yaml
 
 # ── Helm-repo workloads ──
 # ArgoCD self-management only. All other charts are git-path wrappers.
