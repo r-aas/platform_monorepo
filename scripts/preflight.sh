@@ -57,9 +57,22 @@ echo ""
 # ── Ollama ──────────────────────────────────────────────────
 if [ "$QUICK" != "--quick" ]; then
   echo "Ollama:"
+  # Ensure OLLAMA_HOST is set for GUI app (persists until reboot)
+  launchctl setenv OLLAMA_HOST "0.0.0.0:11434" 2>/dev/null || true
+
   if curl -sf http://localhost:11434/api/version &>/dev/null; then
     VERSION=$(curl -sf http://localhost:11434/api/version | jq -r '.version' 2>/dev/null)
     ok "Ollama running (v${VERSION})"
+
+    # Check binding — must be 0.0.0.0 for k3d pods to reach host
+    OLLAMA_IPV4=$(lsof -i4 -P -n 2>/dev/null | grep ":11434.*LISTEN" | awk '{print $9}' | cut -d: -f1)
+    if [ "$OLLAMA_IPV4" = "*" ] || [ "$OLLAMA_IPV4" = "0.0.0.0" ]; then
+      ok "Ollama bound to 0.0.0.0 (reachable from k3d)"
+    elif [ -n "$OLLAMA_IPV4" ]; then
+      warn "Ollama bound to ${OLLAMA_IPV4} — k3d pods can't reach it"
+      warn "Restart Ollama: pkill ollama && OLLAMA_HOST=0.0.0.0:11434 ollama serve &"
+    fi
+
     # Check if a model is available
     MODEL_COUNT=$(curl -sf http://localhost:11434/api/tags | jq '.models | length' 2>/dev/null || echo "0")
     if [ "$MODEL_COUNT" -gt 0 ]; then
@@ -69,7 +82,7 @@ if [ "$QUICK" != "--quick" ]; then
     fi
   else
     warn "Ollama not running — genai workloads will timeout"
-    warn "Start with: brew services start ollama"
+    warn "Start with: OLLAMA_HOST=0.0.0.0:11434 ollama serve"
   fi
   echo ""
 fi

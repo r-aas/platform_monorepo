@@ -198,6 +198,24 @@ tasks:
       - cd {{.REPOS_DIR}}/{{.PROJECT_NAME}} && git init && git add -A && git commit -m "Initial scaffold from repo-template"
       - echo "Created {{.REPOS_DIR}}/{{.PROJECT_NAME}}"
 
+  # ── n8n post-deploy ─────────────────────────────────────────
+
+  n8n-setup:
+    desc: "Create n8n owner account + API key (stored as k8s Secret)"
+    cmds:
+      - bash {{.PLATFORM_DIR}}/scripts/n8n-setup.sh {{.CLI_ARGS}}
+
+  n8n-import:
+    desc: "Import genai-mlops workflows into k3d n8n (patches URLs)"
+    deps: [n8n-setup]
+    cmds:
+      - bash {{.PLATFORM_DIR}}/scripts/n8n-import-workflows.sh
+
+  n8n-logs:
+    desc: Tail n8n pod logs
+    cmds:
+      - kubectl -n genai logs -l app.kubernetes.io/instance=genai-n8n --tail=50 -f
+
   # ── Utilities ───────────────────────────────────────────────
 
   resume:

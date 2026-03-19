@@ -66,6 +66,8 @@ app_exists "genai-n8n" && \
   http_check "http://n8n.mewtwo.127.0.0.1.nip.io"            "n8n"
 app_exists "genai-mlflow" && \
   http_check "http://mlflow.genai.127.0.0.1.nip.io/health"   "MLflow"
+app_exists "genai-litellm" && \
+  http_check "http://litellm.genai.127.0.0.1.nip.io/v1/models" "LiteLLM"
 app_exists "genai-minio" && \
   http_check "http://minio.genai.127.0.0.1.nip.io/minio/health/live" "MinIO"
 app_exists "genai-minio" && \
@@ -77,6 +79,15 @@ echo "Internal services:"
 if app_exists "genai-litellm"; then
   if kubectl get pod -n genai -l app.kubernetes.io/instance=genai-litellm --no-headers 2>/dev/null | grep -q "Running"; then
     ok "LiteLLM (pod running)"
+    # Test LiteLLM → Ollama chat
+    CHAT_RESP=$(curl -s --max-time 30 http://litellm.genai.127.0.0.1.nip.io/v1/chat/completions \
+      -H "Content-Type: application/json" \
+      -d '{"model":"qwen2.5:14b","messages":[{"role":"user","content":"Reply OK"}],"max_tokens":5}' 2>/dev/null)
+    if echo "$CHAT_RESP" | grep -q '"choices"'; then
+      ok "LiteLLM → Ollama chat"
+    else
+      warn "LiteLLM → Ollama chat failed (Ollama may be loading model)"
+    fi
   else
     fail "LiteLLM pod not running"
   fi

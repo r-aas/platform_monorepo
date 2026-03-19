@@ -11,6 +11,17 @@ n8n:
     limits:
       memory: 1Gi
       cpu: "1.0"
+  main:
+    extraEnvVars:
+      # LiteLLM proxy (in-cluster)
+      INFERENCE_BASE_URL: "http://genai-litellm.genai.svc.cluster.local:4000/v1"
+      INFERENCE_DEFAULT_MODEL: "qwen2.5:14b"
+      # Ollama direct (host via Colima gateway)
+      OLLAMA_BASE_URL: "http://192.168.5.2:11434"
+      # n8n settings
+      N8N_PUBLIC_API_ENABLED: "true"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      NODE_FUNCTION_ALLOW_EXTERNAL: "axios"
   db:
     type: postgresdb
   postgresql:
