@@ -93,6 +93,24 @@ if app_exists "genai-litellm"; then
   fi
 fi
 
+# n8n → LiteLLM connectivity
+if app_exists "genai-n8n" && app_exists "genai-litellm"; then
+  if kubectl exec -n genai deploy/genai-n8n -- wget -q -O- http://genai-litellm.genai.svc.cluster.local:4000/v1/models 2>/dev/null | grep -q '"id"'; then
+    ok "n8n → LiteLLM"
+  else
+    fail "n8n → LiteLLM (unreachable)"
+  fi
+fi
+
+# n8n → MLflow connectivity
+if app_exists "genai-n8n" && app_exists "genai-mlflow"; then
+  if kubectl exec -n genai deploy/genai-n8n -- wget -q -O- --post-data='{"max_results":1}' --header='Content-Type: application/json' http://genai-mlflow.genai.svc.cluster.local/api/2.0/mlflow/experiments/search 2>/dev/null | grep -q '"experiments"'; then
+    ok "n8n → MLflow"
+  else
+    fail "n8n → MLflow (unreachable)"
+  fi
+fi
+
 echo ""
 
 # ── Databases ───────────────────────────────────────────────
