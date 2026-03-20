@@ -12,5 +12,17 @@ RESUME.md
 # Helm chart dependencies (downloaded by `helm dep update`)
 charts/*/charts/*.tgz
 
+# Python
+__pycache__/
+*.pyc
+.venv/
+dist/
+*.egg-info/
+.python-version
+
+# Factory lock (ephemeral)
+.claude/autonomous/.factory-lock
+.claude/autonomous/.factory-stop
+
 # OS junk
 .DS_Store
