@@ -56,7 +56,8 @@ seedServers:
   enabled: true
   image: python:3.12-alpine
   # MCP servers to create (matches tRPC mcpServers.create schema)
-  # These run as STDIO subprocesses inside the MetaMCP container.
+  # STDIO servers run as subprocesses inside MetaMCP.
+  # STREAMABLE_HTTP servers are external k8s services (deployed as separate charts).
   servers:
     - name: fetch
       description: "Fetch web content as markdown"
@@ -76,6 +77,34 @@ seedServers:
       url: ""
       bearerToken: ""
       headers: {}
+    - name: gitlab
+      description: "GitLab CE API - repos, issues, MRs, pipelines (44 tools)"
+      type: STREAMABLE_HTTP
+      command: ""
+      args: []
+      env: {}
+      url: "http://genai-mcp-gitlab.genai.svc.cluster.local:3000/mcp"
+      bearerToken: ""
+      headers: {}
+    - name: kubernetes
+      description: "Kubernetes cluster management - kubectl, helm, pods, services"
+      type: STREAMABLE_HTTP
+      command: ""
+      args: []
+      env: {}
+      url: "http://genai-mcp-kubernetes.genai.svc.cluster.local:3000/mcp"
+      bearerToken: ""
+      headers: {}
+    - name: n8n
+      description: "n8n workflow automation - node docs, workflow CRUD, validation, execution"
+      type: STREAMABLE_HTTP
+      command: ""
+      args: []
+      env: {}
+      url: "http://genai-mcp-n8n.genai.svc.cluster.local:3000/mcp"
+      bearerToken: ""
+      headers:
+        Authorization: "Bearer n8n-mcp-k3d-token"
   # Namespaces and endpoints to create (bootstrap doesn't work in v2.4.22 image)
   namespaces:
     - name: genai
@@ -94,7 +123,9 @@ seedServers:
   # Which servers belong to which namespaces
   namespaceMappings:
     - namespace: genai
-      servers: ["fetch", "time"]
+      servers: ["fetch", "time", "gitlab", "kubernetes", "n8n"]
+    - namespace: platform
+      servers: ["gitlab", "kubernetes", "n8n"]
 
 ingress:
   enabled: true

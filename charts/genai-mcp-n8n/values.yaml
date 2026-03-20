@@ -1,0 +1,45 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/czlonkowski/n8n-mcp
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+server:
+  port: 3000
+  # Auth token for HTTP mode — MetaMCP sends this as Bearer token
+  authToken: "n8n-mcp-k3d-token"
+
+n8n:
+  apiUrl: "http://genai-n8n.genai.svc.cluster.local:5678"
+  # API key from n8n-api-credentials secret (created by scripts/n8n-setup.sh)
+  apiKeySecret: "n8n-api-credentials"
+  apiKeySecretKey: "api-key"
+
+service:
+  type: ClusterIP
+  port: 3000
+
+resources:
+  requests:
+    memory: 256Mi
+    cpu: 200m
+  limits:
+    memory: 512Mi
+    cpu: "1.0"
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  failureThreshold: 5
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 30
+  failureThreshold: 5

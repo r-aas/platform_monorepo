@@ -1,0 +1,44 @@
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Name }}-reader
+  labels:
+    app.kubernetes.io/name: mcp-kubernetes
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: genai-mlops
+rules:
+  # Broad read access to all resources
+  - apiGroups: ["", "apps", "batch", "networking.k8s.io", "rbac.authorization.k8s.io", "policy", "autoscaling", "storage.k8s.io"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  # Pod exec for debugging
+  - apiGroups: [""]
+    resources: ["pods/exec", "pods/log", "pods/portforward"]
+    verbs: ["create", "get"]
+  # Allow creating/updating/deleting resources for full k8s management
+  - apiGroups: ["", "apps", "batch", "networking.k8s.io"]
+    resources: ["deployments", "statefulsets", "daemonsets", "services", "configmaps", "jobs", "cronjobs", "ingresses", "pods"]
+    verbs: ["create", "update", "patch", "delete"]
+  # Scale subresource
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale", "statefulsets/scale", "replicasets/scale"]
+    verbs: ["get", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Name }}-reader
+  labels:
+    app.kubernetes.io/name: mcp-kubernetes
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: genai-mlops
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Name }}-reader
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Release.Name }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

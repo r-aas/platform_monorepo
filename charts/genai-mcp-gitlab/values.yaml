@@ -1,0 +1,40 @@
+replicaCount: 1
+
+image:
+  repository: node
+  tag: "24-alpine"
+  pullPolicy: IfNotPresent
+
+server:
+  package: "@structured-world/gitlab-mcp"
+  port: 3000
+
+gitlab:
+  apiUrl: "http://gitlab-ce.platform.svc.cluster.local"
+  token: "glpat-gJUm5txwvpYLXDBAGo3lP286MQp1OjEH.01.0w03rlitn"
+
+service:
+  type: ClusterIP
+  port: 3000
+
+resources:
+  requests:
+    memory: 256Mi
+    cpu: 500m
+  limits:
+    memory: 512Mi
+    cpu: "1.0"
+
+readinessProbe:
+  tcpSocket:
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  failureThreshold: 5
+
+livenessProbe:
+  tcpSocket:
+    port: http
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 5
