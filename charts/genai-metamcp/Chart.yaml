@@ -1,0 +1,6 @@
+apiVersion: v2
+name: metamcp
+description: MetaMCP — MCP gateway with namespaces, auth, search, and dynamic server management
+type: application
+version: 0.1.0
+appVersion: "latest"

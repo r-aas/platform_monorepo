@@ -1,0 +1,123 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/metatool-ai/metamcp
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 12008
+
+resources:
+  requests:
+    memory: 512Mi
+    cpu: 200m
+  limits:
+    memory: 1Gi
+    cpu: "2.0"
+
+# Database connection
+postgres:
+  host: genai-pg-metamcp.genai.svc.cluster.local
+  port: 5432
+  user: metamcp
+  password: metamcp
+  database: metamcp
+
+# Application config
+app:
+  # Must match ingress URL for CORS
+  url: "http://metamcp.genai.127.0.0.1.nip.io"
+  # Session signing secret
+  authSecret: "metamcp-k3d-secret-change-in-prod"
+  logLevel: "info"
+  # Rewrite localhost URLs to host.docker.internal in MCP server configs
+  transformLocalhost: "true"
+
+# Bootstrap — seeds initial user, API keys, namespaces, endpoints on first run
+bootstrap:
+  enabled: "true"
+  failHard: "false"
+  user:
+    email: "admin@metamcp.local"
+    name: "Admin"
+    password: "changeme"
+  # API keys seeded on bootstrap
+  apiKeys: '[{"name":"default","is_public":false}]'
+  # Default namespaces
+  namespaces: '[{"name":"genai","description":"GenAI stack MCP servers","is_public":true,"update":true},{"name":"platform","description":"Platform infrastructure MCP servers","is_public":true,"update":true}]'
+  # Default endpoints
+  endpoints: '[{"name":"genai","description":"GenAI namespace endpoint","enable_auth":false,"namespace":"genai","is_public":true,"update":true},{"name":"platform","description":"Platform namespace endpoint","enable_auth":false,"namespace":"platform","is_public":true,"update":true}]'
+
+# Post-deploy server seeding — creates MCP servers and links them to namespaces
+# MetaMCP bootstrap only handles users/apiKeys/namespaces/endpoints, not servers.
+seedServers:
+  enabled: true
+  image: python:3.12-alpine
+  # MCP servers to create (matches tRPC mcpServers.create schema)
+  # These run as STDIO subprocesses inside the MetaMCP container.
+  servers:
+    - name: fetch
+      description: "Fetch web content as markdown"
+      type: STDIO
+      command: uvx
+      args: ["mcp-server-fetch"]
+      env: {}
+      url: ""
+      bearerToken: ""
+      headers: {}
+    - name: time
+      description: "Current time and timezone conversions"
+      type: STDIO
+      command: uvx
+      args: ["mcp-server-time"]
+      env: {}
+      url: ""
+      bearerToken: ""
+      headers: {}
+  # Namespaces and endpoints to create (bootstrap doesn't work in v2.4.22 image)
+  namespaces:
+    - name: genai
+      description: "GenAI stack MCP servers"
+    - name: platform
+      description: "Platform infrastructure MCP servers"
+  endpoints:
+    - name: genai
+      description: "GenAI namespace endpoint"
+      namespace: genai
+      enable_auth: false
+    - name: platform
+      description: "Platform namespace endpoint"
+      namespace: platform
+      enable_auth: false
+  # Which servers belong to which namespaces
+  namespaceMappings:
+    - namespace: genai
+      servers: ["fetch", "time"]
+
+ingress:
+  enabled: true
+  className: nginx
+  host: metamcp.genai.127.0.0.1.nip.io
+  annotations:
+    # SSE requires no buffering and long timeouts
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "86400"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 12008
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  failureThreshold: 5
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 12008
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  failureThreshold: 5
