@@ -48,6 +48,9 @@
 - **After committing, run tests again** to verify the commit didn't break anything
 - If post-commit tests fail, **immediately revert**: `git revert HEAD --no-edit` and log the incident
 - **Uncommitted changes abort**: If `git status` shows changes and the last commit wasn't made by a factory worker (check commit message for `[B.xx]` pattern), abort. Don't try to stash or work around R's changes.
+- **Always stage files explicitly** — never use `git add .` or `git add -A`. List each file by path.
+- **Never commit generated artifacts**: `__pycache__/`, `*.pyc`, `.venv/`, `dist/`, `*.egg-info/`, `.python-version`, node_modules/. Check `.gitignore` before staging.
+- **Pre-commit check**: Before `git commit`, run `git diff --cached --name-only` and verify no ignored/generated files are staged. If any are, `git rm --cached` them first.
 
 ## Scope Containment
 

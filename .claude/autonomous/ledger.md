@@ -20,11 +20,11 @@ B — Skill Library Expansion (A complete for MVP)
 
 ### Priority 1 — Gateway Gaps (from spec 001 tasks.md)
 
-- [ ] B.01 Wire skill resolution in chat router (currently passes `skills=[]` to composer)
+- [x] B.01 Wire skill resolution in chat router (ee28b4c)
       Domain: D2/gateway-core | Files: routers/chat.py, composer.py
 - [ ] B.02 Add embedding similarity to search endpoints (Ollama /v1/embeddings)
       Domain: D4/embeddings | Files: routers/agents.py, skills.py, mcp.py
-- [ ] B.03 Force flag in delete_skill — check agent references before delete
+- [x] B.03 Force flag in delete_skill — check agent references before delete (1186e08)
       Domain: D2/skill-library | Files: skills_registry.py
 - [ ] B.04 Workflow export with validation gate (Phase 6: T038-T042)
       Domain: D5/workflow-gitops | Files: workflows/export.py, import_.py
@@ -132,3 +132,5 @@ B — Skill Library Expansion (A complete for MVP)
 
 <!-- Factory self-improvement notes -->
 <!-- Format: date | what changed | why -->
+- 2026-03-20 | B.01, B.03 completed by factory-worker | First run. Worker did code+tests+commits correctly but skipped self-improvement loop (didn't update ledger, lessons, or RESUME). Fixed by R.
+- 2026-03-20 | Guardrails updated: added git staging rules | Factory committed __pycache__ on first run. Added explicit staging rules and pre-commit check to guardrails.
