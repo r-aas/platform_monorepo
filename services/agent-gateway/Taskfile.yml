@@ -1,0 +1,94 @@
+version: "3"
+
+dotenv:
+  - .env.local
+  - .env
+  - .env.example
+  - ~/work/envs/global.env
+
+vars:
+  SERVICE_DIR: "{{.ROOT_DIR}}"
+  AGENTS_DIR: "{{.ROOT_DIR}}/../../agents"
+  SKILLS_DIR: "{{.ROOT_DIR}}/../../skills"
+  WORKFLOWS_DIR: "{{.ROOT_DIR}}/../../workflows"
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list
+
+  setup:
+    desc: Install dependencies and create .env
+    cmds:
+      - uv sync
+      - test -f .env || cp .env.example .env 2>/dev/null || true
+
+  dev:
+    desc: Start gateway in dev mode with hot reload
+    cmds:
+      - uv run uvicorn agent_gateway.main:app --host 0.0.0.0 --port 8000 --reload
+
+  stop:
+    desc: Stop dev server (no-op for uvicorn, killed via Ctrl-C)
+    cmds:
+      - echo "Dev server runs in foreground — use Ctrl-C to stop"
+
+  test:
+    desc: Run tests
+    cmds:
+      - uv run pytest {{.CLI_ARGS}}
+
+  lint:
+    desc: Lint and format check
+    cmds:
+      - uv run ruff check .
+      - uv run ruff format --check .
+
+  format:
+    desc: Auto-format code
+    cmds:
+      - uv run ruff format .
+      - uv run ruff check --fix .
+
+  sync:
+    desc: Sync agent YAMLs to MLflow prompt registry
+    cmds:
+      - uv run python -c "
+        from pathlib import Path;
+        from agent_gateway.agentspec.sync import sync_all;
+        synced = sync_all(Path('{{.AGENTS_DIR}}'));
+        print(f'Synced {len(synced)} agents:', ', '.join(synced))
+        "
+
+  seed-skills:
+    desc: Seed skill YAMLs to MLflow model registry
+    cmds:
+      - uv run python -c "
+        from pathlib import Path;
+        import yaml;
+        from agent_gateway.models import SkillDefinition, MCPServerRef, TaskDefinition, EvaluationRef;
+        from agent_gateway.skills_registry import create_skill;
+        skills_dir = Path('{{.SKILLS_DIR}}');
+        for f in sorted(skills_dir.glob('*.yaml')):
+            raw = yaml.safe_load(f.read_text());
+            mcp = [MCPServerRef(**s) for s in raw.get('mcp_servers', [])];
+            tasks = [];
+            for t in raw.get('tasks', []):
+                ev = t.pop('evaluation', None);
+                task = TaskDefinition(**t);
+                if ev: task.evaluation = EvaluationRef(**ev);
+                tasks.append(task);
+            skill = SkillDefinition(name=raw['name'], description=raw.get('description',''), version=raw.get('version','1.0.0'), tags=raw.get('tags',[]), mcp_servers=mcp, prompt_fragment=raw.get('prompt_fragment',''), tasks=tasks);
+            try:
+                create_skill(skill);
+                print(f'  Created: {skill.name}');
+            except ValueError:
+                print(f'  Exists: {skill.name}');
+        "
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - rm -rf .task/ __pycache__ dist/ .pytest_cache/ .ruff_cache/
+      - find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

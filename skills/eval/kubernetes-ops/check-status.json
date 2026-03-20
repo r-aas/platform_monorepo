@@ -1,0 +1,18 @@
+{
+  "task": "check-status",
+  "skill": "kubernetes-ops",
+  "cases": [
+    {
+      "id": "check-running",
+      "input": "Check the status of the fraud-detection deployment",
+      "expected_output_contains": ["pod", "status"],
+      "expected_tools_used": ["kubectl_get"]
+    },
+    {
+      "id": "check-not-found",
+      "input": "Check the status of the nonexistent-model deployment",
+      "expected_output_contains": ["not found"],
+      "expected_tools_used": ["kubectl_get"]
+    }
+  ]
+}

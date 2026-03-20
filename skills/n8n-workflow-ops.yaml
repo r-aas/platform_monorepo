@@ -1,0 +1,42 @@
+name: n8n-workflow-ops
+description: Manage n8n workflows — list, inspect, create, validate, execute
+version: "1.0.0"
+tags: ["automation", "workflows", "n8n"]
+
+mcp_servers:
+  - url: http://genai-metamcp.genai.svc.cluster.local:12008/metamcp/genai/mcp
+    tool_filter:
+      - list_workflows
+      - get_workflow
+      - create_workflow
+      - update_workflow
+      - delete_workflow
+      - activate_workflow
+      - deactivate_workflow
+      - execute_workflow
+      - get_workflow_executions
+      - list_workflow_tags
+      - validate_workflow
+      - create_workflow_from_template
+      - get_available_nodes
+
+prompt_fragment: |
+  When managing n8n workflows:
+  - Only create or modify workflows in the dev project
+  - Validate workflows before activating them
+  - Report workflow structure clearly (nodes, connections, triggers)
+  - Warn before deleting or deactivating active workflows
+  - Use get_available_nodes to help users discover node types
+
+tasks:
+  - name: list-workflows
+    description: List all workflows with their activation status
+
+  - name: create-workflow
+    description: Create a new workflow from description or template
+
+  - name: validate-workflow
+    description: Check a workflow for configuration errors
+
+  - name: inspect-workflow
+    description: Show workflow structure, nodes, and connections

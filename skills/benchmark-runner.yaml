@@ -1,0 +1,32 @@
+name: benchmark-runner
+description: Run evaluations and benchmarks on agent tasks
+version: "1.0.0"
+tags: ["evaluation", "benchmarking"]
+
+mcp_servers:
+  - url: http://genai-agent-gateway.genai.svc.cluster.local:8000/mcp
+    tool_filter: ["run_benchmark", "list_benchmark_results", "get_benchmark"]
+
+prompt_fragment: |
+  When running benchmarks:
+  - Confirm the agent, skill, and task before starting
+  - Report results including pass rate, latency, and individual failures
+  - Suggest improvements based on failure patterns
+  - Compare against previous benchmark runs when available
+
+tasks:
+  - name: run-benchmark
+    description: Execute an evaluation dataset against an agent's task
+    inputs:
+      - title: agent
+        type: string
+      - title: skill
+        type: string
+      - title: task
+        type: string
+
+  - name: list-results
+    description: List benchmark results for an agent or task
+    inputs:
+      - title: agent
+        type: string

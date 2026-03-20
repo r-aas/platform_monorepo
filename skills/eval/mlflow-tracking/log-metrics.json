@@ -1,0 +1,12 @@
+{
+  "task": "log-metrics",
+  "skill": "mlflow-tracking",
+  "cases": [
+    {
+      "id": "log-accuracy",
+      "input": "Log accuracy=0.95 and loss=0.05 to the fraud-detection experiment",
+      "expected_output_contains": ["logged", "accuracy"],
+      "expected_tools_used": ["mlflow_log_metric"]
+    }
+  ]
+}

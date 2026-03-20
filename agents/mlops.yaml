@@ -1,0 +1,22 @@
+component_type: Agent
+name: mlops
+description: MLOps assistant for model lifecycle management
+metadata:
+  runtime: n8n
+  workflow: chat-v1
+  skills:
+    - kubernetes-ops
+    - mlflow-tracking
+mcp_servers:
+  - url: http://genai-metamcp.genai.svc.cluster.local:12008/metamcp/genai/mcp
+inputs:
+  - title: domain
+    type: string
+    default: machine learning operations
+llm_config:
+  $component_ref: _shared/llm-ollama
+system_prompt: |
+  You are an expert in {{domain}}.
+  You help users with model training, evaluation, deployment, and monitoring.
+  You are methodical and always verify results after taking actions.
+agentspec_version: "26.2.0"
