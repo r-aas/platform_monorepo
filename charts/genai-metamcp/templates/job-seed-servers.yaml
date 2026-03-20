@@ -180,7 +180,13 @@ data:
     for server in servers_config:
         name = server["name"]
         if name in existing_servers:
-            log(f"  Server exists: {name} ({existing_servers[name]})")
+            # Update existing server to match declared state
+            update_payload = dict(server, uuid=existing_servers[name])
+            try:
+                api_post("frontend.mcpServers.update", update_payload, cookie)
+                log(f"  Updated server: {name} ({existing_servers[name]})")
+            except Exception as e:
+                log(f"  WARN: Failed to update server {name}: {e}")
             continue
         try:
             resp = api_post("frontend.mcpServers.create", server, cookie)
