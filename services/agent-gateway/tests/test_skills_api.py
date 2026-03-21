@@ -78,3 +78,66 @@ async def test_delete_skill_endpoint(mock_delete, client):
 
     resp = await client.delete("/skills/k8s-ops")
     assert resp.status_code == 200
+
+
+# --- Semantic search endpoint tests (D.02) ---
+
+
+@patch("agent_gateway.routers.skills.get_embedding", return_value=None)
+@patch("agent_gateway.routers.skills.list_skills")
+async def test_search_skills_keyword_match(mock_list, mock_emb, client):
+    mock_list.return_value = [
+        SkillDefinition(name="kubernetes-ops", description="Manage k8s clusters", tags=["infra", "k8s"], version="1.0.0"),
+        SkillDefinition(name="code-generation", description="Generate code from specs", tags=["dev"], version="1.0.0"),
+    ]
+
+    resp = await client.get("/skills/search?q=kubernetes")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["query"] == "kubernetes"
+    assert len(data["results"]) >= 1
+    assert data["results"][0]["name"] == "kubernetes-ops"
+
+
+@patch("agent_gateway.routers.skills.get_embedding", return_value=None)
+@patch("agent_gateway.routers.skills.list_skills")
+async def test_search_skills_no_match_returns_empty(mock_list, mock_emb, client):
+    mock_list.return_value = [
+        SkillDefinition(name="kubernetes-ops", description="Manage k8s clusters", tags=["infra"], version="1.0.0"),
+    ]
+
+    resp = await client.get("/skills/search?q=totally-unrelated-xyz")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["results"] == []
+
+
+@patch("agent_gateway.routers.skills.cosine_similarity", return_value=0.9)
+@patch("agent_gateway.routers.skills.get_embedding", return_value=[0.1, 0.2, 0.3])
+@patch("agent_gateway.routers.skills.list_skills")
+async def test_search_skills_with_embedding_boosts_score(mock_list, mock_emb, mock_cos, client):
+    mock_list.return_value = [
+        SkillDefinition(name="kubernetes-ops", description="Manage k8s clusters", tags=["infra"], version="1.0.0"),
+    ]
+
+    resp = await client.get("/skills/search?q=kubernetes")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["results"]) == 1
+    # With embedding enabled, score includes both keyword and similarity components
+    assert data["results"][0]["score"] > 0
+
+
+@patch("agent_gateway.routers.skills.get_embedding", return_value=None)
+@patch("agent_gateway.routers.skills.list_skills")
+async def test_search_skills_embedding_fallback_keyword_only(mock_list, mock_emb, client):
+    """When get_embedding returns None, keyword-only scoring still works."""
+    mock_list.return_value = [
+        SkillDefinition(name="security-audit", description="Scan code for vulnerabilities", tags=["security"], version="1.0.0"),
+    ]
+
+    resp = await client.get("/skills/search?q=security")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["results"]) == 1
+    assert data["results"][0]["name"] == "security-audit"
