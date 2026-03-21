@@ -111,3 +111,52 @@ def test_platform_admin_llm_config():
     agent = load_agent("platform-admin")
     assert agent.llm_config.url
     assert agent.llm_config.model_id
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# B.18 — developer
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_developer_agent_loads():
+    agent = load_agent("developer")
+    assert agent.name == "developer"
+
+
+def test_developer_has_description():
+    agent = load_agent("developer")
+    assert agent.description
+
+
+def test_developer_has_system_prompt():
+    agent = load_agent("developer")
+    assert agent.system_prompt.strip()
+
+
+def test_developer_has_expected_skills():
+    agent = load_agent("developer")
+    skills = set(agent.skills)
+    assert "code-generation" in skills, f"Expected code-generation skill. Got: {skills}"
+    assert "documentation" in skills, f"Expected documentation skill. Got: {skills}"
+    assert "security-audit" in skills, f"Expected security-audit skill. Got: {skills}"
+
+
+def test_developer_has_mcp_servers():
+    agent = load_agent("developer")
+    assert agent.mcp_servers, "developer agent must reference at least one MCP server"
+
+
+def test_developer_runtime_is_n8n():
+    agent = load_agent("developer")
+    assert agent.runtime == "n8n"
+
+
+def test_developer_has_agentspec_version():
+    agent = load_agent("developer")
+    assert agent.agentspec_version
+
+
+def test_developer_llm_config():
+    agent = load_agent("developer")
+    assert agent.llm_config.url
+    assert agent.llm_config.model_id
