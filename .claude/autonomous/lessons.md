@@ -33,6 +33,8 @@
 - 2026-03-21 | C.01 | Non-fatal startup registration pattern: wrap in try/except inside lifespan, return bool instead of raising. Tests can assert False on error without side effects. This makes services resilient to MetaMCP being down during startup.
 - 2026-03-21 | C.02 | Index + fallback pattern: module-level `_tool_index: ToolIndex | None = None` with get/set functions. Startup populates via lifespan; API endpoints check `get_tool_index()` and fall back to live fetch if None. Pattern decouples discovery from request latency.
 - 2026-03-21 | C.02 | When a function falls back to static data (discover_namespaces → ["genai","platform"]), tests that exercise subsequent code MUST also mock the downstream calls triggered by that fallback. Otherwise pytest-httpx raises "unregistered request" assertion. Always trace the full call chain for mocked tests.
+- 2026-03-21 | C.03 | Endpoint tests must be `async def` with `await client.get/post()` — conftest uses AsyncClient, not TestClient. Check conftest.py before writing endpoint tests to avoid "coroutine has no attribute status_code" errors.
+- 2026-03-21 | C.04 | Generic YAML-driven registration pattern: load_namespace_config() pure (file I/O only, never raises) + register_namespace_servers() async (tRPC I/O, non-fatal). This decouples "what to register" (YAML) from "how to register" (tRPC), making it easy to add new namespaces without code changes.
 
 ## Task Templates
 

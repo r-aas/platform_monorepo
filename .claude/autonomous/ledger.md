@@ -67,8 +67,8 @@ B — Skill Library Expansion (A complete for MVP)
 
 - [x] C.01 Gateway MCP server registration in MetaMCP (ab57411)
 - [x] C.02 Auto-discovery: scan MetaMCP namespaces, index all tools (6eae872)
-- [ ] C.03 MCP tool recommendation engine — given a task, suggest tools
-- [ ] C.04 Namespace: data — register data pipeline MCP servers
+- [x] C.03 MCP tool recommendation engine — given a task, suggest tools (04ea373)
+- [x] C.04 Namespace: data — register data pipeline MCP servers (9127598)
 
 ### Phase D — Intelligence (after B)
 
@@ -147,3 +147,5 @@ B — Skill Library Expansion (A complete for MVP)
 - 2026-03-21 | B.16+B.17+B.18 complete: data-engineer, platform-admin, developer agent YAMLs. New test_agent_yamls.py with 24 schema validation tests (161 total). Phase B fully done (P1+P2+P3). | Health: All non-blocked B items complete. Next: Phase C (MCP Mesh) starting with C.01.
 - 2026-03-21 | C.01 complete: metamcp_client.py with tRPC auth+create+update+namespace-assign. Config extended with 6 MetaMCP settings. main.py lifespan wires non-fatal registration on startup. 5 tests via pytest-httpx (166 total). | Health: Phase C active (1/4 done). C.02 next (auto-discovery).
 - 2026-03-21 | C.02 complete: mcp_discovery.py with DiscoveredTool/ToolIndex, discover_namespaces() via tRPC + static fallback, fetch_tools_for_namespace() via MCP proxy, index_all_tools() non-fatal. main.py lifespan wires index on startup. mcp.py router uses cached index with live-fetch fallback. 9 new tests (175 total). | Health: Phase C active (2/4 done). C.03 (recommendation engine) next.
+- 2026-03-21 | C.03 complete: mcp_recommender.py with pure score_tools() + async recommend_tools(). GET /mcp/recommend endpoint with top_n/min_score params. match_hints per tool explain relevance. 13 new tests (188 total). | Health: Phase C active (3/4 done). C.04 next.
+- 2026-03-21 | C.04 complete: namespace_registry.py with load_namespace_config() + register_namespace_servers(). namespaces/data.yaml with postgres-mcp, files-mcp, airflow-mcp. Generic pattern replaces hardcoded gateway registration. 10 new tests (198 total). Phase C fully done. | Health: All Phase C items complete. Next: Phase D (Intelligence) — D.01 embedding service.
