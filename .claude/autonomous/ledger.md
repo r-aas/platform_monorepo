@@ -41,9 +41,9 @@ B — Skill Library Expansion (A complete for MVP)
 
 ### Priority 2 — Skill Library Expansion
 
-- [ ] B.10 Skill: data-ingestion — S3/GCS read, transform, load to postgres/vector store
+- [x] B.10 Skill: data-ingestion — S3/GCS read, transform, load to postgres/vector store (7ad2104)
       Domain: D2/skill-library | Produces: skills/data-ingestion.yaml
-- [ ] B.11 Skill: vector-store-ops — pgvector/qdrant index management, similarity search
+- [x] B.11 Skill: vector-store-ops — pgvector/qdrant index management, similarity search (7ad2104)
       Domain: D2/skill-library | Produces: skills/vector-store-ops.yaml
 - [ ] B.12 Skill: prompt-engineering — optimize system prompts via A/B eval
       Domain: D2/skill-library | Produces: skills/prompt-engineering.yaml
@@ -141,3 +141,4 @@ B — Skill Library Expansion (A complete for MVP)
 - 2026-03-21 | B.04 complete: workflow export/import with portable credential refs. Pure transformation functions + thin async n8n API wrappers. Taskfile tasks wired. 21 new tests (60 total). | Health: P1 backlog shrinking (4/6 done), B.05 and B.06 remain as high-value items.
 - 2026-03-21 | B.05 complete: benchmark runner with pure evaluate_case(), MLflow logging, POST /skills/{name}/tasks/{task}/benchmark endpoint, eval datasets for kubernetes-ops. 17 new tests (77 total). | Health: P1 near complete (6/7 non-blocked done).
 - 2026-03-21 | B.06 complete: gateway MCP server at /gateway-mcp. JSON-RPC 2.0 over HTTP, 6 tools (list/get agents+skills, create/delete skill), initialize handshake. 12 new tests (89 total). All P1 non-blocked items done. | Health: P1 complete (B.07/B.08 blocked). Next: P2 skill library expansion.
+- 2026-03-21 | B.10+B.11 complete: data-ingestion and vector-store-ops skill YAMLs. TDD with 16 schema validation tests (105 total). Path traversal gotcha: test was 5 parents deep but needed 4. | Health: P2 active (2/6 done). B.12-B.15 remain.

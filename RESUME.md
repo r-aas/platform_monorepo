@@ -1,45 +1,35 @@
 # Platform Monorepo — Session Resume
 
-## Session: 2026-03-21 — Factory Worker Run 4
+## Session: 2026-03-21 — Factory Worker Run 5
 
 ### Built
 
-- **Benchmark runner** — `services/agent-gateway/src/agent_gateway/benchmark/runner.py`
-  - `CaseResult` + `BenchmarkResult` dataclasses with computed `pass_rate`, `avg_latency`, `total_cases`
-  - `evaluate_case(case, actual_output, tools_used, latency_seconds)` — pure evaluation function
-  - `load_dataset(path)` — loads JSON eval dataset from disk
-  - `run_benchmark_task(skill, task, agent, dataset_path, tracking_uri)` — bridge for endpoint
+- **data-ingestion skill** — `skills/data-ingestion.yaml`
+  - Tags: data, etl, ingestion
+  - MCP servers: genai namespace (postgres_query, s3_get_object, gcs_read_object, etc.)
+  - 4 tasks: ingest-s3, ingest-gcs, load-postgres, load-vector-store
+  - Prompt fragment with batch-insert and embedding guidance
 
-- **Benchmark results** — `services/agent-gateway/src/agent_gateway/benchmark/results.py`
-  - `record_results(results, tracking_uri)` — creates MLflow experiment `eval:{agent}:{skill}:{task}`, logs pass_rate/avg_latency/total_cases metrics, attaches per-case artifact
+- **vector-store-ops skill** — `skills/vector-store-ops.yaml`
+  - Tags: vector-db, embeddings, search
+  - MCP servers: genai namespace (postgres_query, qdrant_search, qdrant_upsert, etc.)
+  - 4 tasks: create-index, similarity-search, upsert-vectors, delete-index
+  - Prompt fragment with cosine similarity and safety guidance for deletes
 
-- **Benchmark endpoint** — `POST /skills/{name}/tasks/{task}/benchmark?agent={name}`
-  - Returns 202 with benchmark_id (MLflow run_id), skill, task, agent
-  - 404 for unknown skill/task, 422 if task has no evaluation ref
-
-- **Eval datasets** — `skills/eval/kubernetes-ops/deploy-model.json` (3 cases) + `check-status.json` (2 cases)
-
-- **Taskfile** — `task agents:benchmark SKILL=... TASK=... AGENT=...`
-
-- **Gateway MCP server** — `services/agent-gateway/src/agent_gateway/mcp_server.py`
-  - JSON-RPC 2.0 over HTTP POST at `/gateway-mcp`
-  - Methods: `initialize`, `tools/list`, `tools/call`
-  - Tools: `list_agents`, `get_agent`, `list_skills`, `get_skill`, `create_skill`, `delete_skill`
-  - Proper JSON-RPC error codes (-32601 for method not found)
-  - Success results: `{content: [{type: text, text: ...}]}`
-  - Error results: `{content: [...], isError: true}`
+- **Skill YAML test harness** — `services/agent-gateway/tests/test_skill_yamls.py`
+  - 16 schema validation tests (8 per skill)
+  - Tests: loads, has description, has tags, has MCP servers, has prompt fragment, has tasks, task name coverage, task descriptions
+  - Reusable `load_skill_yaml(name)` helper for all future skill YAML tests
 
 ### Test Status
 
-89 tests passing:
-- test_benchmark.py (17) — evaluate_case pure logic, load_dataset, BenchmarkResult aggregation, benchmark endpoint
-- test_mcp_server.py (12) — tools/list schema, tools/call dispatch, error handling, initialize
-- All prior 60 tests still passing
+105 tests passing:
+- test_skill_yamls.py (16) — new B.10/B.11 schema validation
+- All prior 89 tests still passing
 
 ### Commits This Session
 
-- `8ff828b` feat(agent-gateway): benchmark runner with eval datasets and MLflow logging [B.05]
-- `c42dffa` feat(agent-gateway): gateway MCP server exposing REST API as MCP tools [B.06]
+- `7ad2104` feat(agent-gateway): skill YAMLs for data-ingestion and vector-store-ops [B.10] [B.11]
 
 ### Branch
 
@@ -51,18 +41,21 @@
 |------|------|--------|
 | B.07 | Python runtime | Blocked (needs pyagentspec eval) |
 | B.08 | Claude Code runtime | Blocked (needs headless testing) |
-| B.10-B.15 | Skill library expansion | Priority 2 — next after P1 complete |
+| B.12 | Skill: prompt-engineering | Priority 2 — next |
+| B.13 | Skill: code-generation | Priority 2 |
+| B.14 | Skill: documentation | Priority 2 |
+| B.15 | Skill: security-audit | Priority 2 |
 | B.16-B.18 | New agents | Priority 3 |
 
 ### Next Steps
 
-- [local] B.10: Skill YAML — data-ingestion (S3/GCS read → postgres/vector store) in `skills/data-ingestion.yaml`
-- [local] B.11: Skill YAML — vector-store-ops (pgvector/qdrant index management) in `skills/vector-store-ops.yaml`
+- [local] B.12: Skill YAML — prompt-engineering (optimize system prompts via A/B eval) in `skills/prompt-engineering.yaml`
+- [local] B.13: Skill YAML — code-generation (generate/modify code with test verification) in `skills/code-generation.yaml`
+- [local] Use test_skill_yamls.py pattern — same 8 tests per skill, add to the existing file
 
 ### Notes
 
-- All Priority 1 non-blocked items complete (B.01–B.06, B.09)
-- MCP server at `/gateway-mcp` uses raw JSON-RPC — no fastmcp dependency needed for stub
-- registry.py functions (get_agent, list_agents) are async — await directly, NOT to_thread
-- skills_registry.py functions are sync — use asyncio.to_thread
+- Path from test to skills dir: `Path(__file__).parent * 4` (4 parents: tests→agent-gateway→services→platform_monorepo)
+- Skill YAML TDD loop: write test → confirm red (FileNotFoundError) → create YAML → green
 - `uv run pytest` MUST be run from `services/agent-gateway/`, not monorepo root
+- All P1 non-blocked items complete (B.01–B.06, B.09). P2 is 2/6 done.
