@@ -35,6 +35,10 @@
 - 2026-03-21 | C.02 | When a function falls back to static data (discover_namespaces → ["genai","platform"]), tests that exercise subsequent code MUST also mock the downstream calls triggered by that fallback. Otherwise pytest-httpx raises "unregistered request" assertion. Always trace the full call chain for mocked tests.
 - 2026-03-21 | C.03 | Endpoint tests must be `async def` with `await client.get/post()` — conftest uses AsyncClient, not TestClient. Check conftest.py before writing endpoint tests to avoid "coroutine has no attribute status_code" errors.
 - 2026-03-21 | C.04 | Generic YAML-driven registration pattern: load_namespace_config() pure (file I/O only, never raises) + register_namespace_servers() async (tRPC I/O, non-fatal). This decouples "what to register" (YAML) from "how to register" (tRPC), making it easy to add new namespaces without code changes.
+- 2026-03-21 | D.01 | EmbeddingCache with OrderedDict: `move_to_end(key)` on get (LRU update) + `popitem(last=False)` on overflow (evict LRU). Pure stdlib — no cachetools dep needed. Size 512 is a good default for skill/agent/tool text corpus sizes.
+- 2026-03-21 | D.01 | Module-level cache test isolation: any test calling get_embedding() for the same text string as a prior test WILL get the cached result from the module singleton. Must call clear_embedding_cache() at start of each test that uses get_embedding(). Pattern: fixture or explicit call at test start.
+- 2026-03-21 | D.02/D.03 | When a ledger item says "X with semantic similarity" but the router already imports get_embedding/hybrid_score, check if the implementation already exists before writing code. If it does, TDD confirms it (tests pass immediately). The value is still in the coverage — write the tests anyway.
+- 2026-03-21 | D.02/D.03 | For endpoint search tests: mock both get_embedding AND cosine_similarity when you want deterministic hybrid scores. Mock only get_embedding=None when testing keyword-only fallback. The cosine_similarity mock prevents test from depending on actual vector math against mocked embeddings.
 
 ## Task Templates
 

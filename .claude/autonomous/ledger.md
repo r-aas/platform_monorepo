@@ -72,9 +72,9 @@ B — Skill Library Expansion (A complete for MVP)
 
 ### Phase D — Intelligence (after B)
 
-- [ ] D.01 Embedding service — utility for computing + caching embeddings
-- [ ] D.02 Skill search with semantic similarity
-- [ ] D.03 Agent search with semantic similarity
+- [x] D.01 Embedding service — LRU cache (EmbeddingCache + module singleton) (365d12d)
+- [x] D.02 Skill search with semantic similarity — endpoint tests added (49003c7)
+- [x] D.03 Agent search with semantic similarity — endpoint tests added (49003c7)
 - [ ] D.04 MCP tool search with semantic similarity
 - [ ] D.05 Benchmark runner end-to-end
 - [ ] D.06 Eval dataset expansion — 10+ cases per skill task
@@ -149,3 +149,5 @@ B — Skill Library Expansion (A complete for MVP)
 - 2026-03-21 | C.02 complete: mcp_discovery.py with DiscoveredTool/ToolIndex, discover_namespaces() via tRPC + static fallback, fetch_tools_for_namespace() via MCP proxy, index_all_tools() non-fatal. main.py lifespan wires index on startup. mcp.py router uses cached index with live-fetch fallback. 9 new tests (175 total). | Health: Phase C active (2/4 done). C.03 (recommendation engine) next.
 - 2026-03-21 | C.03 complete: mcp_recommender.py with pure score_tools() + async recommend_tools(). GET /mcp/recommend endpoint with top_n/min_score params. match_hints per tool explain relevance. 13 new tests (188 total). | Health: Phase C active (3/4 done). C.04 next.
 - 2026-03-21 | C.04 complete: namespace_registry.py with load_namespace_config() + register_namespace_servers(). namespaces/data.yaml with postgres-mcp, files-mcp, airflow-mcp. Generic pattern replaces hardcoded gateway registration. 10 new tests (198 total). Phase C fully done. | Health: All Phase C items complete. Next: Phase D (Intelligence) — D.01 embedding service.
+- 2026-03-21 | D.01 complete: EmbeddingCache class (OrderedDict LRU, maxsize=512) + module singleton. get_embedding() checks cache before HTTP — repeated calls skip Ollama. clear_embedding_cache()/embedding_cache_size() helpers. 8 new tests (206 total). Cache isolation bug found: tests sharing same text key must call clear_embedding_cache() first. | Health: Phase D active (3/7 done — D.02+D.03 already implemented via B.02, now have test coverage). D.04 next.
+- 2026-03-21 | D.02+D.03 complete (tests): 4 tests for /skills/search, 4 tests for /agents/search (new test_agents_api.py). Implementation already existed from B.02. Tests confirm hybrid scoring (keyword + embedding), fallback to keyword-only when Ollama unavailable. 8 new tests (214 total). | Health: D.04 (MCP tool search tests) is the natural next item.
