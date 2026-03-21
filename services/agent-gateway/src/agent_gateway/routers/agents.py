@@ -1,5 +1,7 @@
 """Agent discovery and export API router."""
 
+import asyncio
+
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 
@@ -82,7 +84,7 @@ async def get_agent_endpoint(name: str):
     resolved_skills = []
     for skill_name in agent.skills:
         try:
-            skill = get_skill(skill_name)
+            skill = await asyncio.to_thread(get_skill, skill_name)
             resolved_skills.append(
                 {
                     "name": skill.name,
@@ -124,7 +126,7 @@ async def export_agent_spec(name: str):
     all_mcp_servers = list(agent.mcp_servers)
     for skill_name in agent.skills:
         try:
-            skill = get_skill(skill_name)
+            skill = await asyncio.to_thread(get_skill, skill_name)
             all_mcp_servers.extend(skill.mcp_servers)
         except KeyError:
             pass

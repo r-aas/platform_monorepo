@@ -1,5 +1,6 @@
 """Agent registry — reads agent definitions from MLflow prompt registry."""
 
+import asyncio
 import json
 
 import mlflow
@@ -7,8 +8,8 @@ import mlflow
 from agent_gateway.models import AgentDefinition, LlmConfig, MCPServerRef
 
 
-def _parse_agent_from_prompt(prompt_name: str, version) -> AgentDefinition:
-    """Parse an AgentDefinition from an MLflow prompt version."""
+def _parse_agent_from_version(prompt_name: str, version) -> AgentDefinition:
+    """Parse an AgentDefinition from an MLflow PromptVersion."""
     name = prompt_name.removeprefix("agent:")
     tags = version.tags or {}
 
@@ -44,22 +45,31 @@ def _parse_agent_from_prompt(prompt_name: str, version) -> AgentDefinition:
 
 async def get_agent(name: str) -> AgentDefinition:
     """Look up an agent by name from MLflow."""
-    client = mlflow.MlflowClient()
-    try:
-        prompt = client.get_prompt(f"agent:{name}")
-    except Exception as e:
-        raise KeyError(f"Agent '{name}' not found") from e
 
-    latest = prompt.latest_versions[0]
-    return _parse_agent_from_prompt(f"agent:{name}", latest)
+    def _get():
+        client = mlflow.MlflowClient()
+        try:
+            version = client.get_prompt_version(f"agent:{name}", version=1)
+        except Exception as e:
+            raise KeyError(f"Agent '{name}' not found") from e
+        return _parse_agent_from_version(f"agent:{name}", version)
+
+    return await asyncio.to_thread(_get)
 
 
 async def list_agents() -> list[AgentDefinition]:
     """List all agents from MLflow."""
-    client = mlflow.MlflowClient()
-    prompts = client.search_prompts(filter_string="name LIKE 'agent:%'")
-    agents = []
-    for p in prompts:
-        if p.latest_versions:
-            agents.append(_parse_agent_from_prompt(p.name, p.latest_versions[0]))
-    return agents
+
+    def _list():
+        client = mlflow.MlflowClient()
+        prompts = client.search_prompts(filter_string="name LIKE 'agent:%'")
+        agents = []
+        for p in prompts:
+            try:
+                version = client.get_prompt_version(p.name, version=1)
+                agents.append(_parse_agent_from_version(p.name, version))
+            except Exception:
+                pass
+        return agents
+
+    return await asyncio.to_thread(_list)

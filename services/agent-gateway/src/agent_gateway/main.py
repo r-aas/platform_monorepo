@@ -26,16 +26,27 @@ app.include_router(mcp_router)
 
 @app.get("/health")
 async def health():
-    mlflow_status = "disconnected"
-    agents_loaded = 0
-    try:
-        client = mlflow.MlflowClient()
-        prompts = client.search_prompts(filter_string="name LIKE 'agent:%'")
-        agents_loaded = len(prompts)
-        mlflow_status = "connected"
-    except Exception:
-        pass
-    return JSONResponse({"status": "healthy", "mlflow": mlflow_status, "agents_loaded": agents_loaded})
+    return JSONResponse({"status": "healthy"})
+
+
+@app.get("/health/detail")
+async def health_detail():
+    import asyncio
+
+    def _check():
+        mlflow_status = "disconnected"
+        agents_loaded = 0
+        try:
+            client = mlflow.MlflowClient()
+            prompts = client.search_prompts(filter_string="name LIKE 'agent:%'")
+            agents_loaded = len(prompts)
+            mlflow_status = "connected"
+        except Exception:
+            pass
+        return {"status": "healthy", "mlflow": mlflow_status, "agents_loaded": agents_loaded}
+
+    result = await asyncio.to_thread(_check)
+    return JSONResponse(result)
 
 
 def cli():

@@ -1,0 +1,25 @@
+name: fastapi-templates
+runs_per_iteration: 3
+pass_threshold: 0.85
+
+scenarios:
+  - name: basic-crud-api
+    prompt: "Create a FastAPI app with CRUD endpoints for a 'tasks' resource with SQLite backend"
+  - name: auth-api
+    prompt: "Create a FastAPI app with JWT authentication and protected endpoints"
+  - name: async-external-api
+    prompt: "Create a FastAPI app that fetches data from an external API with retry logic"
+
+criteria:
+  - id: uses-uv
+    question: "Does the output use uv (not pip) for dependency management?"
+  - id: has-pydantic-models
+    question: "Does the output define Pydantic models for request/response validation?"
+  - id: has-error-handling
+    question: "Does the output include proper HTTP error handling with appropriate status codes?"
+  - id: has-async
+    question: "Does the output use async def for route handlers?"
+  - id: src-layout
+    question: "Does the output follow src/{project_name}/ layout?"
+  - id: no-hardcoded-secrets
+    question: "Is the output free of hardcoded secrets, passwords, or API keys?"

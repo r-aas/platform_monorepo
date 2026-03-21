@@ -1,0 +1,54 @@
+replicaCount: 1
+
+image:
+  repository: agent-gateway
+  tag: latest
+  pullPolicy: Never
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: true
+  host: agent-gateway.genai.127.0.0.1.nip.io
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+
+env:
+  AGW_MLFLOW_TRACKING_URI: "http://genai-mlflow.genai.svc.cluster.local:80"
+  AGW_N8N_BASE_URL: "http://genai-n8n.genai.svc.cluster.local:5678"
+  AGW_LITELLM_BASE_URL: "http://genai-litellm.genai.svc.cluster.local:4000"
+  AGW_AGENTS_DIR: "/app/data/agents"
+  AGW_SKILLS_DIR: "/app/data/skills"
+  AGW_WORKFLOWS_DIR: "/app/data/workflows"
+
+secrets:
+  n8nApiKey: ""
+  litellmApiKey: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 30
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+syncOnStart:
+  enabled: true

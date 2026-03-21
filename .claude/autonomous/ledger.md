@@ -36,7 +36,7 @@ B — Skill Library Expansion (A complete for MVP)
       Domain: D2/runtimes | Files: runtimes/python.py
 - [ ] B.08 Claude Code runtime (T057)
       Domain: D2/runtimes | Files: runtimes/claude_code.py
-- [ ] B.09 Helm chart for agent-gateway (T062)
+- [x] B.09 Helm chart for agent-gateway (T062) — deployed to k3d genai namespace
       Domain: D1/helm | Files: charts/genai-agent-gateway/
 
 ### Priority 2 — Skill Library Expansion
@@ -134,3 +134,6 @@ B — Skill Library Expansion (A complete for MVP)
 <!-- Format: date | what changed | why -->
 - 2026-03-20 | B.01, B.03 completed by factory-worker | First run. Worker did code+tests+commits correctly but skipped self-improvement loop (didn't update ledger, lessons, or RESUME). Fixed by R.
 - 2026-03-20 | Guardrails updated: added git staging rules | Factory committed __pycache__ on first run. Added explicit staging rules and pre-commit check to guardrails.
+- 2026-03-21 | B.09 done: Helm chart + k3d deploy + MLflow port fix + async threading for sync MLflow client + MLflow 3.x API fix (get_prompt_version) | Agent gateway live at agent-gateway.genai.127.0.0.1.nip.io. 2 agents, 6 skills synced.
+- 2026-03-21 | Eval pipeline built: /skill-optimize command + scripts/skill-optimize.py harness + pilot evals for fastapi-templates | Autoresearch methodology from Karpathy adapted for Claude Code skills.
+- 2026-03-21 | Factory worker scheduled (15min interval, session-scoped via CronCreate) | Next: validate loop with first autonomous run.
