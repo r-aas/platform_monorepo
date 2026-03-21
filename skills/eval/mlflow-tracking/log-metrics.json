@@ -7,6 +7,66 @@
       "input": "Log accuracy=0.95 and loss=0.05 to the fraud-detection experiment",
       "expected_output_contains": ["logged", "accuracy"],
       "expected_tools_used": ["mlflow_log_metric"]
+    },
+    {
+      "id": "log-multiple-metrics",
+      "input": "Log precision=0.88, recall=0.92, and f1=0.90 for the sentiment-analysis run",
+      "expected_output_contains": ["precision", "recall", "f1"],
+      "expected_tools_used": ["mlflow_log_metric"]
+    },
+    {
+      "id": "log-training-loss",
+      "input": "Log training loss 0.32 and validation loss 0.41 for epoch 10 of churn-predictor",
+      "expected_output_contains": ["training", "loss", "epoch"],
+      "expected_tools_used": ["mlflow_log_metric"]
+    },
+    {
+      "id": "log-with-step",
+      "input": "Log accuracy at steps 100, 200, and 300 for the text-classifier experiment",
+      "expected_output_contains": ["accuracy", "step"],
+      "expected_tools_used": ["mlflow_log_metric"]
+    },
+    {
+      "id": "log-auc-roc",
+      "input": "Log AUC-ROC=0.97 for the fraud-detection model to MLflow",
+      "expected_output_contains": ["auc", "fraud-detection"],
+      "expected_tools_used": ["mlflow_log_metric"]
+    },
+    {
+      "id": "log-params-and-metrics",
+      "input": "Log learning_rate=0.001 parameter and final accuracy=0.94 metric for recommendation-engine",
+      "expected_output_contains": ["learning_rate", "accuracy"],
+      "expected_tools_used": ["mlflow_log_param", "mlflow_log_metric"]
+    },
+    {
+      "id": "log-latency-metric",
+      "input": "Log inference_latency_ms=45.2 to the object-classifier experiment",
+      "expected_output_contains": ["inference_latency", "object-classifier"],
+      "expected_tools_used": ["mlflow_log_metric"]
+    },
+    {
+      "id": "log-batch-metrics",
+      "input": "Log metrics from the overnight training run: accuracy=0.91, loss=0.18, val_accuracy=0.89",
+      "expected_output_contains": ["accuracy", "val_accuracy", "loss"],
+      "expected_tools_used": ["mlflow_log_metric"]
+    },
+    {
+      "id": "log-new-experiment",
+      "input": "Create experiment anomaly-detection-v2 and log baseline accuracy=0.73",
+      "expected_output_contains": ["anomaly-detection-v2", "accuracy"],
+      "expected_tools_used": ["mlflow_create_experiment", "mlflow_log_metric"]
+    },
+    {
+      "id": "log-to-existing-run",
+      "input": "Log recall=0.84 to the currently active MLflow run for nlp-classifier",
+      "expected_output_contains": ["recall", "nlp-classifier"],
+      "expected_tools_used": ["mlflow_log_metric"]
+    },
+    {
+      "id": "log-r2-score",
+      "input": "Log R2 score 0.87 and MAE 0.12 for the forecasting-model regression experiment",
+      "expected_output_contains": ["r2", "mae", "forecasting-model"],
+      "expected_tools_used": ["mlflow_log_metric"]
     }
   ]
 }

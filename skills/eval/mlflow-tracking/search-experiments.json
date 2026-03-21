@@ -1,0 +1,72 @@
+{
+  "task": "search-experiments",
+  "skill": "mlflow-tracking",
+  "cases": [
+    {
+      "id": "list-all-experiments",
+      "input": "List all MLflow experiments in the tracking server",
+      "expected_output_contains": ["experiment", "name"],
+      "expected_tools_used": ["mlflow_list_experiments"]
+    },
+    {
+      "id": "search-by-name",
+      "input": "Find the fraud-detection experiment in MLflow",
+      "expected_output_contains": ["fraud-detection", "experiment"],
+      "expected_tools_used": ["mlflow_search_experiments"]
+    },
+    {
+      "id": "search-by-tag",
+      "input": "Find all experiments tagged with team=genai",
+      "expected_output_contains": ["team", "genai"],
+      "expected_tools_used": ["mlflow_search_experiments"]
+    },
+    {
+      "id": "list-active-runs",
+      "input": "Show all active runs in the sentiment-analysis experiment",
+      "expected_output_contains": ["sentiment-analysis", "active", "run"],
+      "expected_tools_used": ["mlflow_search_runs"]
+    },
+    {
+      "id": "find-best-run",
+      "input": "Find the run with the highest accuracy in the churn-predictor experiment",
+      "expected_output_contains": ["accuracy", "churn-predictor"],
+      "expected_tools_used": ["mlflow_search_runs"]
+    },
+    {
+      "id": "search-failed-runs",
+      "input": "List all failed runs in the last 24 hours across all experiments",
+      "expected_output_contains": ["failed", "run"],
+      "expected_tools_used": ["mlflow_search_runs"]
+    },
+    {
+      "id": "get-experiment-metadata",
+      "input": "Show the metadata and artifact location for the fraud-detection experiment",
+      "expected_output_contains": ["fraud-detection", "artifact"],
+      "expected_tools_used": ["mlflow_get_experiment"]
+    },
+    {
+      "id": "search-by-metric-threshold",
+      "input": "Find all runs where accuracy > 0.90 in the text-classifier experiment",
+      "expected_output_contains": ["accuracy", "text-classifier"],
+      "expected_tools_used": ["mlflow_search_runs"]
+    },
+    {
+      "id": "list-experiments-paginated",
+      "input": "List the first 10 experiments sorted by creation date",
+      "expected_output_contains": ["experiment", "created"],
+      "expected_tools_used": ["mlflow_list_experiments"]
+    },
+    {
+      "id": "search-runs-by-param",
+      "input": "Find runs where learning_rate=0.001 in the recommendation-engine experiment",
+      "expected_output_contains": ["learning_rate", "recommendation-engine"],
+      "expected_tools_used": ["mlflow_search_runs"]
+    },
+    {
+      "id": "count-experiments",
+      "input": "How many experiments are currently tracked in MLflow?",
+      "expected_output_contains": ["experiment"],
+      "expected_tools_used": ["mlflow_list_experiments"]
+    }
+  ]
+}

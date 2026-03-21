@@ -1,0 +1,72 @@
+{
+  "task": "list-workflows",
+  "skill": "n8n-workflow-ops",
+  "cases": [
+    {
+      "id": "list-all",
+      "input": "List all workflows in n8n",
+      "expected_output_contains": ["workflow", "name"],
+      "expected_tools_used": ["n8n_list_workflows"]
+    },
+    {
+      "id": "list-active",
+      "input": "Show all active workflows",
+      "expected_output_contains": ["active", "workflow"],
+      "expected_tools_used": ["n8n_list_workflows"]
+    },
+    {
+      "id": "list-inactive",
+      "input": "List all inactive or disabled workflows",
+      "expected_output_contains": ["inactive", "workflow"],
+      "expected_tools_used": ["n8n_list_workflows"]
+    },
+    {
+      "id": "count-workflows",
+      "input": "How many workflows are configured in n8n?",
+      "expected_output_contains": ["workflow"],
+      "expected_tools_used": ["n8n_list_workflows"]
+    },
+    {
+      "id": "list-webhook-workflows",
+      "input": "List all workflows that use webhook triggers",
+      "expected_output_contains": ["webhook", "workflow"],
+      "expected_tools_used": ["n8n_list_workflows"]
+    },
+    {
+      "id": "find-by-name",
+      "input": "Find the eval-pipeline workflow in n8n",
+      "expected_output_contains": ["eval-pipeline"],
+      "expected_tools_used": ["n8n_list_workflows"]
+    },
+    {
+      "id": "list-with-status",
+      "input": "List all workflows and show their active/inactive status",
+      "expected_output_contains": ["workflow", "active"],
+      "expected_tools_used": ["n8n_list_workflows"]
+    },
+    {
+      "id": "list-recently-updated",
+      "input": "Show workflows updated in the last 7 days",
+      "expected_output_contains": ["workflow", "updated"],
+      "expected_tools_used": ["n8n_list_workflows"]
+    },
+    {
+      "id": "list-by-tag",
+      "input": "List all workflows tagged as genai",
+      "expected_output_contains": ["genai", "workflow"],
+      "expected_tools_used": ["n8n_list_workflows"]
+    },
+    {
+      "id": "get-workflow-summary",
+      "input": "Give me a summary of all workflows including node counts",
+      "expected_output_contains": ["workflow", "node"],
+      "expected_tools_used": ["n8n_list_workflows"]
+    },
+    {
+      "id": "list-sub-workflows",
+      "input": "Which workflows are configured as sub-workflows (no trigger nodes)?",
+      "expected_output_contains": ["sub-workflow", "workflow"],
+      "expected_tools_used": ["n8n_list_workflows"]
+    }
+  ]
+}

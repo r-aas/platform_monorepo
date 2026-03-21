@@ -445,6 +445,7 @@ def test_run_benchmark_task_real_dataset():
         )
 
     assert run_id == "run-real"
-    # Real dataset has 3 cases
+    # Real dataset has 10+ cases after D.06 expansion
     log_metric_calls = {str(c) for c in mock_client.log_metric.call_args_list}
-    assert any("total_cases" in c and "3" in c for c in log_metric_calls)
+    total_cases_calls = [c for c in log_metric_calls if "total_cases" in c]
+    assert total_cases_calls, "expected total_cases metric to be logged"
