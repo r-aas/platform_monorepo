@@ -48,3 +48,4 @@
 <!-- Log EVERY self-update to any scheduled task prompt -->
 <!-- Format: date | task-id | what changed | why -->
 <!-- HARD LIMIT: Max 3 self-updates per calendar day across all workers. If 3 reached, defer to next day. -->
+- 2026-03-21 | factory-worker | Replace raw `cd .../services/agent-gateway && uv run pytest/ruff` with `task factory:test` / `task factory:lint` / `task factory:check` throughout Boot step 9, Execution Protocol, Quality Gates, Python Toolchain. | taskfiles/factory.yml was created this session and handles the directory correctly — eliminates the "wrong directory" anti-pattern that caused repeated failures.
