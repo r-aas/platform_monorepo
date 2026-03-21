@@ -87,6 +87,30 @@ tasks:
                 print(f'  Exists: {skill.name}');
         "
 
+  workflows:export:
+    desc: Export n8n dev workflows to repo as portable JSON
+    cmds:
+      - uv run python -c "
+        import asyncio;
+        from pathlib import Path;
+        from agent_gateway.config import settings;
+        from agent_gateway.workflows.export import export_all;
+        exported = asyncio.run(export_all(settings.n8n_base_url, settings.n8n_api_key, Path('{{.WORKFLOWS_DIR}}')));
+        print(f'Exported {len(exported)} workflow(s):', ', '.join(exported) if exported else 'none')
+        "
+
+  workflows:import:
+    desc: Import portable workflow JSONs from repo into n8n
+    cmds:
+      - uv run python -c "
+        import asyncio;
+        from pathlib import Path;
+        from agent_gateway.config import settings;
+        from agent_gateway.workflows.import_ import import_all;
+        imported = asyncio.run(import_all(Path('{{.WORKFLOWS_DIR}}'), settings.n8n_base_url, settings.n8n_api_key));
+        print(f'Imported {len(imported)} workflow(s):', ', '.join(imported) if imported else 'none')
+        "
+
   clean:
     desc: Remove build artifacts
     cmds:
