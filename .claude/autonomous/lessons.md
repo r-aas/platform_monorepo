@@ -24,6 +24,7 @@
 - 2026-03-21 | B.06 | Registry functions (get_agent, list_agents) are async. Do NOT wrap with asyncio.to_thread() — await directly. Only skills_registry functions (get_skill, list_skills, etc.) are sync and need to_thread. Check with grep "^async def" in the target module before writing dispatch code.
 - 2026-03-21 | B.10/B.11 | For YAML skill definitions, TDD = test loads and validates the YAML via SkillDefinition.model_validate(). Write test → YAML missing → tests fail red → create YAML → green. Clean TDD loop for declarative config files.
 - 2026-03-21 | B.10/B.11 | Path traversal from test file to monorepo root: services/agent-gateway/tests/ is 4 levels deep (tests→agent-gateway→services→platform_monorepo). Use Path(__file__).parent * 4. 5 parents goes one level too far to repos/.
+- 2026-03-21 | B.12/B.13 | Two skill YAMLs per run is the right batch size: same pattern, predictable test count (16 per pair), commit stays focused. Template: MCP servers from genai namespace, 4 tasks per skill, prompt_fragment with 5-7 guidance bullets.
 
 ## Task Templates
 

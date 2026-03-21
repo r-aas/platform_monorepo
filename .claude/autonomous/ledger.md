@@ -45,9 +45,9 @@ B — Skill Library Expansion (A complete for MVP)
       Domain: D2/skill-library | Produces: skills/data-ingestion.yaml
 - [x] B.11 Skill: vector-store-ops — pgvector/qdrant index management, similarity search (7ad2104)
       Domain: D2/skill-library | Produces: skills/vector-store-ops.yaml
-- [ ] B.12 Skill: prompt-engineering — optimize system prompts via A/B eval
+- [x] B.12 Skill: prompt-engineering — optimize system prompts via A/B eval (116bc25)
       Domain: D2/skill-library | Produces: skills/prompt-engineering.yaml
-- [ ] B.13 Skill: code-generation — generate/modify code with test verification
+- [x] B.13 Skill: code-generation — generate/modify code with test verification (116bc25)
       Domain: D2/skill-library | Produces: skills/code-generation.yaml
 - [ ] B.14 Skill: documentation — generate docs from code, specs, conversations
       Domain: D2/skill-library | Produces: skills/documentation.yaml
@@ -142,3 +142,4 @@ B — Skill Library Expansion (A complete for MVP)
 - 2026-03-21 | B.05 complete: benchmark runner with pure evaluate_case(), MLflow logging, POST /skills/{name}/tasks/{task}/benchmark endpoint, eval datasets for kubernetes-ops. 17 new tests (77 total). | Health: P1 near complete (6/7 non-blocked done).
 - 2026-03-21 | B.06 complete: gateway MCP server at /gateway-mcp. JSON-RPC 2.0 over HTTP, 6 tools (list/get agents+skills, create/delete skill), initialize handshake. 12 new tests (89 total). All P1 non-blocked items done. | Health: P1 complete (B.07/B.08 blocked). Next: P2 skill library expansion.
 - 2026-03-21 | B.10+B.11 complete: data-ingestion and vector-store-ops skill YAMLs. TDD with 16 schema validation tests (105 total). Path traversal gotcha: test was 5 parents deep but needed 4. | Health: P2 active (2/6 done). B.12-B.15 remain.
+- 2026-03-21 | B.12+B.13 complete: prompt-engineering (MLflow A/B eval) and code-generation (TDD+GitLab) skill YAMLs. 16 new schema validation tests (121 total). Both follow established 8-test-per-skill pattern. | Health: P2 active (4/6 done). B.14-B.15 remain.
