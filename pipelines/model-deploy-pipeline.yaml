@@ -1,0 +1,32 @@
+component_type: Pipeline
+name: model-deploy-pipeline
+description: Deploy a new model through security review and staged rollout
+version: "1.0.0"
+
+stages:
+  - name: security-review
+    agent: developer
+    description: Run security audit on model code before deployment
+    inputs:
+      message: "Run a security audit on the model code in {{ inputs.repo_path }}"
+
+  - name: deploy-to-staging
+    agent: mlops
+    description: Deploy the model to staging namespace
+    depends_on:
+      - security-review
+    inputs:
+      message: "Deploy model {{ inputs.model_name }} to the staging namespace"
+
+  - name: smoke-test
+    agent: mlops
+    description: Run smoke tests against the staging deployment
+    depends_on:
+      - deploy-to-staging
+    inputs:
+      message: "Run smoke tests for model {{ inputs.model_name }} in staging"
+
+routing:
+  on_error: stop
+  max_retries: 1
+  default_timeout: 300

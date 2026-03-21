@@ -64,6 +64,35 @@ class AgentDefinition(BaseModel):
     agentspec_version: str = "26.2.0"
 
 
+class PipelineStage(BaseModel):
+    """A single stage in a multi-agent pipeline."""
+
+    name: str
+    agent: str
+    description: str = ""
+    depends_on: list[str] = []
+    inputs: dict[str, Any] = {}
+
+
+class PipelineRouting(BaseModel):
+    """Routing and error-handling config for a pipeline."""
+
+    on_error: str = "stop"  # stop | continue | retry
+    max_retries: int = 0
+    default_timeout: int = 60
+
+
+class PipelineDefinition(BaseModel):
+    """Multi-agent pipeline — ordered stages with routing config."""
+
+    component_type: str = "Pipeline"
+    name: str
+    description: str = ""
+    version: str = "1.0.0"
+    stages: list[PipelineStage]
+    routing: PipelineRouting = PipelineRouting()
+
+
 @dataclass
 class AgentRunConfig:
     """Runtime-agnostic invocation payload — the complete recipe to reproduce a run."""
