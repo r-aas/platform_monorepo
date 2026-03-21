@@ -26,7 +26,7 @@ B — Skill Library Expansion (A complete for MVP)
       Domain: D4/embeddings | Files: routers/agents.py, skills.py, mcp.py
 - [x] B.03 Force flag in delete_skill — check agent references before delete (1186e08)
       Domain: D2/skill-library | Files: skills_registry.py
-- [ ] B.04 Workflow export with validation gate (Phase 6: T038-T042)
+- [x] B.04 Workflow export with validation gate (Phase 6: T038-T042) (0577bf8)
       Domain: D5/workflow-gitops | Files: workflows/export.py, import_.py
 - [ ] B.05 Benchmark runner (Phase 8: T047-T052)
       Domain: D4/eval-framework | Files: benchmark/runner.py, results.py
@@ -138,3 +138,4 @@ B — Skill Library Expansion (A complete for MVP)
 - 2026-03-21 | Eval pipeline built: /skill-optimize command + scripts/skill-optimize.py harness + pilot evals for fastapi-templates | Autoresearch methodology from Karpathy adapted for Claude Code skills.
 - 2026-03-21 | Factory worker scheduled (15min interval, session-scoped via CronCreate) | Next: validate loop with first autonomous run.
 - 2026-03-21 | B.02 complete: hybrid embedding search wired into agents/skills/mcp search endpoints. Graceful fallback when Ollama unreachable. Fixed B.09-introduced test_registry regression (get_prompt vs get_prompt_version mocks). 39 tests passing. | Post-commit pytest must be run from services/agent-gateway/, not monorepo root.
+- 2026-03-21 | B.04 complete: workflow export/import with portable credential refs. Pure transformation functions + thin async n8n API wrappers. Taskfile tasks wired. 21 new tests (60 total). | Health: P1 backlog shrinking (4/6 done), B.05 and B.06 remain as high-value items.

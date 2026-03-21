@@ -10,6 +10,7 @@
 <!-- Reusable approaches that worked. Max 50 entries. -->
 - 2026-03-21 | B.02 | Graceful fallback pattern: `get_embedding()` returns `None` on any Exception; `hybrid_score(kw, None)` returns keyword score unchanged. Makes embedding integration safe to ship without a running Ollama.
 - 2026-03-21 | B.02 | For search utilities (embedding, scoring), write unit tests independently of the router tests. Pure functions are easy to test in isolation; router-level tests can assume the utility works.
+- 2026-03-21 | B.04 | Workflow GitOps pattern: pure transformation functions (strip/sort/portabilize) test without any mocks. Network I/O (fetch/import) is thin wrappers — test the logic separately. This decomposition made 21 tests pass with zero mocking complexity.
 
 ## Anti-Patterns
 

@@ -1,28 +1,34 @@
 # Platform Monorepo — Session Resume
 
-## Session: 2026-03-21 — Factory Worker Run 2
+## Session: 2026-03-21 — Factory Worker Run 3
 
 ### Built
 
-- **Hybrid embedding search** — `services/agent-gateway/src/agent_gateway/embeddings.py`
-  - `cosine_similarity(a, b)` — pure vector math
-  - `get_embedding(text)` — async, calls Ollama `/v1/embeddings`, returns `None` on failure
-  - `hybrid_score(keyword, embedding_sim)` — 70/30 blend, graceful fallback to keyword-only
-- **Wired into all 3 search endpoints**: agents/search, skills/search, tasks/search, mcp/search
-- **Config**: added `AGW_OLLAMA_BASE_URL` (default `http://192.168.5.2:11434`) and `AGW_OLLAMA_EMBEDDING_MODEL` (default `nomic-embed-text`)
-- **Fixed test_registry.py regression** from B.09: updated mocks to use `get_prompt_version` instead of `get_prompt` (MLflow 3.x API)
-- 39 tests passing, 0 lint errors
+- **Workflow export** — `services/agent-gateway/src/agent_gateway/workflows/export.py`
+  - `strip_volatile(workflow)` — removes id, active, updatedAt, createdAt, versionId, meta.executionCount
+  - `sort_nodes(workflow)` — alphabetical sort for stable diffs
+  - `portabilize_credentials(workflow)` — replaces raw credential IDs with `{$portable: true, type, name}`
+  - `export_workflow(workflow)` — full pipeline (strip → sort → portabilize)
+  - `fetch_workflows(n8n_base_url, api_key)` — async fetch from n8n API
+  - `export_all(n8n_base_url, api_key, output_dir)` — fetch + export all to JSON files
+
+- **Workflow import** — `services/agent-gateway/src/agent_gateway/workflows/import_.py`
+  - `fetch_credentials(n8n_base_url, api_key)` — returns `{(type, name): id}` map
+  - `resolve_credentials(workflow, cred_map)` — replaces portable refs with real IDs; raises ValueError on missing
+  - `import_workflow(workflow, n8n_base_url, api_key)` — POST to target n8n
+  - `import_all(workflows_dir, n8n_base_url, api_key)` — resolve + import all JSONs
+
+- **Taskfile tasks** — `task workflows:export` and `task workflows:import` wired to `settings.n8n_base_url` / `settings.n8n_api_key`
 
 ### Test Status
 
-39 tests passing:
-- test_embeddings.py (9) — cosine sim, get_embedding success/fail, hybrid_score variants
-- test_registry.py (3) — fixed to mock get_prompt_version
-- All prior tests passing
+60 tests passing:
+- test_workflows.py (21) — full coverage of all transformation + resolution functions
+- All prior 39 tests still passing
 
 ### Commits This Session
 
-- `3b7aa3e` feat(agent-gateway): add hybrid embedding search to all search endpoints [B.02]
+- `0577bf8` feat(agent-gateway): workflow export/import with validation gate [B.04]
 
 ### Branch
 
@@ -32,7 +38,6 @@
 
 | Item | What | Status |
 |------|------|--------|
-| B.04 | Workflow export/validation | Not started |
 | B.05 | Benchmark runner | Not started |
 | B.06 | Gateway MCP server | Not started |
 | B.07 | Python runtime | Blocked (needs pyagentspec eval) |
@@ -40,12 +45,11 @@
 
 ### Next Steps
 
-- [local] B.04: Workflow GitOps export (Phase 6, T038-T042) — `workflows/export.py`, `import_.py`
 - [local] B.05: Benchmark runner (Phase 8, T047-T052) — `benchmark/runner.py`, `results.py`
 - [local] B.06: Gateway MCP server (T045) — `mcp_server.py`
 
 ### Notes
 
 - `uv run pytest` MUST be run from `services/agent-gateway/`, not monorepo root
-- Post-commit test failures from monorepo root are false negatives (ModuleNotFoundError on agent_gateway)
-- Ollama embedding model `nomic-embed-text` must be pulled: `ollama pull nomic-embed-text`
+- Workflow export/import design: pure functions for transformation, async thin wrappers for network — test without mocks
+- `task workflows:export` reads `AGW_N8N_BASE_URL` and `AGW_N8N_API_KEY` from env (or config defaults)
