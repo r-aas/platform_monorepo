@@ -12,6 +12,8 @@
 ## Anti-Patterns
 
 <!-- Approaches that failed and why. Max 50 entries. -->
+- 2026-03-20 | factory-worker run 1 | Committed __pycache__/ and .python-version because `git add` included generated files. Fix: always check `git diff --cached --name-only` before committing and verify no gitignored artifacts are staged.
+- 2026-03-20 | factory-worker run 1 | Skipped self-improvement loop entirely (didn't update ledger checkboxes, lessons, or RESUME). The execution protocol completed but the "after" steps were dropped. Fix: self-improvement steps must run even if time-pressured — they are not optional.
 
 ## Task Templates
 
