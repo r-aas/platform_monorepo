@@ -45,6 +45,8 @@
 - 2026-03-21 | D.06 | When expanding eval datasets, write a parametrized test_eval_datasets.py (exists, min_cases, required_fields, unique_ids, list_types) before creating/expanding any JSON. Run → red. Fill datasets → green. This parametrized pattern adds O(N×M) coverage with O(1) code where N=datasets and M=checks.
 - 2026-03-21 | D.06 | Hardcoded case counts in tests break when datasets grow. Pattern: assert `len(cases) >= N` (minimum) rather than `== N` (exact). Existing test_benchmark.py had `assert any("3" in c ...)` that failed after expansion. Use string presence check (total_cases key) not value assertion.
 - 2026-03-21 | D.06 | Eval case quality pattern: mix single-tool cases (test isolated skill) with multi-tool cases (test realistic workflows). For kubernetes-ops, single: kubectl_get; multi: kubectl_describe + kubectl_logs (crashloop). Realistic combinations improve coverage of actual agent behavior.
+- 2026-03-21 | D.07 | Prompt optimizer as pure functions: coverage scoring (fraction of expected_output_contains terms in prompt) requires no LLM, no file I/O, no network — all pure string operations. This makes it fast, testable, and reliable. The "intelligence" is in the eval dataset design, not the optimizer itself.
+- 2026-03-21 | D.07 | When tasks say "auto-prompt optimization", the key insight is: evaluation datasets encode what good behavior looks like. Cross-referencing those expectations against the prompt_fragment surface reveals gaps — no LLM needed for the analysis phase, only for the actual suggestion generation (which we skip by using template bullets instead).
 
 ## Task Templates
 
