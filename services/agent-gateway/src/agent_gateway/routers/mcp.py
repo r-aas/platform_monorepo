@@ -5,6 +5,7 @@ from fastapi import APIRouter, Query
 
 from agent_gateway.embeddings import cosine_similarity, get_embedding, hybrid_score
 from agent_gateway.mcp_discovery import get_tool_index
+from agent_gateway.mcp_recommender import recommend_tools
 
 
 router = APIRouter(prefix="/mcp", tags=["mcp"])
@@ -68,6 +69,35 @@ async def search_mcp(q: str = Query(..., description="Search query for hybrid RA
         "results": [
             {"name": t["name"], "description": t["description"], "namespace": t["namespace"], "score": s}
             for s, t in scored
+        ],
+    }
+
+
+@router.get("/recommend")
+async def recommend_mcp_tools(
+    task: str = Query(..., description="Natural language task description"),
+    top_n: int = Query(5, ge=1, le=20, description="Maximum number of tools to recommend"),
+    min_score: float = Query(0.5, ge=0.0, description="Minimum relevance score threshold"),
+):
+    """Recommend relevant MCP tools for a given task description.
+
+    Uses the cached ToolIndex (populated at startup). Returns top-N tools
+    above min_score with match hints explaining relevance.
+    """
+    idx = get_tool_index()
+    tools = idx.tools if idx is not None else []
+    recommendations = await recommend_tools(task, tools, top_n=top_n, min_score=min_score)
+    return {
+        "task": task,
+        "recommendations": [
+            {
+                "name": r.name,
+                "description": r.description,
+                "namespace": r.namespace,
+                "score": r.score,
+                "match_hints": r.match_hints,
+            }
+            for r in recommendations
         ],
     }
 
