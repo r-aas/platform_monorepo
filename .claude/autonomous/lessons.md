@@ -25,6 +25,7 @@
 - 2026-03-21 | B.10/B.11 | For YAML skill definitions, TDD = test loads and validates the YAML via SkillDefinition.model_validate(). Write test → YAML missing → tests fail red → create YAML → green. Clean TDD loop for declarative config files.
 - 2026-03-21 | B.10/B.11 | Path traversal from test file to monorepo root: services/agent-gateway/tests/ is 4 levels deep (tests→agent-gateway→services→platform_monorepo). Use Path(__file__).parent * 4. 5 parents goes one level too far to repos/.
 - 2026-03-21 | B.12/B.13 | Two skill YAMLs per run is the right batch size: same pattern, predictable test count (16 per pair), commit stays focused. Template: MCP servers from genai namespace, 4 tasks per skill, prompt_fragment with 5-7 guidance bullets.
+- 2026-03-21 | B.14/B.15 | Security-audit skill: mix genai (gitlab for file reading) and platform (kubectl for k8s inspection) MCP servers when a skill spans code + infra domains. Documentation skill: gitlab wiki + file tools are sufficient — no dedicated doc MCP needed at this stage.
 
 ## Task Templates
 

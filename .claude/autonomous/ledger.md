@@ -49,9 +49,9 @@ B — Skill Library Expansion (A complete for MVP)
       Domain: D2/skill-library | Produces: skills/prompt-engineering.yaml
 - [x] B.13 Skill: code-generation — generate/modify code with test verification (116bc25)
       Domain: D2/skill-library | Produces: skills/code-generation.yaml
-- [ ] B.14 Skill: documentation — generate docs from code, specs, conversations
+- [x] B.14 Skill: documentation — generate docs from code, specs, conversations (d18634f)
       Domain: D2/skill-library | Produces: skills/documentation.yaml
-- [ ] B.15 Skill: security-audit — scan code/infra for vulnerabilities
+- [x] B.15 Skill: security-audit — scan code/infra for vulnerabilities (d18634f)
       Domain: D2/skill-library | Produces: skills/security-audit.yaml
 
 ### Priority 3 — New Agents
@@ -143,3 +143,4 @@ B — Skill Library Expansion (A complete for MVP)
 - 2026-03-21 | B.06 complete: gateway MCP server at /gateway-mcp. JSON-RPC 2.0 over HTTP, 6 tools (list/get agents+skills, create/delete skill), initialize handshake. 12 new tests (89 total). All P1 non-blocked items done. | Health: P1 complete (B.07/B.08 blocked). Next: P2 skill library expansion.
 - 2026-03-21 | B.10+B.11 complete: data-ingestion and vector-store-ops skill YAMLs. TDD with 16 schema validation tests (105 total). Path traversal gotcha: test was 5 parents deep but needed 4. | Health: P2 active (2/6 done). B.12-B.15 remain.
 - 2026-03-21 | B.12+B.13 complete: prompt-engineering (MLflow A/B eval) and code-generation (TDD+GitLab) skill YAMLs. 16 new schema validation tests (121 total). Both follow established 8-test-per-skill pattern. | Health: P2 active (4/6 done). B.14-B.15 remain.
+- 2026-03-21 | B.14+B.15 complete: documentation (code→docs, API spec extraction, conversation summaries) and security-audit (OWASP scan, k8s RBAC audit, SARIF reports) skill YAMLs. 16 new schema validation tests (137 total). P2 fully done. | Health: P2 complete. Next: P3 agents (B.16-B.18) compose from 6 skills.
