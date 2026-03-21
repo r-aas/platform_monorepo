@@ -31,6 +31,8 @@
 - 2026-03-21 | C.01 | pytest-httpx (already in dev deps) intercepts httpx.AsyncClient calls without mocking. Use `httpx_mock.add_response(url=..., method=..., json=..., headers=...)` — responses consumed in order. `httpx_mock.get_requests()` verifies call count. Clean way to test any httpx-based client.
 - 2026-03-21 | C.01 | MetaMCP tRPC API pattern (from seed.py ground truth): auth via POST /api/auth/sign-in/email → set-cookie header with better-auth.session_token. tRPC GET at /trpc/frontend/{procedure} for queries; POST for mutations. Response shape: {"result": {"data": {"data": [...]}}}. Admin backend on port 12009 (not 12008 which is the MCP proxy port).
 - 2026-03-21 | C.01 | Non-fatal startup registration pattern: wrap in try/except inside lifespan, return bool instead of raising. Tests can assert False on error without side effects. This makes services resilient to MetaMCP being down during startup.
+- 2026-03-21 | C.02 | Index + fallback pattern: module-level `_tool_index: ToolIndex | None = None` with get/set functions. Startup populates via lifespan; API endpoints check `get_tool_index()` and fall back to live fetch if None. Pattern decouples discovery from request latency.
+- 2026-03-21 | C.02 | When a function falls back to static data (discover_namespaces → ["genai","platform"]), tests that exercise subsequent code MUST also mock the downstream calls triggered by that fallback. Otherwise pytest-httpx raises "unregistered request" assertion. Always trace the full call chain for mocked tests.
 
 ## Task Templates
 

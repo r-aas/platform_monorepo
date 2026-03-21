@@ -66,7 +66,7 @@ B — Skill Library Expansion (A complete for MVP)
 ### Phase C — MCP Mesh (after B)
 
 - [x] C.01 Gateway MCP server registration in MetaMCP (ab57411)
-- [ ] C.02 Auto-discovery: scan MetaMCP namespaces, index all tools
+- [x] C.02 Auto-discovery: scan MetaMCP namespaces, index all tools (6eae872)
 - [ ] C.03 MCP tool recommendation engine — given a task, suggest tools
 - [ ] C.04 Namespace: data — register data pipeline MCP servers
 
@@ -146,3 +146,4 @@ B — Skill Library Expansion (A complete for MVP)
 - 2026-03-21 | B.14+B.15 complete: documentation (code→docs, API spec extraction, conversation summaries) and security-audit (OWASP scan, k8s RBAC audit, SARIF reports) skill YAMLs. 16 new schema validation tests (137 total). P2 fully done. | Health: P2 complete. Next: P3 agents (B.16-B.18) compose from 6 skills.
 - 2026-03-21 | B.16+B.17+B.18 complete: data-engineer, platform-admin, developer agent YAMLs. New test_agent_yamls.py with 24 schema validation tests (161 total). Phase B fully done (P1+P2+P3). | Health: All non-blocked B items complete. Next: Phase C (MCP Mesh) starting with C.01.
 - 2026-03-21 | C.01 complete: metamcp_client.py with tRPC auth+create+update+namespace-assign. Config extended with 6 MetaMCP settings. main.py lifespan wires non-fatal registration on startup. 5 tests via pytest-httpx (166 total). | Health: Phase C active (1/4 done). C.02 next (auto-discovery).
+- 2026-03-21 | C.02 complete: mcp_discovery.py with DiscoveredTool/ToolIndex, discover_namespaces() via tRPC + static fallback, fetch_tools_for_namespace() via MCP proxy, index_all_tools() non-fatal. main.py lifespan wires index on startup. mcp.py router uses cached index with live-fetch fallback. 9 new tests (175 total). | Health: Phase C active (2/4 done). C.03 (recommendation engine) next.

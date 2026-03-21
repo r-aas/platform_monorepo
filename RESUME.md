@@ -1,37 +1,41 @@
 # Platform Monorepo — Session Resume
 
-## Session: 2026-03-21 — Factory Worker Run 9
+## Session: 2026-03-21 — Factory Worker Run 10
 
 ### Built
 
-- **MetaMCP registration client** — `services/agent-gateway/src/agent_gateway/metamcp_client.py`
-  - Authenticates to MetaMCP backend via tRPC (same pattern as genai-metamcp seed job)
-  - Creates or updates the gateway MCP server entry in MetaMCP
-  - Assigns gateway to the `genai` namespace (preserving other server assignments)
-  - Returns `False` (non-fatal) when credentials not configured or MetaMCP unreachable
-
-- **Config extensions** — `services/agent-gateway/src/agent_gateway/config.py`
-  - `metamcp_admin_url` (default: cluster internal port 12009)
-  - `metamcp_user_email`, `metamcp_user_password` (empty = skip registration)
-  - `metamcp_namespace` (default: genai)
-  - `gateway_mcp_name`, `gateway_mcp_url`
+- **MCP auto-discovery** — `services/agent-gateway/src/agent_gateway/mcp_discovery.py`
+  - `DiscoveredTool` and `ToolIndex` dataclasses
+  - `discover_namespaces()` — queries MetaMCP admin tRPC (port 12009) for real namespace list;
+    falls back to static `["genai", "platform"]` when credentials absent or MetaMCP unreachable
+  - `fetch_tools_for_namespace(ns)` — fetches tools from MCP proxy (port 12008); returns `[]` on error
+  - `index_all_tools()` — combines both; populates module-level `_tool_index`; always non-fatal
+  - `get_tool_index()` / `set_tool_index()` — module-level index accessors
 
 - **Startup wiring** — `services/agent-gateway/src/agent_gateway/main.py`
-  - Lifespan calls `register_gateway_server()` on startup (wrapped in try/except, non-fatal)
+  - Lifespan calls `index_all_tools()` after MetaMCP registration (wrapped try/except, non-fatal)
 
-- **Tests** — `services/agent-gateway/tests/test_metamcp_client.py`
-  - 5 tests using pytest-httpx to intercept httpx calls
-  - Covers: skip when no credentials, create new server, update existing, auth error handling
+- **Router update** — `services/agent-gateway/src/agent_gateway/routers/mcp.py`
+  - `GET /mcp/search` — uses cached `ToolIndex.tools` when available; live fetch fallback
+  - `GET /mcp/namespaces` — uses indexed namespace list + per-namespace tool counts; live fetch fallback
+  - Both endpoints now serve dynamic namespaces (no longer hardcoded `["genai", "platform"]`)
+
+- **Tests** — `services/agent-gateway/tests/test_mcp_discovery.py`
+  - 9 tests using pytest-httpx
+  - Covers: namespace discovery from tRPC, fallback on missing creds, fallback on HTTP error,
+    tool fetch, tool fetch graceful error, full index_all_tools(), non-fatal error path,
+    get/set index state round-trip
 
 ### Test Status
 
-166 tests passing (+5 from C.01):
-- test_metamcp_client.py (5) — C.01 MetaMCP registration
-- All prior 161 tests still passing
+175 tests passing (+9 from C.02):
+- test_mcp_discovery.py (9) — C.02 auto-discovery
+- All prior 166 tests still passing
 
 ### Commits This Session
 
-- `ab57411` feat(agent-gateway): MetaMCP registration client [C.01]
+- `fd52f8f` chore(factory): commit leftover lessons.md prompt-update history entry [cleanup]
+- `6eae872` feat(agent-gateway): MCP auto-discovery — dynamic namespace scan + tool index [C.02]
 
 ### Branch
 
@@ -42,20 +46,21 @@
 | Item | What | Status |
 |------|------|--------|
 | C.01 | Gateway MCP server registration in MetaMCP | ✅ Done |
-| C.02 | Auto-discovery: scan MetaMCP namespaces, index all tools | Next |
-| C.03 | MCP tool recommendation engine | Queued |
+| C.02 | Auto-discovery: scan MetaMCP namespaces, index all tools | ✅ Done |
+| C.03 | MCP tool recommendation engine | Next |
 | C.04 | Namespace: data — register data pipeline MCP servers | Queued |
 
 ### Next Steps
 
-- [local] Phase C: C.02 — Auto-discovery: scan MetaMCP namespaces, index all tools
-  - `/gateway-mcp` already exposes `list_agents` and `list_skills`
-  - C.02 adds a scheduled or on-demand discovery pass that pulls all tools from MetaMCP namespaces
-  - Result: gateway has an indexed map of all available MCP tools across all namespaces
+- [local] Phase C: C.03 — MCP tool recommendation engine
+  - Given a natural language task description, suggest relevant MCP tools
+  - Input: task string → Output: ranked list of DiscoveredTools with relevance scores
+  - Should use the ToolIndex (no live fetch needed) + hybrid scoring (keyword + embedding)
+  - New endpoint: `GET /mcp/recommend?task=...` or integrate into search with recommendation mode
 
 ### Notes
 
-- MetaMCP admin backend port is 12009 (not 12008 which is the MCP proxy endpoint)
-- tRPC response shape: `{"result": {"data": {"data": [...]}}}` for lists
-- `pytest-httpx` is already in dev deps — use it for all httpx-based tests
-- `uv run pytest` MUST be run from `services/agent-gateway/` (not monorepo root)
+- MetaMCP admin tRPC namespaces.list is at port 12009 (admin backend)
+- MCP proxy tools/list is at port 12008 (MCP proxy port)
+- `_tool_index` module-level var resets to `None` between test runs — test_get_tool_index_returns_none_initially must set `disc._tool_index = None` explicitly for isolation
+- `pytest-httpx` unregistered request assertion fires when fallback code triggers unexpected HTTP calls — always mock the full call chain
