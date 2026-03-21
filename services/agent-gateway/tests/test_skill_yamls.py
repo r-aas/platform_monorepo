@@ -214,3 +214,101 @@ def test_code_generation_tasks_have_descriptions():
     skill = load_skill_yaml("code-generation")
     for task in skill.tasks:
         assert task.description, f"Task '{task.name}' must have a description"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# B.14 — documentation
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_documentation_skill_loads():
+    skill = load_skill_yaml("documentation")
+    assert skill.name == "documentation"
+
+
+def test_documentation_has_description():
+    skill = load_skill_yaml("documentation")
+    assert skill.description
+
+
+def test_documentation_has_tags():
+    skill = load_skill_yaml("documentation")
+    assert skill.tags, "documentation skill must have at least one tag"
+
+
+def test_documentation_has_mcp_servers():
+    skill = load_skill_yaml("documentation")
+    assert skill.mcp_servers, "documentation skill must reference at least one MCP server"
+
+
+def test_documentation_has_prompt_fragment():
+    skill = load_skill_yaml("documentation")
+    assert skill.prompt_fragment.strip(), "documentation skill must have a non-empty prompt_fragment"
+
+
+def test_documentation_has_tasks():
+    skill = load_skill_yaml("documentation")
+    assert skill.tasks, "documentation skill must define at least one task"
+
+
+def test_documentation_task_names():
+    skill = load_skill_yaml("documentation")
+    task_names = {t.name for t in skill.tasks}
+    assert task_names & {"generate-docs", "update-docs", "extract-api-spec", "summarize-conversation"}, (
+        f"Expected at least one of: generate-docs, update-docs, extract-api-spec, summarize-conversation. Got: {task_names}"
+    )
+
+
+def test_documentation_tasks_have_descriptions():
+    skill = load_skill_yaml("documentation")
+    for task in skill.tasks:
+        assert task.description, f"Task '{task.name}' must have a description"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# B.15 — security-audit
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_security_audit_skill_loads():
+    skill = load_skill_yaml("security-audit")
+    assert skill.name == "security-audit"
+
+
+def test_security_audit_has_description():
+    skill = load_skill_yaml("security-audit")
+    assert skill.description
+
+
+def test_security_audit_has_tags():
+    skill = load_skill_yaml("security-audit")
+    assert skill.tags, "security-audit skill must have at least one tag"
+
+
+def test_security_audit_has_mcp_servers():
+    skill = load_skill_yaml("security-audit")
+    assert skill.mcp_servers, "security-audit skill must reference at least one MCP server"
+
+
+def test_security_audit_has_prompt_fragment():
+    skill = load_skill_yaml("security-audit")
+    assert skill.prompt_fragment.strip(), "security-audit skill must have a non-empty prompt_fragment"
+
+
+def test_security_audit_has_tasks():
+    skill = load_skill_yaml("security-audit")
+    assert skill.tasks, "security-audit skill must define at least one task"
+
+
+def test_security_audit_task_names():
+    skill = load_skill_yaml("security-audit")
+    task_names = {t.name for t in skill.tasks}
+    assert task_names & {"scan-code", "scan-infra", "fix-vulnerabilities", "generate-report"}, (
+        f"Expected at least one of: scan-code, scan-infra, fix-vulnerabilities, generate-report. Got: {task_names}"
+    )
+
+
+def test_security_audit_tasks_have_descriptions():
+    skill = load_skill_yaml("security-audit")
+    for task in skill.tasks:
+        assert task.description, f"Task '{task.name}' must have a description"
