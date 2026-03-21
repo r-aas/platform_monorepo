@@ -28,9 +28,9 @@ B — Skill Library Expansion (A complete for MVP)
       Domain: D2/skill-library | Files: skills_registry.py
 - [x] B.04 Workflow export with validation gate (Phase 6: T038-T042) (0577bf8)
       Domain: D5/workflow-gitops | Files: workflows/export.py, import_.py
-- [ ] B.05 Benchmark runner (Phase 8: T047-T052)
+- [x] B.05 Benchmark runner (Phase 8: T047-T052) (8ff828b)
       Domain: D4/eval-framework | Files: benchmark/runner.py, results.py
-- [ ] B.06 Gateway MCP server — expose REST API as MCP tools (T045)
+- [x] B.06 Gateway MCP server — expose REST API as MCP tools (T045) (c42dffa)
       Domain: D3/gateway-mcp | Files: mcp_server.py
 - [ ] B.07 Python runtime (T056)
       Domain: D2/runtimes | Files: runtimes/python.py
@@ -139,3 +139,5 @@ B — Skill Library Expansion (A complete for MVP)
 - 2026-03-21 | Factory worker scheduled (15min interval, session-scoped via CronCreate) | Next: validate loop with first autonomous run.
 - 2026-03-21 | B.02 complete: hybrid embedding search wired into agents/skills/mcp search endpoints. Graceful fallback when Ollama unreachable. Fixed B.09-introduced test_registry regression (get_prompt vs get_prompt_version mocks). 39 tests passing. | Post-commit pytest must be run from services/agent-gateway/, not monorepo root.
 - 2026-03-21 | B.04 complete: workflow export/import with portable credential refs. Pure transformation functions + thin async n8n API wrappers. Taskfile tasks wired. 21 new tests (60 total). | Health: P1 backlog shrinking (4/6 done), B.05 and B.06 remain as high-value items.
+- 2026-03-21 | B.05 complete: benchmark runner with pure evaluate_case(), MLflow logging, POST /skills/{name}/tasks/{task}/benchmark endpoint, eval datasets for kubernetes-ops. 17 new tests (77 total). | Health: P1 near complete (6/7 non-blocked done).
+- 2026-03-21 | B.06 complete: gateway MCP server at /gateway-mcp. JSON-RPC 2.0 over HTTP, 6 tools (list/get agents+skills, create/delete skill), initialize handshake. 12 new tests (89 total). All P1 non-blocked items done. | Health: P1 complete (B.07/B.08 blocked). Next: P2 skill library expansion.
