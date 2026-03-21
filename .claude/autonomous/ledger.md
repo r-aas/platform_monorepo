@@ -75,8 +75,8 @@ B — Skill Library Expansion (A complete for MVP)
 - [x] D.01 Embedding service — LRU cache (EmbeddingCache + module singleton) (365d12d)
 - [x] D.02 Skill search with semantic similarity — endpoint tests added (49003c7)
 - [x] D.03 Agent search with semantic similarity — endpoint tests added (49003c7)
-- [ ] D.04 MCP tool search with semantic similarity
-- [ ] D.05 Benchmark runner end-to-end
+- [x] D.04 MCP tool search with semantic similarity (f769ce5)
+- [x] D.05 Benchmark runner end-to-end (4612e17)
 - [ ] D.06 Eval dataset expansion — 10+ cases per skill task
 - [ ] D.07 Auto-prompt optimization — run evals, tweak prompt_fragment, re-eval
 
@@ -151,3 +151,5 @@ B — Skill Library Expansion (A complete for MVP)
 - 2026-03-21 | C.04 complete: namespace_registry.py with load_namespace_config() + register_namespace_servers(). namespaces/data.yaml with postgres-mcp, files-mcp, airflow-mcp. Generic pattern replaces hardcoded gateway registration. 10 new tests (198 total). Phase C fully done. | Health: All Phase C items complete. Next: Phase D (Intelligence) — D.01 embedding service.
 - 2026-03-21 | D.01 complete: EmbeddingCache class (OrderedDict LRU, maxsize=512) + module singleton. get_embedding() checks cache before HTTP — repeated calls skip Ollama. clear_embedding_cache()/embedding_cache_size() helpers. 8 new tests (206 total). Cache isolation bug found: tests sharing same text key must call clear_embedding_cache() first. | Health: Phase D active (3/7 done — D.02+D.03 already implemented via B.02, now have test coverage). D.04 next.
 - 2026-03-21 | D.02+D.03 complete (tests): 4 tests for /skills/search, 4 tests for /agents/search (new test_agents_api.py). Implementation already existed from B.02. Tests confirm hybrid scoring (keyword + embedding), fallback to keyword-only when Ollama unavailable. 8 new tests (214 total). | Health: D.04 (MCP tool search tests) is the natural next item.
+- 2026-03-21 | D.04 complete: test_mcp_search.py — 4 tests for GET /mcp/search (keyword match, no-match empty, hybrid embedding, keyword-only fallback). Implementation from C.02/B.02 confirmed correct. 218 tests total. | Health: D.05 next.
+- 2026-03-21 | D.05 complete: 4 end-to-end tests for run_benchmark_task() in test_benchmark.py (all-cases processing, stub-mode fail, missing dataset error, real dataset on disk). Fixed path traversal bug (parents[3] not parents[4]). 222 tests total. | Health: D.04+D.05 done. D.06 (eval dataset expansion) and D.07 (auto-prompt optimization) remain.
