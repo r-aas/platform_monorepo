@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     workflows_dir: str = "workflows"
     ollama_base_url: str = "http://192.168.5.2:11434"
     ollama_embedding_model: str = "nomic-embed-text"
+    # MetaMCP admin registration
+    metamcp_admin_url: str = "http://genai-metamcp.genai.svc.cluster.local:12009"
+    metamcp_user_email: str = ""
+    metamcp_user_password: str = ""
+    metamcp_namespace: str = "genai"
+    gateway_mcp_name: str = "agent-gateway"
+    gateway_mcp_url: str = "http://genai-agent-gateway.genai.svc.cluster.local:8000/gateway-mcp"
 
 
 settings = Settings()

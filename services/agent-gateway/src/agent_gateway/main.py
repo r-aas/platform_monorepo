@@ -15,6 +15,12 @@ from agent_gateway.routers.skills import router as skills_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
+    # Register gateway as MCP server in MetaMCP (non-fatal if unreachable)
+    try:
+        from agent_gateway.metamcp_client import register_gateway_server
+        await register_gateway_server()
+    except Exception:
+        pass
     yield
 
 
