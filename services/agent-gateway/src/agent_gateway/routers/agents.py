@@ -5,6 +5,7 @@ import asyncio
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 
+from agent_gateway.embeddings import get_embedding, hybrid_score, cosine_similarity
 from agent_gateway.registry import get_agent, list_agents
 from agent_gateway.skills_registry import get_skill
 
@@ -18,24 +19,31 @@ async def search_agents(q: str = Query(..., description="Search query for hybrid
     query_lower = q.lower()
 
     # Keyword scoring — matches on name, description, skills, system prompt
+    query_emb = await get_embedding(q)
     scored = []
     for agent in agents:
-        score = 0
+        kw_score = 0
         searchable = f"{agent.name} {agent.description} {' '.join(agent.skills)} {agent.system_prompt}".lower()
         for term in query_lower.split():
             if term in searchable:
-                score += 1
+                kw_score += 1
             if term in agent.name.lower():
-                score += 3  # name match weighted higher
+                kw_score += 3  # name match weighted higher
             if term in agent.description.lower():
-                score += 2
+                kw_score += 2
+
+        emb_sim = None
+        if query_emb is not None:
+            agent_text = f"{agent.name} {agent.description} {' '.join(agent.skills)}"
+            agent_emb = await get_embedding(agent_text)
+            if agent_emb is not None:
+                emb_sim = cosine_similarity(query_emb, agent_emb)
+
+        score = hybrid_score(kw_score, emb_sim)
         if score > 0:
             scored.append((score, agent))
 
     scored.sort(key=lambda x: x[0], reverse=True)
-
-    # TODO: add embedding-based semantic similarity via Ollama /v1/embeddings
-    # For now, keyword-only. Hybrid = keyword + embeddings when embeddings are wired.
 
     return {
         "query": q,

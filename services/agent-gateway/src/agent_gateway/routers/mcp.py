@@ -3,6 +3,8 @@
 import httpx
 from fastapi import APIRouter, Query
 
+from agent_gateway.embeddings import cosine_similarity, get_embedding, hybrid_score
+
 
 router = APIRouter(prefix="/mcp", tags=["mcp"])
 
@@ -32,21 +34,29 @@ async def search_mcp(q: str = Query(..., description="Search query for hybrid RA
         all_tools.extend(await _fetch_mcp_tools(ns))
 
     query_lower = q.lower()
+    query_emb = await get_embedding(q)
     scored = []
     for tool in all_tools:
-        score = 0
+        kw_score = 0
         searchable = f"{tool['name']} {tool['description']}".lower()
         for term in query_lower.split():
             if term in searchable:
-                score += 1
+                kw_score += 1
             if term in tool["name"].lower():
-                score += 3
+                kw_score += 3
+
+        emb_sim = None
+        if query_emb is not None:
+            tool_text = f"{tool['name']} {tool['description']}"
+            tool_emb = await get_embedding(tool_text)
+            if tool_emb is not None:
+                emb_sim = cosine_similarity(query_emb, tool_emb)
+
+        score = hybrid_score(kw_score, emb_sim)
         if score > 0:
             scored.append((score, tool))
 
     scored.sort(key=lambda x: x[0], reverse=True)
-
-    # TODO: add embedding-based semantic similarity via Ollama /v1/embeddings
 
     return {
         "query": q,

@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     agents_dir: str = "agents"
     skills_dir: str = "skills"
     workflows_dir: str = "workflows"
+    ollama_base_url: str = "http://192.168.5.2:11434"
+    ollama_embedding_model: str = "nomic-embed-text"
 
 
 settings = Settings()

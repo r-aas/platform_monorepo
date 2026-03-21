@@ -5,6 +5,7 @@ import asyncio
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 
+from agent_gateway.embeddings import cosine_similarity, get_embedding, hybrid_score
 from agent_gateway.models import SkillDefinition
 from agent_gateway.skills_registry import create_skill, delete_skill, get_skill, list_skills, update_skill
 
@@ -17,28 +18,36 @@ async def search_skills(q: str = Query(..., description="Search query for hybrid
     skills = await asyncio.to_thread(list_skills)
     query_lower = q.lower()
 
+    query_emb = await get_embedding(q)
     scored = []
     for skill in skills:
-        score = 0
+        kw_score = 0
         task_names = " ".join(t.name for t in skill.tasks)
         searchable = (
             f"{skill.name} {skill.description} {' '.join(skill.tags)} {task_names} {skill.prompt_fragment}".lower()
         )
         for term in query_lower.split():
             if term in searchable:
-                score += 1
+                kw_score += 1
             if term in skill.name.lower():
-                score += 3
+                kw_score += 3
             if term in skill.description.lower():
-                score += 2
+                kw_score += 2
             if any(term in tag.lower() for tag in skill.tags):
-                score += 2
+                kw_score += 2
+
+        emb_sim = None
+        if query_emb is not None:
+            skill_text = f"{skill.name} {skill.description} {' '.join(skill.tags)}"
+            skill_emb = await get_embedding(skill_text)
+            if skill_emb is not None:
+                emb_sim = cosine_similarity(query_emb, skill_emb)
+
+        score = hybrid_score(kw_score, emb_sim)
         if score > 0:
             scored.append((score, skill))
 
     scored.sort(key=lambda x: x[0], reverse=True)
-
-    # TODO: add embedding-based semantic similarity via Ollama /v1/embeddings
 
     return {
         "query": q,
@@ -118,18 +127,28 @@ async def search_tasks(q: str = Query(..., description="Search query for hybrid 
     skills = await asyncio.to_thread(list_skills)
     query_lower = q.lower()
 
+    query_emb = await get_embedding(q)
     scored = []
     for skill in skills:
         for task in skill.tasks:
-            score = 0
+            kw_score = 0
             searchable = f"{task.name} {task.description} {skill.name}".lower()
             for term in query_lower.split():
                 if term in searchable:
-                    score += 1
+                    kw_score += 1
                 if term in task.name.lower():
-                    score += 3
+                    kw_score += 3
                 if term in task.description.lower():
-                    score += 2
+                    kw_score += 2
+
+            emb_sim = None
+            if query_emb is not None:
+                task_text = f"{task.name} {task.description}"
+                task_emb = await get_embedding(task_text)
+                if task_emb is not None:
+                    emb_sim = cosine_similarity(query_emb, task_emb)
+
+            score = hybrid_score(kw_score, emb_sim)
             if score > 0:
                 scored.append(
                     (
@@ -145,8 +164,6 @@ async def search_tasks(q: str = Query(..., description="Search query for hybrid 
                 )
 
     scored.sort(key=lambda x: x[0], reverse=True)
-
-    # TODO: add embedding-based semantic similarity via Ollama /v1/embeddings
 
     return {"query": q, "results": [item for _, item in scored]}
 

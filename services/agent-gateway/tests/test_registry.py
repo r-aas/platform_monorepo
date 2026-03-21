@@ -31,10 +31,7 @@ def mock_prompt_version():
 async def test_get_agent(mock_client_cls, mock_prompt_version):
     mock_client = MagicMock()
     mock_client_cls.return_value = mock_client
-
-    mock_prompt = MagicMock()
-    mock_prompt.latest_versions = [mock_prompt_version]
-    mock_client.get_prompt.return_value = mock_prompt
+    mock_client.get_prompt_version.return_value = mock_prompt_version
 
     agent = await get_agent("test-agent")
     assert isinstance(agent, AgentDefinition)
@@ -49,7 +46,7 @@ async def test_get_agent(mock_client_cls, mock_prompt_version):
 async def test_get_agent_not_found(mock_client_cls):
     mock_client = MagicMock()
     mock_client_cls.return_value = mock_client
-    mock_client.get_prompt.side_effect = Exception("not found")
+    mock_client.get_prompt_version.side_effect = Exception("not found")
 
     with pytest.raises(KeyError):
         await get_agent("nonexistent")
@@ -62,8 +59,8 @@ async def test_list_agents(mock_client_cls, mock_prompt_version):
 
     mock_prompt = MagicMock()
     mock_prompt.name = "agent:test-agent"
-    mock_prompt.latest_versions = [mock_prompt_version]
     mock_client.search_prompts.return_value = [mock_prompt]
+    mock_client.get_prompt_version.return_value = mock_prompt_version
 
     agents = await list_agents()
     assert len(agents) == 1
