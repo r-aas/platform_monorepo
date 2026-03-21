@@ -116,3 +116,101 @@ def test_vector_store_ops_tasks_have_descriptions():
     skill = load_skill_yaml("vector-store-ops")
     for task in skill.tasks:
         assert task.description, f"Task '{task.name}' must have a description"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# B.12 — prompt-engineering
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_prompt_engineering_skill_loads():
+    skill = load_skill_yaml("prompt-engineering")
+    assert skill.name == "prompt-engineering"
+
+
+def test_prompt_engineering_has_description():
+    skill = load_skill_yaml("prompt-engineering")
+    assert skill.description
+
+
+def test_prompt_engineering_has_tags():
+    skill = load_skill_yaml("prompt-engineering")
+    assert skill.tags, "prompt-engineering skill must have at least one tag"
+
+
+def test_prompt_engineering_has_mcp_servers():
+    skill = load_skill_yaml("prompt-engineering")
+    assert skill.mcp_servers, "prompt-engineering skill must reference at least one MCP server"
+
+
+def test_prompt_engineering_has_prompt_fragment():
+    skill = load_skill_yaml("prompt-engineering")
+    assert skill.prompt_fragment.strip(), "prompt-engineering skill must have a non-empty prompt_fragment"
+
+
+def test_prompt_engineering_has_tasks():
+    skill = load_skill_yaml("prompt-engineering")
+    assert skill.tasks, "prompt-engineering skill must define at least one task"
+
+
+def test_prompt_engineering_task_names():
+    skill = load_skill_yaml("prompt-engineering")
+    task_names = {t.name for t in skill.tasks}
+    assert task_names & {"design-variants", "run-evals", "compare-results", "apply-best"}, (
+        f"Expected at least one of: design-variants, run-evals, compare-results, apply-best. Got: {task_names}"
+    )
+
+
+def test_prompt_engineering_tasks_have_descriptions():
+    skill = load_skill_yaml("prompt-engineering")
+    for task in skill.tasks:
+        assert task.description, f"Task '{task.name}' must have a description"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# B.13 — code-generation
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_code_generation_skill_loads():
+    skill = load_skill_yaml("code-generation")
+    assert skill.name == "code-generation"
+
+
+def test_code_generation_has_description():
+    skill = load_skill_yaml("code-generation")
+    assert skill.description
+
+
+def test_code_generation_has_tags():
+    skill = load_skill_yaml("code-generation")
+    assert skill.tags, "code-generation skill must have at least one tag"
+
+
+def test_code_generation_has_mcp_servers():
+    skill = load_skill_yaml("code-generation")
+    assert skill.mcp_servers, "code-generation skill must reference at least one MCP server"
+
+
+def test_code_generation_has_prompt_fragment():
+    skill = load_skill_yaml("code-generation")
+    assert skill.prompt_fragment.strip(), "code-generation skill must have a non-empty prompt_fragment"
+
+
+def test_code_generation_has_tasks():
+    skill = load_skill_yaml("code-generation")
+    assert skill.tasks, "code-generation skill must define at least one task"
+
+
+def test_code_generation_task_names():
+    skill = load_skill_yaml("code-generation")
+    task_names = {t.name for t in skill.tasks}
+    assert task_names & {"generate-code", "modify-code", "verify-tests", "review-diff"}, (
+        f"Expected at least one of: generate-code, modify-code, verify-tests, review-diff. Got: {task_names}"
+    )
+
+
+def test_code_generation_tasks_have_descriptions():
+    skill = load_skill_yaml("code-generation")
+    for task in skill.tasks:
+        assert task.description, f"Task '{task.name}' must have a description"
