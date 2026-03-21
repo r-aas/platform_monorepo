@@ -56,11 +56,11 @@ B — Skill Library Expansion (A complete for MVP)
 
 ### Priority 3 — New Agents
 
-- [ ] B.16 Agent: data-engineer — skills [data-ingestion, vector-store-ops, kubernetes-ops]
+- [x] B.16 Agent: data-engineer — skills [data-ingestion, vector-store-ops, kubernetes-ops] (feedd5a)
       Domain: D2/agent-definitions | Produces: agents/data-engineer.yaml
-- [ ] B.17 Agent: platform-admin — skills [kubernetes-ops, n8n-workflow-ops, gitlab-pipeline-ops]
+- [x] B.17 Agent: platform-admin — skills [kubernetes-ops, n8n-workflow-ops, gitlab-pipeline-ops] (feedd5a)
       Domain: D2/agent-definitions | Produces: agents/platform-admin.yaml
-- [ ] B.18 Agent: developer — skills [code-generation, documentation, security-audit]
+- [x] B.18 Agent: developer — skills [code-generation, documentation, security-audit] (5efbb98)
       Domain: D2/agent-definitions | Produces: agents/developer.yaml
 
 ### Phase C — MCP Mesh (after B)
@@ -144,3 +144,4 @@ B — Skill Library Expansion (A complete for MVP)
 - 2026-03-21 | B.10+B.11 complete: data-ingestion and vector-store-ops skill YAMLs. TDD with 16 schema validation tests (105 total). Path traversal gotcha: test was 5 parents deep but needed 4. | Health: P2 active (2/6 done). B.12-B.15 remain.
 - 2026-03-21 | B.12+B.13 complete: prompt-engineering (MLflow A/B eval) and code-generation (TDD+GitLab) skill YAMLs. 16 new schema validation tests (121 total). Both follow established 8-test-per-skill pattern. | Health: P2 active (4/6 done). B.14-B.15 remain.
 - 2026-03-21 | B.14+B.15 complete: documentation (code→docs, API spec extraction, conversation summaries) and security-audit (OWASP scan, k8s RBAC audit, SARIF reports) skill YAMLs. 16 new schema validation tests (137 total). P2 fully done. | Health: P2 complete. Next: P3 agents (B.16-B.18) compose from 6 skills.
+- 2026-03-21 | B.16+B.17+B.18 complete: data-engineer, platform-admin, developer agent YAMLs. New test_agent_yamls.py with 24 schema validation tests (161 total). Phase B fully done (P1+P2+P3). | Health: All non-blocked B items complete. Next: Phase C (MCP Mesh) starting with C.01.
