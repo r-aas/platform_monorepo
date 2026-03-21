@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from agent_gateway.config import settings
+from agent_gateway.mcp_server import router as gateway_mcp_router
 from agent_gateway.routers.agents import router as agents_router
 from agent_gateway.routers.chat import router as chat_router
 from agent_gateway.routers.mcp import router as mcp_router
@@ -22,6 +23,7 @@ app.include_router(chat_router)
 app.include_router(agents_router)
 app.include_router(skills_router)
 app.include_router(mcp_router)
+app.include_router(gateway_mcp_router)
 
 
 @app.get("/health")
