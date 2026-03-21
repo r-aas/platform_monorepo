@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agent_gateway.benchmark.runner import BenchmarkResult, CaseResult, evaluate_case, load_dataset
+from agent_gateway.benchmark.runner import BenchmarkResult, CaseResult, evaluate_case, load_dataset, run_benchmark_task
 
 
 # ---------------------------------------------------------------------------
@@ -323,3 +323,128 @@ async def test_benchmark_endpoint_no_evaluation(mock_get, client):
         params={"agent": "mlops"},
     )
     assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# run_benchmark_task — end-to-end integration (D.05)
+# ---------------------------------------------------------------------------
+
+
+def test_run_benchmark_task_processes_all_cases(tmp_path: Path):
+    """run_benchmark_task loads dataset, evaluates all cases, returns run_id."""
+    dataset = {
+        "task": "deploy-model",
+        "skill": "kubernetes-ops",
+        "cases": [
+            {
+                "id": "c1",
+                "input": "Deploy fraud-detection",
+                "expected_output_contains": ["deployed"],
+                "expected_tools_used": [],
+            },
+            {
+                "id": "c2",
+                "input": "Deploy sentiment-analysis",
+                "expected_output_contains": ["deployed"],
+                "expected_tools_used": [],
+            },
+        ],
+    }
+    dataset_path = tmp_path / "deploy-model.json"
+    dataset_path.write_text(json.dumps(dataset))
+
+    mock_client = MagicMock()
+    mock_client.create_experiment.return_value = "exp-111"
+    mock_client.create_run.return_value = MagicMock(info=MagicMock(run_id="run-e2e-1"))
+
+    with patch("agent_gateway.benchmark.results.MlflowClient", return_value=mock_client):
+        run_id = run_benchmark_task(
+            skill_name="kubernetes-ops",
+            task_name="deploy-model",
+            agent_name="mlops",
+            dataset_path=str(dataset_path),
+            tracking_uri="http://mlflow:5000",
+        )
+
+    assert run_id == "run-e2e-1"
+    # Both cases should have been evaluated (stub mode → empty output → fail, but counted)
+    log_metric_calls = {str(c) for c in mock_client.log_metric.call_args_list}
+    assert any("total_cases" in c and "2" in c for c in log_metric_calls)
+
+
+def test_run_benchmark_task_stub_mode_all_fail(tmp_path: Path):
+    """In stub mode (no live gateway), all cases with expectations fail."""
+    dataset = {
+        "task": "deploy-model",
+        "skill": "kubernetes-ops",
+        "cases": [
+            {
+                "id": "c1",
+                "input": "Deploy model",
+                "expected_output_contains": ["deployed"],
+                "expected_tools_used": ["kubectl_apply"],
+            },
+        ],
+    }
+    dataset_path = tmp_path / "deploy-model.json"
+    dataset_path.write_text(json.dumps(dataset))
+
+    mock_client = MagicMock()
+    mock_client.create_experiment.return_value = "exp-222"
+    mock_client.create_run.return_value = MagicMock(info=MagicMock(run_id="run-e2e-2"))
+
+    with patch("agent_gateway.benchmark.results.MlflowClient", return_value=mock_client):
+        run_id = run_benchmark_task(
+            skill_name="kubernetes-ops",
+            task_name="deploy-model",
+            agent_name="mlops",
+            dataset_path=str(dataset_path),
+            tracking_uri="http://mlflow:5000",
+        )
+
+    assert run_id == "run-e2e-2"
+    # pass_rate should be 0.0 (stub always produces empty output)
+    log_metric_calls = {str(c) for c in mock_client.log_metric.call_args_list}
+    assert any("pass_rate" in c and "0.0" in c for c in log_metric_calls)
+
+
+def test_run_benchmark_task_missing_dataset(tmp_path: Path):
+    """run_benchmark_task raises FileNotFoundError when dataset path is wrong."""
+    with pytest.raises(FileNotFoundError):
+        run_benchmark_task(
+            skill_name="kubernetes-ops",
+            task_name="deploy-model",
+            agent_name="mlops",
+            dataset_path=str(tmp_path / "nonexistent.json"),
+            tracking_uri="http://mlflow:5000",
+        )
+
+
+def test_run_benchmark_task_real_dataset():
+    """run_benchmark_task works with the real kubernetes-ops eval dataset on disk."""
+    from pathlib import Path as P
+
+    # 4 parents up from tests/ to platform_monorepo root
+    monorepo_root = P(__file__).parents[3]
+    dataset_path = monorepo_root / "skills" / "eval" / "kubernetes-ops" / "deploy-model.json"
+
+    if not dataset_path.exists():
+        pytest.skip("Real eval dataset not present")
+
+    mock_client = MagicMock()
+    mock_client.create_experiment.return_value = "exp-real"
+    mock_client.create_run.return_value = MagicMock(info=MagicMock(run_id="run-real"))
+
+    with patch("agent_gateway.benchmark.results.MlflowClient", return_value=mock_client):
+        run_id = run_benchmark_task(
+            skill_name="kubernetes-ops",
+            task_name="deploy-model",
+            agent_name="mlops",
+            dataset_path=str(dataset_path),
+            tracking_uri="http://mlflow:5000",
+        )
+
+    assert run_id == "run-real"
+    # Real dataset has 3 cases
+    log_metric_calls = {str(c) for c in mock_client.log_metric.call_args_list}
+    assert any("total_cases" in c and "3" in c for c in log_metric_calls)
