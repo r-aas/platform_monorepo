@@ -42,6 +42,9 @@
 - 2026-03-21 | D.04 | MCP search test pattern: mock `get_tool_index` to return a `ToolIndex` with test `DiscoveredTool` objects. Same 4-case pattern as skills/agents search (keyword match, no match, hybrid, fallback). All three search endpoints (skills/agents/mcp) now follow identical test structure.
 - 2026-03-21 | D.05 | run_benchmark_task() end-to-end test: use tmp_path fixture for isolated JSON datasets. Mock MlflowClient at `agent_gateway.benchmark.results.MlflowClient`. Assert on log_metric call_args_list string representations for pass_rate/total_cases checks — avoids over-specifying call signature.
 - 2026-03-21 | D.05 | Path traversal from test file to monorepo root: tests/ is parents[0], agent-gateway/ is parents[1], services/ is parents[2], platform_monorepo/ is parents[3]. Anti-pattern confirmed: parents[4] goes to repos/ (one too high). The B.10/B.11 lesson said "4 parents deep" meaning 4 levels of depth, but Python index is 3 (0-indexed). Use parents[3] for monorepo root from test files.
+- 2026-03-21 | D.06 | When expanding eval datasets, write a parametrized test_eval_datasets.py (exists, min_cases, required_fields, unique_ids, list_types) before creating/expanding any JSON. Run → red. Fill datasets → green. This parametrized pattern adds O(N×M) coverage with O(1) code where N=datasets and M=checks.
+- 2026-03-21 | D.06 | Hardcoded case counts in tests break when datasets grow. Pattern: assert `len(cases) >= N` (minimum) rather than `== N` (exact). Existing test_benchmark.py had `assert any("3" in c ...)` that failed after expansion. Use string presence check (total_cases key) not value assertion.
+- 2026-03-21 | D.06 | Eval case quality pattern: mix single-tool cases (test isolated skill) with multi-tool cases (test realistic workflows). For kubernetes-ops, single: kubectl_get; multi: kubectl_describe + kubectl_logs (crashloop). Realistic combinations improve coverage of actual agent behavior.
 
 ## Task Templates
 

@@ -77,7 +77,7 @@ B — Skill Library Expansion (A complete for MVP)
 - [x] D.03 Agent search with semantic similarity — endpoint tests added (49003c7)
 - [x] D.04 MCP tool search with semantic similarity (f769ce5)
 - [x] D.05 Benchmark runner end-to-end (4612e17)
-- [ ] D.06 Eval dataset expansion — 10+ cases per skill task
+- [x] D.06 Eval dataset expansion — 10+ cases per skill task (dae7f7e)
 - [ ] D.07 Auto-prompt optimization — run evals, tweak prompt_fragment, re-eval
 
 ### Phase E — Orchestration (parallel with D)
@@ -153,3 +153,4 @@ B — Skill Library Expansion (A complete for MVP)
 - 2026-03-21 | D.02+D.03 complete (tests): 4 tests for /skills/search, 4 tests for /agents/search (new test_agents_api.py). Implementation already existed from B.02. Tests confirm hybrid scoring (keyword + embedding), fallback to keyword-only when Ollama unavailable. 8 new tests (214 total). | Health: D.04 (MCP tool search tests) is the natural next item.
 - 2026-03-21 | D.04 complete: test_mcp_search.py — 4 tests for GET /mcp/search (keyword match, no-match empty, hybrid embedding, keyword-only fallback). Implementation from C.02/B.02 confirmed correct. 218 tests total. | Health: D.05 next.
 - 2026-03-21 | D.05 complete: 4 end-to-end tests for run_benchmark_task() in test_benchmark.py (all-cases processing, stub-mode fail, missing dataset error, real dataset on disk). Fixed path traversal bug (parents[3] not parents[4]). 222 tests total. | Health: D.04+D.05 done. D.06 (eval dataset expansion) and D.07 (auto-prompt optimization) remain.
+- 2026-03-21 | D.06 complete: 5 datasets × 10+ cases each. kubernetes-ops (deploy-model 3→12, check-status 2→11), mlflow-tracking (log-metrics 1→11, search-experiments new 11), n8n-workflow-ops (list-workflows new 11). 25 new schema validation tests (test_eval_datasets.py). Fixed hardcoded "3" in real-dataset test. 247 tests total. | Health: Phase D 6/7 done. D.07 (auto-prompt optimization) is the last item.
