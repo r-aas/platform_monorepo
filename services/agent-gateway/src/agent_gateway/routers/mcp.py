@@ -4,6 +4,7 @@ import httpx
 from fastapi import APIRouter, Query
 
 from agent_gateway.embeddings import cosine_similarity, get_embedding, hybrid_score
+from agent_gateway.mcp_discovery import get_tool_index
 
 
 router = APIRouter(prefix="/mcp", tags=["mcp"])
@@ -27,11 +28,15 @@ async def _fetch_mcp_tools(namespace: str) -> list[dict]:
 @router.get("/search")
 async def search_mcp(q: str = Query(..., description="Search query for hybrid RAG over MCP tools")):
     """Hybrid search over MCP server tools from all MetaMCP namespaces."""
-    # Fetch tools from known namespaces
-    namespaces = ["genai", "platform"]
-    all_tools = []
-    for ns in namespaces:
-        all_tools.extend(await _fetch_mcp_tools(ns))
+    # Use cached index when available; fall back to live fetch from static namespaces
+    idx = get_tool_index()
+    if idx is not None:
+        all_tools = [{"name": t.name, "description": t.description, "namespace": t.namespace} for t in idx.tools]
+    else:
+        namespaces = ["genai", "platform"]
+        all_tools = []
+        for ns in namespaces:
+            all_tools.extend(await _fetch_mcp_tools(ns))
 
     query_lower = q.lower()
     query_emb = await get_embedding(q)
@@ -70,6 +75,16 @@ async def search_mcp(q: str = Query(..., description="Search query for hybrid RA
 @router.get("/namespaces")
 async def list_namespaces():
     """List known MetaMCP namespaces and their tool counts."""
+    idx = get_tool_index()
+    if idx is not None:
+        # Use indexed data — namespace list is dynamic from MetaMCP
+        ns_tool_counts: dict[str, int] = {ns: 0 for ns in idx.namespaces}
+        for t in idx.tools:
+            if t.namespace in ns_tool_counts:
+                ns_tool_counts[t.namespace] += 1
+        return {"namespaces": [{"namespace": ns, "tool_count": count} for ns, count in ns_tool_counts.items()]}
+
+    # Fallback: live fetch from static namespace list
     namespaces = ["genai", "platform"]
     result = []
     for ns in namespaces:

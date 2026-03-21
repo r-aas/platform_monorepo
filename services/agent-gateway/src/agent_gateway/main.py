@@ -21,6 +21,12 @@ async def lifespan(app: FastAPI):
         await register_gateway_server()
     except Exception:
         pass
+    # Auto-discover and index all MCP tools from MetaMCP namespaces (non-fatal)
+    try:
+        from agent_gateway.mcp_discovery import index_all_tools
+        await index_all_tools()
+    except Exception:
+        pass
     yield
 
 
