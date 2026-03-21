@@ -1,62 +1,61 @@
 # Platform Monorepo — Session Resume
 
-## Session: 2026-03-21 — Factory Worker Run 8
+## Session: 2026-03-21 — Factory Worker Run 9
 
 ### Built
 
-- **data-engineer agent** — `agents/data-engineer.yaml`
-  - Skills: data-ingestion, vector-store-ops, kubernetes-ops
-  - MCP servers: genai namespace
-  - System prompt: data pipeline + vector store specialist, verifies integrity after operations
+- **MetaMCP registration client** — `services/agent-gateway/src/agent_gateway/metamcp_client.py`
+  - Authenticates to MetaMCP backend via tRPC (same pattern as genai-metamcp seed job)
+  - Creates or updates the gateway MCP server entry in MetaMCP
+  - Assigns gateway to the `genai` namespace (preserving other server assignments)
+  - Returns `False` (non-fatal) when credentials not configured or MetaMCP unreachable
 
-- **platform-admin agent** — `agents/platform-admin.yaml`
-  - Skills: kubernetes-ops, n8n-workflow-ops, gitlab-pipeline-ops
-  - MCP servers: genai + platform namespaces
-  - System prompt: k3d cluster + n8n workflows + GitLab CI/CD operations
+- **Config extensions** — `services/agent-gateway/src/agent_gateway/config.py`
+  - `metamcp_admin_url` (default: cluster internal port 12009)
+  - `metamcp_user_email`, `metamcp_user_password` (empty = skip registration)
+  - `metamcp_namespace` (default: genai)
+  - `gateway_mcp_name`, `gateway_mcp_url`
 
-- **developer agent** — `agents/developer.yaml`
-  - Skills: code-generation, documentation, security-audit
-  - MCP servers: genai namespace
-  - System prompt: TDD-first code generation, accurate docs, OWASP security auditing
+- **Startup wiring** — `services/agent-gateway/src/agent_gateway/main.py`
+  - Lifespan calls `register_gateway_server()` on startup (wrapped in try/except, non-fatal)
 
-- **Agent YAML tests** — `services/agent-gateway/tests/test_agent_yamls.py`
-  - 24 schema validation tests (8 per agent) covering B.16, B.17, B.18
+- **Tests** — `services/agent-gateway/tests/test_metamcp_client.py`
+  - 5 tests using pytest-httpx to intercept httpx calls
+  - Covers: skip when no credentials, create new server, update existing, auth error handling
 
 ### Test Status
 
-161 tests passing:
-- test_agent_yamls.py (24) — B.16/B.17/B.18 schema validation
-- All prior 137 tests still passing
+166 tests passing (+5 from C.01):
+- test_metamcp_client.py (5) — C.01 MetaMCP registration
+- All prior 161 tests still passing
 
 ### Commits This Session
 
-- `feedd5a` feat(agent-gateway): agent YAMLs for data-engineer and platform-admin [B.16] [B.17]
-- `5efbb98` feat(agent-gateway): agent YAML for developer [B.18]
+- `ab57411` feat(agent-gateway): MetaMCP registration client [C.01]
 
 ### Branch
 
 `001-agent-gateway` — clean
 
-### Phase B Status
+### Phase C Status
 
 | Item | What | Status |
 |------|------|--------|
-| B.07 | Python runtime | Blocked (needs pyagentspec eval) |
-| B.08 | Claude Code runtime | Blocked (needs headless testing) |
-| B.01–B.06 | P1 gateway gaps | ✅ All done (or blocked) |
-| B.10–B.15 | P2 skill library | ✅ All done |
-| B.16–B.18 | P3 new agents | ✅ All done |
-
-**Phase B complete** (all non-blocked items done).
+| C.01 | Gateway MCP server registration in MetaMCP | ✅ Done |
+| C.02 | Auto-discovery: scan MetaMCP namespaces, index all tools | Next |
+| C.03 | MCP tool recommendation engine | Queued |
+| C.04 | Namespace: data — register data pipeline MCP servers | Queued |
 
 ### Next Steps
 
-- [local] Phase C: C.01 — Gateway MCP server registration in MetaMCP
-- [local] C.02 — Auto-discovery: scan MetaMCP namespaces, index all tools
-- Pattern: gateway exposes itself as an MCP server in MetaMCP for discovery by other agents
+- [local] Phase C: C.02 — Auto-discovery: scan MetaMCP namespaces, index all tools
+  - `/gateway-mcp` already exposes `list_agents` and `list_skills`
+  - C.02 adds a scheduled or on-demand discovery pass that pulls all tools from MetaMCP namespaces
+  - Result: gateway has an indexed map of all available MCP tools across all namespaces
 
 ### Notes
 
-- Agent YAML TDD: use load_agent_yaml() directly on disk files (not tmp_path) — produces clean FileNotFoundError → create YAML → green loop
+- MetaMCP admin backend port is 12009 (not 12008 which is the MCP proxy endpoint)
+- tRPC response shape: `{"result": {"data": {"data": [...]}}}` for lists
+- `pytest-httpx` is already in dev deps — use it for all httpx-based tests
 - `uv run pytest` MUST be run from `services/agent-gateway/` (not monorepo root)
-- 5 agents total now: mlops, agent-ops, data-engineer, platform-admin, developer

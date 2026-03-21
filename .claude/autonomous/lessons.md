@@ -28,6 +28,10 @@
 - 2026-03-21 | B.14/B.15 | Security-audit skill: mix genai (gitlab for file reading) and platform (kubectl for k8s inspection) MCP servers when a skill spans code + infra domains. Documentation skill: gitlab wiki + file tools are sufficient — no dedicated doc MCP needed at this stage.
 - 2026-03-21 | B.16/B.17/B.18 | Agent YAML TDD pattern: create test_agent_yamls.py that calls load_agent_yaml() directly on disk files (not tmp_path). Tests fail with FileNotFoundError → create YAML → green. 8 tests per agent (loads, description, system_prompt, skills, mcp_servers, runtime, agentspec_version, llm_config). Two agents per first commit, one per second — matches skill batch size convention.
 
+- 2026-03-21 | C.01 | pytest-httpx (already in dev deps) intercepts httpx.AsyncClient calls without mocking. Use `httpx_mock.add_response(url=..., method=..., json=..., headers=...)` — responses consumed in order. `httpx_mock.get_requests()` verifies call count. Clean way to test any httpx-based client.
+- 2026-03-21 | C.01 | MetaMCP tRPC API pattern (from seed.py ground truth): auth via POST /api/auth/sign-in/email → set-cookie header with better-auth.session_token. tRPC GET at /trpc/frontend/{procedure} for queries; POST for mutations. Response shape: {"result": {"data": {"data": [...]}}}. Admin backend on port 12009 (not 12008 which is the MCP proxy port).
+- 2026-03-21 | C.01 | Non-fatal startup registration pattern: wrap in try/except inside lifespan, return bool instead of raising. Tests can assert False on error without side effects. This makes services resilient to MetaMCP being down during startup.
+
 ## Task Templates
 
 <!-- When the factory identifies a recurring task shape, capture it here -->

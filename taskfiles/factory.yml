@@ -1,0 +1,110 @@
+version: "3"
+
+# Factory worker helpers — simplify autonomous build loop operations.
+# Include in repo Taskfile.yml: factory: ~/work/taskfiles/factory.yml
+
+vars:
+  FACTORY_DIR: "{{.ROOT_DIR}}/.claude/autonomous"
+  SERVICE_DIR: "{{.ROOT_DIR}}/services/agent-gateway"
+  FACTORY_LOCK: "{{.FACTORY_DIR}}/.factory-lock"
+  FACTORY_STOP: "{{.FACTORY_DIR}}/.factory-stop"
+
+tasks:
+  status:
+    desc: Show factory health — lock state, test count, ledger summary
+    cmds:
+      - |
+        echo "=== Factory Status ==="
+        if [ -f "{{.FACTORY_LOCK}}" ]; then
+          echo "LOCK: ACTIVE ($(cat {{.FACTORY_LOCK}}))"
+        else
+          echo "LOCK: clear"
+        fi
+        if [ -f "{{.FACTORY_STOP}}" ]; then
+          echo "STOP: EMERGENCY STOP SET — factory halted"
+        else
+          echo "STOP: not set (factory running)"
+        fi
+        echo ""
+        echo "=== Ledger Summary ==="
+        grep -E "^\- \[.\] [A-Z]\." {{.FACTORY_DIR}}/ledger.md | awk '
+          /^\- \[x\]/ { done++ }
+          /^\- \[ \]/ { pending++ }
+          END { printf "Done: %d | Pending: %d\n", done, pending }
+        '
+        echo ""
+        echo "=== Recent Evolution Log ==="
+        grep -A2 "Evolution Log" {{.FACTORY_DIR}}/ledger.md | tail -5
+
+  test:
+    desc: Run agent-gateway test suite
+    dir: "{{.SERVICE_DIR}}"
+    cmds:
+      - uv run pytest -q
+
+  lint:
+    desc: Run ruff on agent-gateway
+    dir: "{{.SERVICE_DIR}}"
+    cmds:
+      - uv run ruff check .
+
+  check:
+    desc: Run tests + lint (full quality gate)
+    cmds:
+      - task: factory:test
+      - task: factory:lint
+
+  logs:
+    desc: Show factory lessons (patterns + anti-patterns)
+    cmds:
+      - cat {{.FACTORY_DIR}}/lessons.md
+
+  ledger:
+    desc: Show full factory ledger (backlog + evolution log)
+    cmds:
+      - cat {{.FACTORY_DIR}}/ledger.md
+
+  stop:
+    desc: Set emergency stop — halt all factory workers immediately
+    cmds:
+      - touch {{.FACTORY_STOP}}
+      - echo "Emergency stop set. Factory workers will abort on next boot check."
+
+  go:
+    desc: Clear emergency stop — allow factory workers to run
+    cmds:
+      - rm -f {{.FACTORY_STOP}}
+      - echo "Emergency stop cleared. Factory workers will run on next schedule."
+
+  unlock:
+    desc: Force-remove stale lock file (use if worker crashed mid-run)
+    cmds:
+      - |
+        if [ -f "{{.FACTORY_LOCK}}" ]; then
+          echo "Removing lock: $(cat {{.FACTORY_LOCK}})"
+          rm -f {{.FACTORY_LOCK}}
+          echo "Lock cleared."
+        else
+          echo "No lock file found."
+        fi
+
+  clean:
+    desc: Remove lock + stop files (full reset)
+    cmds:
+      - rm -f {{.FACTORY_LOCK}} {{.FACTORY_STOP}}
+      - echo "Factory state files cleared."
+
+  history:
+    desc: Show factory commits on current branch
+    cmds:
+      - git log --oneline --grep="\[B\.\|C\.\|D\.\|E\.\|F\." -- .
+
+  diff:
+    desc: Show what factory has built vs main (full diff summary)
+    cmds:
+      - git log --oneline main..HEAD
+
+  resume:
+    desc: Show RESUME.md — last session state
+    cmds:
+      - cat {{.ROOT_DIR}}/RESUME.md
