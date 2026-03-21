@@ -5,21 +5,23 @@
     {
       "id": "deploy-basic",
       "input": "Deploy the fraud-detection model to the genai namespace",
-      "expected_output_contains": ["deployment", "fraud-detection"],
+      "expected_output_contains": ["deployment", "created", "fraud-detection"],
       "expected_tools_used": ["kubectl_apply"],
       "max_latency_seconds": 30
     },
     {
       "id": "deploy-with-replicas",
-      "input": "Deploy sentiment-analysis with 3 replicas in the genai namespace",
+      "input": "Deploy sentiment-analysis with 3 replicas",
       "expected_output_contains": ["replicas", "sentiment-analysis"],
-      "expected_tools_used": ["kubectl_apply"]
+      "expected_tools_used": ["kubectl_apply"],
+      "max_latency_seconds": 30
     },
     {
-      "id": "deploy-custom-namespace",
-      "input": "Deploy the recommendation model to the staging namespace",
-      "expected_output_contains": ["staging", "recommendation"],
-      "expected_tools_used": ["kubectl_apply"]
+      "id": "deploy-check-status",
+      "input": "Deploy churn-predictor and verify it is running",
+      "expected_output_contains": ["churn-predictor", "running"],
+      "expected_tools_used": ["kubectl_apply", "kubectl_get"],
+      "max_latency_seconds": 60
     }
   ]
 }

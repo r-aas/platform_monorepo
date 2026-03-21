@@ -3,16 +3,18 @@
   "skill": "kubernetes-ops",
   "cases": [
     {
-      "id": "check-running",
-      "input": "Check the status of the fraud-detection deployment",
-      "expected_output_contains": ["pod", "status"],
-      "expected_tools_used": ["kubectl_get"]
+      "id": "check-running-pod",
+      "input": "Check the status of the fraud-detection deployment in genai namespace",
+      "expected_output_contains": ["fraud-detection", "pods", "running"],
+      "expected_tools_used": ["kubectl_get"],
+      "max_latency_seconds": 15
     },
     {
-      "id": "check-not-found",
-      "input": "Check the status of the nonexistent-model deployment",
-      "expected_output_contains": ["not found"],
-      "expected_tools_used": ["kubectl_get"]
+      "id": "check-all-deployments",
+      "input": "List all deployments in the genai namespace and their status",
+      "expected_output_contains": ["deployment", "ready", "genai"],
+      "expected_tools_used": ["kubectl_get"],
+      "max_latency_seconds": 15
     }
   ]
 }

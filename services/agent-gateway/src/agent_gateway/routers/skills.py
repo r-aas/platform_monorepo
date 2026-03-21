@@ -5,9 +5,13 @@ import asyncio
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 
+from agent_gateway.benchmark.runner import run_benchmark_task
+from agent_gateway.config import Settings
 from agent_gateway.embeddings import cosine_similarity, get_embedding, hybrid_score
 from agent_gateway.models import SkillDefinition
 from agent_gateway.skills_registry import create_skill, delete_skill, get_skill, list_skills, update_skill
+
+_settings = Settings()
 
 router = APIRouter(prefix="/skills", tags=["skills"])
 
@@ -187,4 +191,44 @@ async def list_skill_tasks(name: str):
             }
             for t in skill.tasks
         ],
+    }
+
+
+@router.post("/{name}/tasks/{task}/benchmark", status_code=202)
+async def benchmark_task(name: str, task: str, agent: str = Query(..., description="Agent name to run benchmark with")):
+    """Run eval dataset for a skill task against an agent. Returns 202 with benchmark run ID."""
+    try:
+        skill = await asyncio.to_thread(get_skill, name)
+    except KeyError:
+        return JSONResponse(
+            status_code=404, content={"error": {"message": f"Skill '{name}' not found", "code": "skill_not_found"}}
+        )
+
+    task_def = next((t for t in skill.tasks if t.name == task), None)
+    if task_def is None:
+        return JSONResponse(
+            status_code=404,
+            content={"error": {"message": f"Task '{task}' not found in skill '{name}'", "code": "task_not_found"}},
+        )
+
+    if task_def.evaluation is None:
+        return JSONResponse(
+            status_code=422,
+            content={"error": {"message": f"Task '{task}' has no evaluation dataset", "code": "no_evaluation"}},
+        )
+
+    run_id = await asyncio.to_thread(
+        run_benchmark_task,
+        name,
+        task,
+        agent,
+        task_def.evaluation.dataset,
+        _settings.mlflow_tracking_uri,
+    )
+    return {
+        "benchmark_id": run_id,
+        "skill": name,
+        "task": task,
+        "agent": agent,
+        "status": "completed",
     }

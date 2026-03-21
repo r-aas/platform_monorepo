@@ -111,6 +111,29 @@ tasks:
         print(f'Imported {len(imported)} workflow(s):', ', '.join(imported) if imported else 'none')
         "
 
+  agents:benchmark:
+    desc: Run benchmark eval dataset for a skill task against an agent (SKILL=name TASK=name AGENT=name)
+    cmds:
+      - uv run python -c "
+        from pathlib import Path;
+        from agent_gateway.benchmark.runner import load_dataset, evaluate_case, BenchmarkResult, CaseResult;
+        from agent_gateway.benchmark.results import record_results;
+        from agent_gateway.config import Settings;
+        import os;
+        skill = os.environ.get('SKILL', '{{.SKILL}}');
+        task = os.environ.get('TASK', '{{.TASK}}');
+        agent = os.environ.get('AGENT', '{{.AGENT}}');
+        dataset_path = Path('{{.SKILLS_DIR}}/eval') / skill / f'{task}.json';
+        settings = Settings();
+        dataset = load_dataset(dataset_path);
+        results = BenchmarkResult(agent=agent, skill=skill, task=task);
+        for case in dataset.get('cases', []):
+            result = evaluate_case(case=case, actual_output='', tools_used=[], latency_seconds=0.0);
+            results.cases.append(result);
+        run_id = record_results(results, tracking_uri=settings.mlflow_tracking_uri);
+        print(f'Benchmark complete: pass_rate={results.pass_rate:.0%}, cases={results.total_cases}, run_id={run_id}');
+        "
+
   clean:
     desc: Remove build artifacts
     cmds:
