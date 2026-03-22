@@ -50,6 +50,8 @@
 - 2026-03-21 | E.03 | Multi-agent pipeline definition format: PipelineStage (name, agent, depends_on, inputs) + PipelineRouting (on_error, max_retries, default_timeout) + PipelineDefinition. Pipeline loader validates depends_on refs at load time — catch bad references before runtime. pipelines/ dir at monorepo root (parallel to agents/).
 - 2026-03-21 | E.01 | When a ledger item references existing work ("partially done"), read both the spec tasks AND the existing implementation. Here B.04 had portabilize/resolve but no validation gate. E.01's actual value was adding validate_portable_export() + validate_credentials_resolvable() — pure validation functions that complete the portability contract.
 - 2026-03-21 | E.01 | Validation-only modules are natural pure functions: input dict + optional map → list[str] errors. Empty list = valid. This pattern avoids raising on first error (returns all errors at once) and is trivially testable with no mocking.
+- 2026-03-21 | E.02 | Delegation protocol as a router (not chat extension) keeps concerns separate: delegation.py mirrors chat.py pattern (get_agent → resolve_skills → compose → get_runtime → invoke_sync) but at a dedicated REST endpoint. Reusing existing building blocks meant 0 new dependencies.
+- 2026-03-21 | E.04 | httpx.AsyncClient.stream() is NOT a coroutine — it returns a context manager directly. When mocking, use MagicMock(return_value=ctx_manager) not AsyncMock. Using AsyncMock wraps it as a coroutine, causing "TypeError: coroutine object does not support async context manager protocol".
 
 ## Task Templates
 

@@ -84,10 +84,12 @@ B — Skill Library Expansion (A complete for MVP)
 
 - [x] E.01 Workflow export/import with credential portability (0b52111)
       Domain: D5/workflow-gitops | Files: workflows/validation.py
-- [ ] E.02 Agent-to-agent delegation protocol
+- [x] E.02 Agent-to-agent delegation protocol (a863928)
+      Domain: D5/orchestration | Files: routers/delegation.py, models.py
 - [x] E.03 Multi-agent pipeline definition format (4bb7dd9)
       Domain: D5/multi-agent | Files: models.py, agentspec/pipeline_loader.py, pipelines/
-- [ ] E.04 Claude Code as orchestrator — invoke gateway agents from CC
+- [x] E.04 Claude Code as orchestrator — invoke gateway agents from CC (76be4e4)
+      Domain: D2/runtimes | Files: runtimes/http.py, runtimes/__init__.py
 
 ### Phase F — Self-Optimization (ongoing after D)
 
@@ -159,3 +161,5 @@ B — Skill Library Expansion (A complete for MVP)
 - 2026-03-21 | D.07 complete: benchmark/optimizer.py — score_prompt_coverage(), extract_uncovered_terms(), suggest_prompt_improvements(), optimize_skill_prompt(), record_optimization_result(). Coverage score = fraction of expected_output_contains terms in prompt_fragment. Pure functions: no file writes, no LLM calls needed. MLflow logging of before/after scores. 12 new tests (259 total). Phase D fully complete. | Health: All Phases A-D fully done (B.07/B.08 blocked). Phase E (Orchestration) is next — E.03 (multi-agent pipeline format) is the most self-contained first item.
 - 2026-03-21 | E.03 complete: PipelineStage/PipelineRouting/PipelineDefinition Pydantic models + pipeline_loader.py + pipelines/model-deploy-pipeline.yaml (3-stage: security-review → staging → smoke-test). 8 schema validation tests (267 total). depends_on refs validated at load time. | Health: Phase E active (2/4 done, E.02/E.04 need architectural decisions).
 - 2026-03-21 | E.01 complete: workflows/validation.py — validate_portable_export() (detects raw cred IDs) + validate_credentials_resolvable() (pre-import dry-run). Pure functions returning list[str] errors. 8 tests (275 total). Completes the B.04 portability contract with validation gates. | Health: Phase E 2 additional items done. E.02 (agent delegation) and E.04 (CC orchestrator) are larger architectural items.
+- 2026-03-21 | E.02 complete: routers/delegation.py — POST /v1/agents/{to_agent}/delegate, DelegationRequest/DelegationResult models, skill resolution, compose+runtime invoke. 5 tests (280 total). | E.04 next.
+- 2026-03-21 | E.04 complete: runtimes/http.py — HttpRuntime (OpenAI-compatible headless LLM client). invoke_sync + invoke (streaming SSE). Registered as 'http' runtime. 5 tests (285 total). Phase E fully done. | Health: All Phases A-E done (B.07/B.08 blocked). Phase F (Self-Optimization) is next.
