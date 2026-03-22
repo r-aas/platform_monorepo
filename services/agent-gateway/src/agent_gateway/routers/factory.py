@@ -20,6 +20,7 @@ from agent_gateway.benchmark.gap_analysis import (
     find_defined_skills,
     find_referenced_skills,
 )
+from agent_gateway.benchmark.optimizer import optimize_skill_prompt
 from agent_gateway.benchmark.regression import detect_regression, get_run_scores
 from agent_gateway.mcp_discovery import get_tool_index
 from agent_gateway.registry import list_agents
@@ -31,6 +32,13 @@ router = APIRouter(prefix="/factory", tags=["factory"])
 # ---------------------------------------------------------------------------
 # Pure helpers
 # ---------------------------------------------------------------------------
+
+
+def scan_skill_yamls(skills_dir: Path) -> list[Path]:
+    """Return all *.yaml files in skills_dir. Returns [] if dir does not exist."""
+    if not skills_dir.is_dir():
+        return []
+    return sorted(skills_dir.glob("*.yaml"))
 
 
 def _scan_eval_datasets(skills_eval_dir: Path) -> dict[str, list[str]]:
@@ -179,5 +187,32 @@ async def factory_gaps() -> JSONResponse:
             "missing_skills": sorted(result.missing_skills),
             "unused_skills": sorted(result.unused_skills),
             "covered_skills": sorted(result.covered_skills),
+        }
+    )
+
+
+@router.get("/evolve")
+async def factory_evolve() -> JSONResponse:
+    """Run prompt optimizer across all skills; return improvement suggestions sorted by gain."""
+    from agent_gateway.config import settings
+
+    skills_dir = Path(settings.skills_dir)
+    datasets_root = skills_dir / "eval"
+    yaml_paths = scan_skill_yamls(skills_dir)
+
+    results: list[dict] = []
+    for skill_path in yaml_paths:
+        try:
+            result = optimize_skill_prompt(skill_path, datasets_root)
+            results.append(result)
+        except Exception:
+            pass
+
+    results.sort(key=lambda r: r["improvement"], reverse=True)
+
+    return JSONResponse(
+        {
+            "skills_analyzed": len(results),
+            "results": results,
         }
     )
