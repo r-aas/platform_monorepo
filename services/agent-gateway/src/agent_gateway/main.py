@@ -9,6 +9,7 @@ from agent_gateway.mcp_server import router as gateway_mcp_router
 from agent_gateway.routers.agents import router as agents_router
 from agent_gateway.routers.chat import router as chat_router
 from agent_gateway.routers.delegation import router as delegation_router
+from agent_gateway.routers.factory import router as factory_router
 from agent_gateway.routers.mcp import router as mcp_router
 from agent_gateway.routers.skills import router as skills_router
 
@@ -38,6 +39,7 @@ app.include_router(delegation_router)
 app.include_router(skills_router)
 app.include_router(mcp_router)
 app.include_router(gateway_mcp_router)
+app.include_router(factory_router)
 
 
 @app.get("/health")
