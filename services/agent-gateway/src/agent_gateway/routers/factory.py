@@ -15,6 +15,11 @@ from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
+from agent_gateway.benchmark.gap_analysis import (
+    analyze_skill_gaps,
+    find_defined_skills,
+    find_referenced_skills,
+)
 from agent_gateway.benchmark.regression import detect_regression, get_run_scores
 from agent_gateway.mcp_discovery import get_tool_index
 from agent_gateway.registry import list_agents
@@ -145,5 +150,34 @@ async def factory_regression() -> JSONResponse:
             "regressions_found": regressions_found,
             "total_checked": len(checks),
             "checks": checks,
+        }
+    )
+
+
+@router.get("/gaps")
+async def factory_gaps() -> JSONResponse:
+    """Identify skill coverage gaps — missing skills referenced by agents, unused skills."""
+    agents: list = []
+    try:
+        agents = await list_agents()
+    except Exception:
+        pass
+
+    skills: list = []
+    try:
+        skills = await asyncio.to_thread(list_skills)
+    except Exception:
+        pass
+
+    referenced = find_referenced_skills(agents)
+    defined = find_defined_skills(skills)
+    result = analyze_skill_gaps(referenced, defined)
+
+    return JSONResponse(
+        {
+            "coverage_ratio": result.coverage_ratio,
+            "missing_skills": sorted(result.missing_skills),
+            "unused_skills": sorted(result.unused_skills),
+            "covered_skills": sorted(result.covered_skills),
         }
     )
