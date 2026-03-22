@@ -15,6 +15,7 @@ from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
+from agent_gateway.benchmark.regression import detect_regression, get_run_scores
 from agent_gateway.mcp_discovery import get_tool_index
 from agent_gateway.registry import list_agents
 from agent_gateway.skills_registry import list_skills
@@ -93,5 +94,56 @@ async def factory_health() -> JSONResponse:
             "mcp_tools_indexed": mcp_tools_indexed,
             "eval_datasets_found": eval_datasets_found,
             "eval_datasets": eval_datasets,
+        }
+    )
+
+
+@router.get("/regression")
+async def factory_regression() -> JSONResponse:
+    """Check all eval datasets for pass_rate regressions vs. historical MLflow runs."""
+    import mlflow
+
+    from agent_gateway.config import settings
+
+    skills_eval_dir = Path(settings.skills_dir) / "eval"
+    eval_datasets = _scan_eval_datasets(skills_eval_dir)
+
+    client = mlflow.MlflowClient(settings.mlflow_tracking_uri)
+    checks = []
+    for skill_name, tasks in sorted(eval_datasets.items()):
+        for task_name in tasks:
+            experiment_name = f"eval:*:{skill_name}:{task_name}"
+            scores = get_run_scores(client, experiment_name)
+            result = detect_regression(scores, skill=skill_name, task=task_name)
+            if result is None:
+                checks.append(
+                    {
+                        "skill": skill_name,
+                        "task": task_name,
+                        "status": "insufficient_data",
+                        "run_count": len(scores),
+                        "is_regressed": False,
+                    }
+                )
+            else:
+                checks.append(
+                    {
+                        "skill": skill_name,
+                        "task": task_name,
+                        "status": "regressed" if result.is_regressed else "ok",
+                        "is_regressed": result.is_regressed,
+                        "current_score": result.current_score,
+                        "baseline_score": result.baseline_score,
+                        "drop_amount": result.drop_amount,
+                        "run_count": result.run_count,
+                    }
+                )
+
+    regressions_found = sum(1 for c in checks if c["is_regressed"])
+    return JSONResponse(
+        {
+            "regressions_found": regressions_found,
+            "total_checked": len(checks),
+            "checks": checks,
         }
     )
