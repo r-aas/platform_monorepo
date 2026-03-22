@@ -47,6 +47,9 @@
 - 2026-03-21 | D.06 | Eval case quality pattern: mix single-tool cases (test isolated skill) with multi-tool cases (test realistic workflows). For kubernetes-ops, single: kubectl_get; multi: kubectl_describe + kubectl_logs (crashloop). Realistic combinations improve coverage of actual agent behavior.
 - 2026-03-21 | D.07 | Prompt optimizer as pure functions: coverage scoring (fraction of expected_output_contains terms in prompt) requires no LLM, no file I/O, no network — all pure string operations. This makes it fast, testable, and reliable. The "intelligence" is in the eval dataset design, not the optimizer itself.
 - 2026-03-21 | D.07 | When tasks say "auto-prompt optimization", the key insight is: evaluation datasets encode what good behavior looks like. Cross-referencing those expectations against the prompt_fragment surface reveals gaps — no LLM needed for the analysis phase, only for the actual suggestion generation (which we skip by using template bullets instead).
+- 2026-03-21 | E.03 | Multi-agent pipeline definition format: PipelineStage (name, agent, depends_on, inputs) + PipelineRouting (on_error, max_retries, default_timeout) + PipelineDefinition. Pipeline loader validates depends_on refs at load time — catch bad references before runtime. pipelines/ dir at monorepo root (parallel to agents/).
+- 2026-03-21 | E.01 | When a ledger item references existing work ("partially done"), read both the spec tasks AND the existing implementation. Here B.04 had portabilize/resolve but no validation gate. E.01's actual value was adding validate_portable_export() + validate_credentials_resolvable() — pure validation functions that complete the portability contract.
+- 2026-03-21 | E.01 | Validation-only modules are natural pure functions: input dict + optional map → list[str] errors. Empty list = valid. This pattern avoids raising on first error (returns all errors at once) and is trivially testable with no mocking.
 
 ## Task Templates
 

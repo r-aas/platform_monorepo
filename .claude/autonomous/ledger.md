@@ -82,9 +82,11 @@ B — Skill Library Expansion (A complete for MVP)
 
 ### Phase E — Orchestration (parallel with D)
 
-- [ ] E.01 Workflow export/import with credential portability
+- [x] E.01 Workflow export/import with credential portability (0b52111)
+      Domain: D5/workflow-gitops | Files: workflows/validation.py
 - [ ] E.02 Agent-to-agent delegation protocol
-- [ ] E.03 Multi-agent pipeline definition format
+- [x] E.03 Multi-agent pipeline definition format (4bb7dd9)
+      Domain: D5/multi-agent | Files: models.py, agentspec/pipeline_loader.py, pipelines/
 - [ ] E.04 Claude Code as orchestrator — invoke gateway agents from CC
 
 ### Phase F — Self-Optimization (ongoing after D)
@@ -155,3 +157,5 @@ B — Skill Library Expansion (A complete for MVP)
 - 2026-03-21 | D.05 complete: 4 end-to-end tests for run_benchmark_task() in test_benchmark.py (all-cases processing, stub-mode fail, missing dataset error, real dataset on disk). Fixed path traversal bug (parents[3] not parents[4]). 222 tests total. | Health: D.04+D.05 done. D.06 (eval dataset expansion) and D.07 (auto-prompt optimization) remain.
 - 2026-03-21 | D.06 complete: 5 datasets × 10+ cases each. kubernetes-ops (deploy-model 3→12, check-status 2→11), mlflow-tracking (log-metrics 1→11, search-experiments new 11), n8n-workflow-ops (list-workflows new 11). 25 new schema validation tests (test_eval_datasets.py). Fixed hardcoded "3" in real-dataset test. 247 tests total. | Health: Phase D 6/7 done. D.07 (auto-prompt optimization) is the last item.
 - 2026-03-21 | D.07 complete: benchmark/optimizer.py — score_prompt_coverage(), extract_uncovered_terms(), suggest_prompt_improvements(), optimize_skill_prompt(), record_optimization_result(). Coverage score = fraction of expected_output_contains terms in prompt_fragment. Pure functions: no file writes, no LLM calls needed. MLflow logging of before/after scores. 12 new tests (259 total). Phase D fully complete. | Health: All Phases A-D fully done (B.07/B.08 blocked). Phase E (Orchestration) is next — E.03 (multi-agent pipeline format) is the most self-contained first item.
+- 2026-03-21 | E.03 complete: PipelineStage/PipelineRouting/PipelineDefinition Pydantic models + pipeline_loader.py + pipelines/model-deploy-pipeline.yaml (3-stage: security-review → staging → smoke-test). 8 schema validation tests (267 total). depends_on refs validated at load time. | Health: Phase E active (2/4 done, E.02/E.04 need architectural decisions).
+- 2026-03-21 | E.01 complete: workflows/validation.py — validate_portable_export() (detects raw cred IDs) + validate_credentials_resolvable() (pre-import dry-run). Pure functions returning list[str] errors. 8 tests (275 total). Completes the B.04 portability contract with validation gates. | Health: Phase E 2 additional items done. E.02 (agent delegation) and E.04 (CC orchestrator) are larger architectural items.
