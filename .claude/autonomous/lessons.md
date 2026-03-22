@@ -52,6 +52,8 @@
 - 2026-03-21 | E.01 | Validation-only modules are natural pure functions: input dict + optional map → list[str] errors. Empty list = valid. This pattern avoids raising on first error (returns all errors at once) and is trivially testable with no mocking.
 - 2026-03-21 | E.02 | Delegation protocol as a router (not chat extension) keeps concerns separate: delegation.py mirrors chat.py pattern (get_agent → resolve_skills → compose → get_runtime → invoke_sync) but at a dedicated REST endpoint. Reusing existing building blocks meant 0 new dependencies.
 - 2026-03-21 | E.04 | httpx.AsyncClient.stream() is NOT a coroutine — it returns a context manager directly. When mocking, use MagicMock(return_value=ctx_manager) not AsyncMock. Using AsyncMock wraps it as a coroutine, causing "TypeError: coroutine object does not support async context manager protocol".
+- 2026-03-22 | F.03 | MagicMock `name` param is SPECIAL — it sets the mock's display name, not the `.name` attribute. `MagicMock(spec=SkillDefinition, name="foo")` does NOT set `mock.name = "foo"`. Pattern: use real model objects in endpoint tests when you need `.name` attribute access, or explicitly set `mock.name = "foo"` after construction.
+- 2026-03-22 | F.04 | Reuse existing pure functions across endpoints: scan_skill_yamls() + optimize_skill_prompt() from D.07 composed directly into /factory/evolve with zero new logic. F.04 = scan + run + sort — 3 lines of logic. The value is the endpoint wiring, not new computation.
 
 ## Task Templates
 

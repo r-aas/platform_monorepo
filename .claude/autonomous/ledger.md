@@ -93,10 +93,10 @@ B — Skill Library Expansion (A complete for MVP)
 
 ### Phase F — Self-Optimization (ongoing after D)
 
-- [ ] F.01 Factory health dashboard — what's built, what's passing, what's stale
-- [ ] F.02 Skill regression detection — benchmark scores drop → alert
-- [ ] F.03 Gap analysis — identify missing skills from usage patterns
-- [ ] F.04 Auto-skill-evolution — improve skills based on eval results
+- [x] F.01 Factory health dashboard — what's built, what's passing, what's stale (a4ed0f1)
+- [x] F.02 Skill regression detection — benchmark scores drop → alert (fc6adfb)
+- [x] F.03 Gap analysis — identify missing skills from usage patterns (b160d3c)
+- [x] F.04 Auto-skill-evolution — improve skills based on eval results (8327982)
 
 ## Completed
 
@@ -163,3 +163,5 @@ B — Skill Library Expansion (A complete for MVP)
 - 2026-03-21 | E.01 complete: workflows/validation.py — validate_portable_export() (detects raw cred IDs) + validate_credentials_resolvable() (pre-import dry-run). Pure functions returning list[str] errors. 8 tests (275 total). Completes the B.04 portability contract with validation gates. | Health: Phase E 2 additional items done. E.02 (agent delegation) and E.04 (CC orchestrator) are larger architectural items.
 - 2026-03-21 | E.02 complete: routers/delegation.py — POST /v1/agents/{to_agent}/delegate, DelegationRequest/DelegationResult models, skill resolution, compose+runtime invoke. 5 tests (280 total). | E.04 next.
 - 2026-03-21 | E.04 complete: runtimes/http.py — HttpRuntime (OpenAI-compatible headless LLM client). invoke_sync + invoke (streaming SSE). Registered as 'http' runtime. 5 tests (285 total). Phase E fully done. | Health: All Phases A-E done (B.07/B.08 blocked). Phase F (Self-Optimization) is next.
+- 2026-03-22 | F.01+F.02 already done (prior run didn't update ledger); F.03 complete: benchmark/gap_analysis.py — find_referenced_skills, find_defined_skills, analyze_skill_gaps, GapAnalysisResult with coverage_ratio. GET /factory/gaps. 12 tests (316 total). | F.04 next.
+- 2026-03-22 | F.04 complete: scan_skill_yamls() + GET /factory/evolve wires optimize_skill_prompt() across all skills, sorts by improvement descending, skips erroring skills. 6 tests (322 total). Phase F fully done — all Phases A-F complete. | Health: Entire spec 001 backlog done. B.07/B.08 remain blocked. Next run: backlog grooming or new phase.
