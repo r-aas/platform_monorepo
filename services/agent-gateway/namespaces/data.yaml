@@ -1,0 +1,20 @@
+# MetaMCP namespace: data
+# Data pipeline MCP servers registered at gateway startup.
+# Add servers here to make them discoverable via auto-discovery (C.02).
+
+namespace: data
+servers:
+  - name: postgres-mcp
+    description: "PostgreSQL operations — query, insert, schema inspection via pgvector"
+    url: "http://genai-postgres-mcp.genai.svc.cluster.local:8080/mcp"
+    type: streamable-http
+
+  - name: files-mcp
+    description: "File read/write operations for data pipeline ingestion and export"
+    url: "http://genai-files-mcp.genai.svc.cluster.local:8080/mcp"
+    type: streamable-http
+
+  - name: airflow-mcp
+    description: "Trigger and monitor Airflow DAGs for batch data pipelines"
+    url: "http://genai-airflow-mcp.genai.svc.cluster.local:8080/mcp"
+    type: streamable-http

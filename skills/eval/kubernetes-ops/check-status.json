@@ -1,0 +1,83 @@
+{
+  "task": "check-status",
+  "skill": "kubernetes-ops",
+  "cases": [
+    {
+      "id": "check-running-pod",
+      "input": "Check the status of the fraud-detection deployment in genai namespace",
+      "expected_output_contains": ["fraud-detection", "pods", "running"],
+      "expected_tools_used": ["kubectl_get"],
+      "max_latency_seconds": 15
+    },
+    {
+      "id": "check-all-deployments",
+      "input": "List all deployments in the genai namespace and their status",
+      "expected_output_contains": ["deployment", "ready", "genai"],
+      "expected_tools_used": ["kubectl_get"],
+      "max_latency_seconds": 15
+    },
+    {
+      "id": "check-pod-logs",
+      "input": "Show the last 50 log lines from the sentiment-analysis pod",
+      "expected_output_contains": ["sentiment-analysis", "logs"],
+      "expected_tools_used": ["kubectl_logs"],
+      "max_latency_seconds": 15
+    },
+    {
+      "id": "check-pod-events",
+      "input": "Show recent events for the churn-predictor deployment",
+      "expected_output_contains": ["churn-predictor", "event"],
+      "expected_tools_used": ["kubectl_describe"],
+      "max_latency_seconds": 15
+    },
+    {
+      "id": "check-resource-usage",
+      "input": "Check CPU and memory usage for all pods in the genai namespace",
+      "expected_output_contains": ["cpu", "memory", "genai"],
+      "expected_tools_used": ["kubectl_get"],
+      "max_latency_seconds": 20
+    },
+    {
+      "id": "check-crashloop",
+      "input": "Why is the object-classifier pod in CrashLoopBackOff?",
+      "expected_output_contains": ["CrashLoopBackOff", "object-classifier"],
+      "expected_tools_used": ["kubectl_describe", "kubectl_logs"],
+      "max_latency_seconds": 30
+    },
+    {
+      "id": "check-pending-pod",
+      "input": "Find out why the forecasting-model pod is stuck in Pending state",
+      "expected_output_contains": ["forecasting-model", "pending"],
+      "expected_tools_used": ["kubectl_describe"],
+      "max_latency_seconds": 20
+    },
+    {
+      "id": "check-rollout-status",
+      "input": "Check the rollout status of the recommendation-engine deployment",
+      "expected_output_contains": ["recommendation-engine", "rollout"],
+      "expected_tools_used": ["kubectl_rollout"],
+      "max_latency_seconds": 15
+    },
+    {
+      "id": "check-service-endpoints",
+      "input": "Verify that the fraud-detection service has healthy endpoints",
+      "expected_output_contains": ["fraud-detection", "endpoint"],
+      "expected_tools_used": ["kubectl_get"],
+      "max_latency_seconds": 15
+    },
+    {
+      "id": "check-node-health",
+      "input": "Check the health status of all nodes in the cluster",
+      "expected_output_contains": ["node", "ready"],
+      "expected_tools_used": ["kubectl_get"],
+      "max_latency_seconds": 15
+    },
+    {
+      "id": "check-pvc-bound",
+      "input": "Check if the PersistentVolumeClaim for mlflow-store is bound",
+      "expected_output_contains": ["mlflow-store", "bound"],
+      "expected_tools_used": ["kubectl_get"],
+      "max_latency_seconds": 15
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: agent-gateway
+description: Agent Gateway — OpenAI-compatible API for agent composition, skill registry, and MCP orchestration
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

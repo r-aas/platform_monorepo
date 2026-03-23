@@ -1,0 +1,90 @@
+{
+  "task": "deploy-model",
+  "skill": "kubernetes-ops",
+  "cases": [
+    {
+      "id": "deploy-basic",
+      "input": "Deploy the fraud-detection model to the genai namespace",
+      "expected_output_contains": ["deployment", "created", "fraud-detection"],
+      "expected_tools_used": ["kubectl_apply"],
+      "max_latency_seconds": 30
+    },
+    {
+      "id": "deploy-with-replicas",
+      "input": "Deploy sentiment-analysis with 3 replicas",
+      "expected_output_contains": ["replicas", "sentiment-analysis"],
+      "expected_tools_used": ["kubectl_apply"],
+      "max_latency_seconds": 30
+    },
+    {
+      "id": "deploy-check-status",
+      "input": "Deploy churn-predictor and verify it is running",
+      "expected_output_contains": ["churn-predictor", "running"],
+      "expected_tools_used": ["kubectl_apply", "kubectl_get"],
+      "max_latency_seconds": 60
+    },
+    {
+      "id": "deploy-with-resources",
+      "input": "Deploy object-classifier with 500m CPU and 1Gi memory limits to genai namespace",
+      "expected_output_contains": ["object-classifier", "resources"],
+      "expected_tools_used": ["kubectl_apply"],
+      "max_latency_seconds": 30
+    },
+    {
+      "id": "deploy-image-update",
+      "input": "Update the fraud-detection deployment to use image v2.1.0",
+      "expected_output_contains": ["fraud-detection", "image", "v2.1.0"],
+      "expected_tools_used": ["kubectl_apply"],
+      "max_latency_seconds": 30
+    },
+    {
+      "id": "deploy-rollout-wait",
+      "input": "Deploy recommendation-engine and wait for the rollout to complete",
+      "expected_output_contains": ["recommendation-engine", "rollout"],
+      "expected_tools_used": ["kubectl_apply", "kubectl_rollout"],
+      "max_latency_seconds": 120
+    },
+    {
+      "id": "deploy-staging",
+      "input": "Deploy anomaly-detector to the stage namespace with 2 replicas",
+      "expected_output_contains": ["anomaly-detector", "stage"],
+      "expected_tools_used": ["kubectl_apply"],
+      "max_latency_seconds": 30
+    },
+    {
+      "id": "deploy-env-config",
+      "input": "Deploy text-classifier with environment variables MODEL_VERSION=v3 and LOG_LEVEL=info",
+      "expected_output_contains": ["text-classifier", "MODEL_VERSION"],
+      "expected_tools_used": ["kubectl_apply"],
+      "max_latency_seconds": 30
+    },
+    {
+      "id": "deploy-configmap",
+      "input": "Create a ConfigMap for fraud-detection model config and deploy the service",
+      "expected_output_contains": ["configmap", "fraud-detection"],
+      "expected_tools_used": ["kubectl_apply"],
+      "max_latency_seconds": 45
+    },
+    {
+      "id": "deploy-service-expose",
+      "input": "Deploy image-segmentation model and expose it as a ClusterIP service on port 8080",
+      "expected_output_contains": ["image-segmentation", "service", "8080"],
+      "expected_tools_used": ["kubectl_apply"],
+      "max_latency_seconds": 30
+    },
+    {
+      "id": "deploy-dry-run",
+      "input": "Perform a dry-run deployment of nlp-classifier to validate the manifest",
+      "expected_output_contains": ["nlp-classifier", "dry-run"],
+      "expected_tools_used": ["kubectl_apply"],
+      "max_latency_seconds": 15
+    },
+    {
+      "id": "deploy-hpa",
+      "input": "Deploy forecasting-model with autoscaling between 2 and 10 replicas based on CPU",
+      "expected_output_contains": ["forecasting-model", "autoscal"],
+      "expected_tools_used": ["kubectl_apply"],
+      "max_latency_seconds": 45
+    }
+  ]
+}

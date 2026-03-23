@@ -1,135 +1,82 @@
 # Platform Monorepo — Session Resume
 
-## Session: 2026-03-17 — ArgoCD ApplicationSet + Agent Gateway
+## Session: 2026-03-22 — Factory Worker Run 18
 
 ### Built
 
-- **ApplicationSet pattern** — Replaced individual ArgoCD Application manifests with two ApplicationSets (`workloads-git`, `workloads-helm`). Inspired by danmanners/homelab-kube-cluster (cloned to `~/work/clones/homelab/homelab-kube-cluster/`).
-- **Agent-gateway Helm chart** — `charts/agent-gateway/` (FastAPI 8080, SQLite PVC, Ollama via host.docker.internal). Built from `~/work/repos/homelab/services/agent-gateway/`, imported via `k3d image import`.
-- **Ingress-nginx values** — `charts/ingress-nginx/` version-controlled; `k3d:install-ingress` uses values files.
-- **GitLab omnibus config fix** — `envFrom: configMapRef` truncated multiline → switched to `configMapKeyRef`.
+#### F.03: Skill gap analysis — GET /factory/gaps
 
-### ArgoCD Applications (all via ApplicationSet)
+**New file: `benchmark/gap_analysis.py`**
+- `find_referenced_skills(agents)` → set[str] — all skill names referenced across agents
+- `find_defined_skills(skills)` → set[str] — all skill names in registry
+- `analyze_skill_gaps(referenced, defined)` → `GapAnalysisResult`
+  - `missing_skills`: referenced but not defined
+  - `unused_skills`: defined but not referenced
+  - `covered_skills`: both defined and referenced
+  - `coverage_ratio`: len(covered) / len(referenced), 1.0 if none referenced
 
-| App | Status | Namespace |
-|-----|--------|-----------|
-| genai-infra | OutOfSync/Missing | genai |
-| genai-apps | OutOfSync/Missing | genai |
-| gitlab-ce | Synced/Healthy | platform |
-| agent-gateway | Synced/Healthy | dev |
+**New endpoint: `GET /factory/gaps`**
+- Non-fatal: survives MLflow unavailability
+- Returns sorted lists for deterministic output
 
-### Bugs Fixed This Session
+**Test file: `tests/test_gap_analysis.py`** — 12 tests
 
-1. GitLab `GITLAB_OMNIBUS_CONFIG` truncated to first line (`envFrom` → `configMapKeyRef`)
-2. `local-path-provisioner` ImagePullBackOff (docker pull + k3d image import)
+#### F.04: Auto-skill-evolution — GET /factory/evolve
 
-### Known Issues
+**Added to `routers/factory.py`**
+- `scan_skill_yamls(skills_dir)` — returns all *.yaml paths in skills_dir
+- `GET /factory/evolve` — runs `optimize_skill_prompt()` per skill, sorts by improvement desc
+  - Skips skills that error during optimization (non-fatal)
+  - Returns `{skills_analyzed, results: [{skill, before_score, after_score, improvement, uncovered_terms, improved_prompt}]}`
 
-- **GitLab registry push from Docker CLI** — Colima VM resolves nip.io to 127.0.0.1 (VM-local). Workaround: `k3d image import`. CI Runner on bridge network can reach registry directly.
-- **Agent-gateway Ollama unavailable** — Chart sets OpenAI env vars but agent-gateway uses its own config. Check `~/work/repos/homelab/services/agent-gateway/src/` for actual env var names.
+**Test file: `tests/test_skill_evolution.py`** — 6 tests
+
+### Test Status
+
+322 tests passing (+37 from run 18 — counting F.01+F.02 tests from prior run):
+- 12 new in test_gap_analysis.py (F.03)
+- 6 new in test_skill_evolution.py (F.04)
+- All prior 304 tests still passing
+
+### Commits This Run
+
+- `b160d3c` feat(agent-gateway): skill gap analysis — GET /factory/gaps [F.03]
+- `8327982` feat(agent-gateway): auto-skill-evolution — GET /factory/evolve [F.04]
+
+### Branch
+
+`001-agent-gateway` — clean
+
+### Phase Summary
+
+| Phase | Status |
+|-------|--------|
+| A — Foundation | ✅ Done (14 items) |
+| B — Complete + Expand | ✅ Done (B.07/B.08 blocked) |
+| C — MCP Mesh | ✅ Done (4 items) |
+| D — Intelligence | ✅ Done (7 items) |
+| E — Orchestration | ✅ Done (4 items) |
+| F — Self-Optimization | ✅ Done (F.01-F.04) |
+
+### Factory Endpoints Summary
+
+All 4 factory endpoints now live:
+- `GET /factory/health` — agents, skills, MCP tools, eval datasets count + status
+- `GET /factory/regression` — per-skill pass_rate regression vs. MLflow history
+- `GET /factory/gaps` — missing/unused/covered skills, coverage_ratio
+- `GET /factory/evolve` — prompt improvement suggestions sorted by gain
 
 ### Next Steps
 
-- [local] Configure agent-gateway Ollama connection
-- [local] Add Keycloak to `workloads-helm` ApplicationSet (Bitnami chart)
-- [local] Investigate Colima DNS workaround for registry push
-- [local] Test full GitOps loop: edit values → push → ArgoCD detects drift → sync
+- [local] All Phases A-F done. Consider:
+  1. Create PR to merge `001-agent-gateway` → main (entire spec 001 complete)
+  2. Start spec 002 (new capability area)
+  3. Backlog grooming: add Phase G items based on what's missing
 
-### Commits
+- [local] B.07 (python runtime) and B.08 (claude-code runtime) remain blocked pending evaluation
 
-```
-003e88f Fix GitLab omnibus config injection, set agent-gateway pullPolicy
-07fa61f Fix agent-gateway chart port and data path to match Dockerfile
-74488ee Add agent-gateway Helm chart and ApplicationSet entry
-91adb4e Switch to ApplicationSet pattern for ArgoCD workload management
-```
+### Notes
 
----
-
-## Prior Session — n8n Platform Infrastructure
-
-### What Was Built
-
-### n8n Platform Infrastructure (complete)
-- Independent n8n + PostgreSQL per namespace (dev, stage, prod)
-- Envsubst-templated manifests, idempotent secret generation
-- Full Taskfile lifecycle: `task n8n:deploy-all`, `task n8n:teardown-all`, `task n8n:health`, `task n8n:status`
-- Preflight memory guard prevents deploying when VM is memory-starved
-
-### n8n API Automation (complete)
-- `scripts/n8n-setup-api.sh` — headless owner creation + API key generation per namespace
-- API keys stored in k8s secrets (`n8n-secrets.api-key` per namespace)
-- Owner passwords stored in k8s secrets (`n8n-secrets.owner-password` per namespace)
-- `task n8n:setup` runs the script; `task n8n:deploy-all` calls setup automatically after deploy
-- MCP config (`~/.claude/settings.json`) updated to point at k3d dev instance
-- Idempotent: skips if API key already exists and is valid
-
-### GitLab CE (complete, from prior sessions)
-- docker-compose on host, k8s ingress proxy in platform namespace
-- Runner with Kaniko for CI builds
-- 2 repos with passing pipelines: counter-app (6-stage), genai-mlops (4-stage)
-
-## Current State
-
-All 6 pods Running, 0 restarts, health checks passing:
-```
-task n8n:health
-# ✓ dev: healthy (200)
-# ✓ stage: healthy (200)
-# ✓ prod: healthy (200)
-```
-
-URLs:
-- http://n8n.dev.127.0.0.1.nip.io
-- http://n8n.stage.127.0.0.1.nip.io
-- http://n8n.prod.127.0.0.1.nip.io
-- http://gitlab.mewtwo.127.0.0.1.nip.io
-
-n8n Owner: admin@platform.local (all 3 instances)
-
-## Key Gotchas Discovered
-
-1. **Postgres on virtiofs**: macOS reports all PVC files as UID 501, chown is no-op. Fix: `runAsUser: 501, fsGroup: 501` in securityContext.
-
-2. **n8n v2.x memory**: Always spawns JS Task Runner subprocess (can't disable). `NODE_OPTIONS` inherited by child = two V8 heaps. Set `NODE_OPTIONS=--max-old-space-size=256` + `N8N_RUNNERS_MAX_OLD_SPACE_SIZE=256`, container limit 2Gi.
-
-3. **8GB VM contention**: GitLab CE (3.1GB) + genai-mlops stack (~2.3GB) + deathco (~450MB) + k3d nodes (~1.1GB) = 7GB. Must stop non-essential containers before n8n deploy. `task n8n:preflight` gates on 1500MB available.
-
-4. **n8n startup probes**: DB migrations take >30s. Needs startupProbe (failureThreshold: 30, periodSeconds: 10 = 5min window).
-
-5. **n8n REST API body parser**: Passwords containing `!` crash the login endpoint body parser (500 Internal Server Error). Use alphanumeric passwords only for headless setup.
-
-6. **n8n v2.10 login field name**: Login uses `emailOrLdapLoginId` not `email`. Owner setup uses `email`.
-
-7. **n8n v2.10 API key creation**: Requires both `scopes` (array) and `expiresAt` (epoch ms number) fields.
-
-8. **macOS sed vs GNU sed**: `sed 's/^./\U&/'` (uppercase first char) doesn't work on macOS. Use `tr '[:lower:]' '[:upper:]'` for char transforms.
-
-## What Broke and Why
-
-- Postgres CrashLoopBackOff: virtiofs UID mismatch (fixed with UID 501)
-- n8n OOMKilled repeatedly: two V8 heaps exceeding container limit (fixed with heap caps)
-- n8n OOMKilled even with heap caps: VM had only 147MB free due to competing containers (fixed by stopping deathco containers)
-- CoreDNS CrashLoopBackOff: cascading OOM pressure (fixed with rollout restart)
-- Liveness probe killing n8n during migration (fixed with startupProbe)
-- n8n login 500 with `!` in password: body parser bug (fixed by using alphanumeric passwords)
-- kubectl port-forward/exec/logs 502: kubelet proxy broken on agent-1 under memory pressure (transient)
-
-## Next Steps
-
-- [local] Restart Claude Code to pick up new MCP config pointing at k3d n8n dev
-- [local] Verify n8n-knowledge and n8n-manager MCP tools connect to live instance
-- [local] Consider increasing Rancher Desktop VM from 8GB to 12-16GB
-- [local] Start building n8n workflows for genai-mlops integration
-- [local] Skill evolution: capture n8n API automation patterns
-- [local] Commit new scripts/n8n-setup-api.sh and taskfile changes
-
-## Credentials
-
-- GitLab root: `KiyJ8NT+6crbf2/3MYjkqL9DbCfKhvyjkJAILkQXCD4=`
-- GitLab PAT: `glpat-S6IC_PVgbqr_TQK77kmj_W86MQp1OjEH.01.0w1bw9arp`
-- Runner token: `glrt-anRtfWuxcks9Z0IqqpxPG286MQp0OjEKdToxCw.01.120459lym`
-- k3d API port: 58841
-- n8n owner: admin@platform.local
-- n8n passwords: PlatformN8n{Dev,Stage,Prod}2024 (note: Stage/Prod used `Ustage`/`Uprod` due to macOS sed quirk)
-- n8n API keys: stored in k8s secrets (`kubectl get secret n8n-secrets -n <ns> -o jsonpath='{.data.api-key}' | base64 -d`)
+- Prior run (run 17 logged as "Run 17" but actually later) completed F.01+F.02 without updating ledger — this run corrected the ledger
+- MagicMock `name` param gotcha: sets display name, not `.name` attribute — see lessons.md
+- Phase F completes the full spec 001 factory implementation (322 tests)
