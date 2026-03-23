@@ -3,7 +3,7 @@ name: mlops
 description: MLOps assistant for model lifecycle management
 metadata:
   runtime: n8n
-  workflow: chat-v1
+  workflow: chat
   skills:
     - kubernetes-ops
     - mlflow-tracking

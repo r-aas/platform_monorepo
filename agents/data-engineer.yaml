@@ -3,7 +3,7 @@ name: data-engineer
 description: Data engineering agent for ingestion, transformation, and vector store management
 metadata:
   runtime: n8n
-  workflow: chat-v1
+  workflow: chat
   skills:
     - data-ingestion
     - vector-store-ops

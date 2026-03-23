@@ -3,7 +3,7 @@ name: developer
 description: Software development agent for code generation, documentation, and security auditing
 metadata:
   runtime: n8n
-  workflow: chat-v1
+  workflow: chat
   skills:
     - code-generation
     - documentation

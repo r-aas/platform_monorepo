@@ -3,7 +3,7 @@ name: platform-admin
 description: Platform administration agent for Kubernetes, n8n workflows, and GitLab pipelines
 metadata:
   runtime: n8n
-  workflow: chat-v1
+  workflow: chat
   skills:
     - kubernetes-ops
     - n8n-workflow-ops

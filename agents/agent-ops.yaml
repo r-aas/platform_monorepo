@@ -3,7 +3,7 @@ name: agent-ops
 description: Platform agent for managing agents, skills, workflows, and benchmarks
 metadata:
   runtime: n8n
-  workflow: chat-v1
+  workflow: chat
   skills:
     - agent-management
     - skill-management
