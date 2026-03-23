@@ -47,7 +47,7 @@ tasks:
         config['nodePathMap'][0]['paths'] = ['/var/lib/rancher/k3s/local-storage']
         cm['data']['config.json'] = json.dumps(config)
         json.dump(cm, sys.stdout)
-        " | kubectl apply --server-side -f -
+        " | kubectl apply --server-side --force-conflicts -f -
       - kubectl rollout restart deploy local-path-provisioner -n kube-system
       - kubectl rollout status deploy local-path-provisioner -n kube-system --timeout=30s
 

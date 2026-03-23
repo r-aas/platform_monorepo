@@ -65,7 +65,7 @@ if [ "$QUICK" != "--quick" ]; then
     ok "Ollama running (v${VERSION})"
 
     # Check binding — must be 0.0.0.0 for k3d pods to reach host
-    OLLAMA_IPV4=$(lsof -i4 -P -n 2>/dev/null | grep ":11434.*LISTEN" | awk '{print $9}' | cut -d: -f1)
+    OLLAMA_IPV4=$(lsof -i4TCP -P -n 2>/dev/null | grep ":11434.*LISTEN" | awk '{print $9}' | cut -d: -f1 || true)
     if [ "$OLLAMA_IPV4" = "*" ] || [ "$OLLAMA_IPV4" = "0.0.0.0" ]; then
       ok "Ollama bound to 0.0.0.0 (reachable from k3d)"
     elif [ -n "$OLLAMA_IPV4" ]; then
