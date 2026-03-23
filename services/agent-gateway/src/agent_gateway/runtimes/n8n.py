@@ -16,7 +16,12 @@ class N8nRuntime(Runtime):
     async def invoke(self, config: AgentRunConfig) -> AsyncIterator[str]:
         """Stream from n8n webhook, yield OpenAI SSE chunks."""
         url = f"{settings.n8n_base_url}/webhook/{config.workflow}"
-        body = {"chatInput": config.message, "sessionId": config.session_id}
+        body = {
+            "message": config.message,
+            "session_id": config.session_id,
+            "agent_name": config.agent_name,
+            "system_prompt": config.system_prompt,
+        }
 
         async with httpx.AsyncClient(timeout=120.0) as client:
             async with client.stream("POST", url, json=body) as resp:
@@ -47,7 +52,12 @@ class N8nRuntime(Runtime):
     async def invoke_sync(self, config: AgentRunConfig) -> str:
         """Non-streaming invocation via n8n webhook."""
         url = f"{settings.n8n_base_url}/webhook/{config.workflow}"
-        body = {"chatInput": config.message, "sessionId": config.session_id}
+        body = {
+            "message": config.message,
+            "session_id": config.session_id,
+            "agent_name": config.agent_name,
+            "system_prompt": config.system_prompt,
+        }
 
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(url, json=body)
