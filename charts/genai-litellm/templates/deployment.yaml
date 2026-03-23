@@ -6,6 +6,8 @@ metadata:
     app.kubernetes.io/name: litellm
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/part-of: genai-mlops
+  annotations:
+    checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -34,10 +36,35 @@ spec:
               containerPort: 4000
               protocol: TCP
           env:
+            # Static env vars from values
             {{- range $key, $value := .Values.env }}
             {{- if $value }}
             - name: {{ $key }}
               value: {{ $value | quote }}
+            {{- end }}
+            {{- end }}
+            # Master key — from inline value or pre-existing secret
+            {{- if .Values.masterkey }}
+            - name: LITELLM_MASTER_KEY
+              value: {{ .Values.masterkey | quote }}
+            {{- else if .Values.masterkeySecretName }}
+            - name: LITELLM_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.masterkeySecretName }}
+                  key: {{ .Values.masterkeySecretKey | default "master-key" }}
+            {{- else }}
+            - name: LITELLM_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-masterkey
+                  key: masterkey
+            {{- end }}
+            # Database URL — build from parts or take from env directly
+            {{- if not (index .Values.env "DATABASE_URL") }}
+            {{- if .Values.db.useExisting }}
+            - name: DATABASE_URL
+              value: "postgresql://{{ index .Values.env "DATABASE_USERNAME" | default "litellm" }}:$(DATABASE_PASSWORD)@{{ .Values.db.endpoint }}/{{ .Values.db.database }}"
             {{- end }}
             {{- end }}
           volumeMounts:
@@ -53,6 +80,10 @@ spec:
           {{- end }}
           {{- with .Values.readinessProbe }}
           readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.startupProbe }}
+          startupProbe:
             {{- toYaml . | nindent 12 }}
           {{- end }}
       volumes:
