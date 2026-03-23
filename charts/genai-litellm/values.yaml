@@ -84,28 +84,29 @@ config:
   # LiteLLM handles tool routing automatically.
   # ---------------------------------------------------------------------------
   mcp_servers:
+    # MCP server names MUST use underscores — hyphens not allowed by LiteLLM
     # Kubernetes operations — kubectl get/describe/logs/apply
-    kubernetes-ops:
+    kubernetes_ops:
       transport: "http"
       url: "http://genai-mcp-kubernetes:3000/mcp"
       description: "Kubernetes cluster management via kubectl"
 
     # n8n workflow operations — list/trigger/manage workflows
-    n8n-workflow-ops:
+    n8n_workflow_ops:
       transport: "http"
       url: "http://genai-mcp-n8n:3000/mcp"
       description: "n8n workflow management and execution"
 
     # GitLab operations — browse/manage repos, MRs, pipelines
     # Note: currently has nil-schema bug on create_or_update_file — track upstream
-    gitlab-ops:
+    gitlab_ops:
       transport: "http"
       url: "http://genai-mcp-gitlab:3000/mcp"
       description: "GitLab repository, MR, and pipeline management"
 
     # Agent gateway — expose agent-gateway REST API as MCP tools
     # (served by the gateway MCP server at /gateway-mcp)
-    agent-gateway:
+    agent_gateway:
       transport: "http"
       url: "http://genai-agent-gateway:8000/gateway-mcp"
       description: "Agent gateway management — list/invoke agents and skills"
