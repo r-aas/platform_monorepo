@@ -49,7 +49,7 @@ async def get_agent(name: str) -> AgentDefinition:
     def _get():
         client = mlflow.MlflowClient()
         try:
-            version = client.get_prompt_version(f"agent:{name}", version=1)
+            version = client.get_prompt_version_by_alias(f"agent:{name}", "current")
         except Exception as e:
             raise KeyError(f"Agent '{name}' not found") from e
         return _parse_agent_from_version(f"agent:{name}", version)
@@ -66,7 +66,7 @@ async def list_agents() -> list[AgentDefinition]:
         agents = []
         for p in prompts:
             try:
-                version = client.get_prompt_version(p.name, version=1)
+                version = client.get_prompt_version_by_alias(p.name, "current")
                 agents.append(_parse_agent_from_version(p.name, version))
             except Exception:
                 pass

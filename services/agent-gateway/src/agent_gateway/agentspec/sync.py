@@ -35,12 +35,13 @@ def sync_agent(agent: AgentDefinition) -> None:
     if agent.inputs:
         tags["input_schema"] = json.dumps(agent.inputs)
 
-    # Create new version
-    client.create_prompt_version(
+    # Create new version and point the "latest" alias at it
+    pv = client.create_prompt_version(
         name=prompt_name,
         template=agent.system_prompt,
         tags=tags,
     )
+    client.set_prompt_alias(prompt_name, "current", pv.version)
 
 
 def sync_all(agents_dir: Path) -> list[str]:
