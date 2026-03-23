@@ -226,6 +226,20 @@ tasks:
     cmds:
       - bash {{.PLATFORM_DIR}}/scripts/n8n-import-workflows.sh
 
+  agent-sync:
+    desc: "Sync agent YAML definitions to MLflow prompt registry"
+    cmds:
+      - |
+        cd {{.PLATFORM_DIR}}/services/agent-gateway && \
+        uv run python -c "
+        from pathlib import Path
+        from agent_gateway.agentspec.sync import sync_all
+        import mlflow, os
+        mlflow.set_tracking_uri(os.environ.get('MLFLOW_TRACKING_URI', 'http://mlflow.genai.127.0.0.1.nip.io'))
+        synced = sync_all(Path('../../agents'))
+        print(f'  ✓ Synced {len(synced)} agents: ' + ', '.join(synced))
+        "
+
   n8n-logs:
     desc: Tail n8n pod logs
     cmds:
