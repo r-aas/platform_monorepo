@@ -22,9 +22,10 @@ tasks:
   # ── Lifecycle ───────────────────────────────────────────────
 
   up:
-    desc: "Full platform bootstrap: preflight → k3d → helmfile → GitLab → images → ArgoCD → smoke"
+    desc: "Full platform bootstrap: preflight → colima → k3d → helmfile → GitLab → images → ArgoCD → smoke"
     cmds:
       - task: preflight
+      - task: ensure-colima
       - task: k3d:cluster-up
       - task: sync
       - task: gitlab-setup
@@ -52,14 +53,27 @@ tasks:
       - task: k3d:cluster-stop
 
   start:
-    desc: "Resume paused cluster + re-sync helmfile + smoke test"
+    desc: "Resume paused or crashed cluster: ensure colima → images → sync → smoke"
     cmds:
+      - task: ensure-colima
       - task: k3d:cluster-start
+      - task: build-images
       - task: sync
       - bash {{.PLATFORM_DIR}}/scripts/wait-healthy.sh 300
       - echo ""
       - echo "Platform resumed."
       - task: urls
+
+  restart:
+    desc: "Full restart: stop → start (handles Colima crash, image loss, stale state)"
+    cmds:
+      - task: stop
+      - task: start
+
+  ensure-colima:
+    desc: "Ensure Colima VM is running and Docker socket is available"
+    cmds:
+      - bash {{.PLATFORM_DIR}}/scripts/ensure-colima.sh
 
   # ── Pre-flight & verification ──────────────────────────────
 

@@ -20,8 +20,9 @@ err() { echo "✗ $*" >&2; exit 1; }
 # Format: name:tag:dockerfile_path:context_dir
 PLATFORM_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 IMAGES=(
-  "genai-streaming-proxy:latest:${GENAI_MLOPS}/Dockerfile.streaming:${GENAI_MLOPS}"
+  "agent-gateway:latest:${PLATFORM_DIR}/services/agent-gateway/Dockerfile:${PLATFORM_DIR}"
   "litellm-mlflow:latest:${PLATFORM_DIR}/images/litellm/Dockerfile:${PLATFORM_DIR}/images/litellm"
+  "genai-streaming-proxy:latest:${GENAI_MLOPS}/Dockerfile.streaming:${GENAI_MLOPS}"
 )
 
 if [ "$CHECK_ONLY" = "--check" ]; then
@@ -45,10 +46,11 @@ for entry in "${IMAGES[@]}"; do
   IFS=: read -r NAME TAG DOCKERFILE CONTEXT <<< "$entry"
 
   if [ ! -f "$DOCKERFILE" ]; then
-    err "Dockerfile not found: $DOCKERFILE"
+    echo "  ⚠ Skipping ${NAME}:${TAG} — Dockerfile not found: $DOCKERFILE"
+    continue
   fi
 
-  log "Building ${NAME}:${TAG} from ${DOCKERFILE}..."
+  log "Building ${NAME}:${TAG}..."
   docker build -t "${NAME}:${TAG}" -f "$DOCKERFILE" "$CONTEXT"
 
   log "Importing ${NAME}:${TAG} into k3d-${K3D_CLUSTER}..."
