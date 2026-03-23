@@ -122,15 +122,6 @@ config:
     request_timeout: 120
     success_callback: ["mlflow"]
 
-    # Semantic MCP tool filtering — use embeddings to find the right tool
-    # for a given query instead of exposing all tools to every request.
-    # Requires nomic-embed-text to be available via Ollama.
-    mcp_semantic_tool_filter:
-      enabled: true
-      embedding_model: "nomic-embed-text"
-      top_k: 10          # return top-10 most relevant tools
-      similarity_threshold: 0.25
-
 # ---------------------------------------------------------------------------
 # Environment variables
 # ---------------------------------------------------------------------------
