@@ -22,7 +22,7 @@ tasks:
   # ── Lifecycle ───────────────────────────────────────────────
 
   up:
-    desc: "Full platform bootstrap: preflight → colima → k3d → helmfile → GitLab → images → ArgoCD → smoke"
+    desc: "Full platform bootstrap: preflight → colima → k3d → helmfile → GitLab → images → ArgoCD → n8n → agents → smoke"
     cmds:
       - task: preflight
       - task: ensure-colima
@@ -33,6 +33,9 @@ tasks:
       - echo ""
       - echo "▸ Waiting for ArgoCD to sync all workloads..."
       - bash {{.PLATFORM_DIR}}/scripts/wait-healthy.sh 600
+      - echo ""
+      - task: n8n-import
+      - task: agent-sync
       - echo ""
       - task: smoke
       - echo ""
@@ -221,15 +224,28 @@ tasks:
       - bash {{.PLATFORM_DIR}}/scripts/n8n-setup.sh {{.CLI_ARGS}}
 
   n8n-import:
-    desc: "Import genai-mlops workflows into k3d n8n (patches URLs)"
+    desc: "Import genai-mlops workflows into k3d n8n (patches URLs, skips if genai-mlops absent)"
     deps: [n8n-setup]
     cmds:
-      - bash {{.PLATFORM_DIR}}/scripts/n8n-import-workflows.sh
+      - |
+        if [ ! -d "${HOME}/work/repos/genai-mlops/n8n-data/workflows" ]; then
+          echo "  ⚠ genai-mlops not found — skipping n8n workflow import"
+          echo "    Clone it: git clone <url> ~/work/repos/genai-mlops"
+          exit 0
+        fi
+        bash {{.PLATFORM_DIR}}/scripts/n8n-import-workflows.sh
 
   agent-sync:
-    desc: "Sync agent YAML definitions to MLflow prompt registry"
+    desc: "Sync agent YAML definitions to MLflow prompt registry (retries until MLflow ready)"
     cmds:
       - |
+        MLFLOW_URL="${MLFLOW_TRACKING_URI:-http://mlflow.genai.127.0.0.1.nip.io}"
+        echo "  Waiting for MLflow..."
+        for i in $(seq 1 20); do
+          HTTP=$(curl -sf -o /dev/null -w '%{http_code}' --max-time 3 "${MLFLOW_URL}/health" 2>/dev/null || echo "000")
+          [ "$HTTP" = "200" ] && break
+          sleep 3
+        done
         cd {{.PLATFORM_DIR}}/services/agent-gateway && \
         uv run python -c "
         from pathlib import Path
@@ -237,7 +253,7 @@ tasks:
         import mlflow, os
         mlflow.set_tracking_uri(os.environ.get('MLFLOW_TRACKING_URI', 'http://mlflow.genai.127.0.0.1.nip.io'))
         synced = sync_all(Path('../../agents'))
-        print(f'  ✓ Synced {len(synced)} agents: ' + ', '.join(synced))
+        print('  ✓ Synced ' + str(len(synced)) + ' agents: ' + ', '.join(synced))
         "
 
   n8n-logs:
