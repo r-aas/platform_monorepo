@@ -1,14 +1,13 @@
-"""MCP tool auto-discovery.
+"""MCP tool auto-discovery via LiteLLM MCP gateway.
 
-C.02: Scan MetaMCP namespaces and index all available tools.
+C.02: Index all available tools from LiteLLM's aggregated MCP servers.
 
 Discovery flow:
-  1. Authenticate to MetaMCP admin (port 12009) — same as metamcp_client
-  2. List namespaces via tRPC (dynamic, not hardcoded)
-  3. Fetch tools from MCP proxy (port 12008) for each namespace
-  4. Store result in module-level ToolIndex for fast in-process lookup
+  1. GET /v1/mcp/server  — list registered MCP server names (used as "namespaces")
+  2. GET /mcp-rest/tools/list — fetch all tools in one call
+  3. Store result in module-level ToolIndex for fast in-process lookup
 
-Falls back gracefully at every step — MetaMCP being down must not break the gateway.
+Falls back gracefully — LiteLLM being unreachable must not break the gateway.
 """
 
 from __future__ import annotations
@@ -18,9 +17,6 @@ from dataclasses import dataclass, field
 import httpx
 
 from agent_gateway.config import settings
-
-_STATIC_NAMESPACES = ["genai", "platform"]
-_PROXY_BASE = "http://genai-metamcp.genai.svc.cluster.local:12008"
 
 # ---------------------------------------------------------------------------
 # Data types
@@ -62,57 +58,41 @@ def set_tool_index(idx: ToolIndex) -> None:
 
 
 async def discover_namespaces() -> list[str]:
-    """Return namespace names from MetaMCP admin API.
+    """Return MCP server names from LiteLLM as namespace identifiers.
 
-    Falls back to _STATIC_NAMESPACES when credentials absent or MetaMCP unreachable.
-    Never raises.
+    Falls back to empty list when LiteLLM is unreachable. Never raises.
     """
-    if not settings.metamcp_user_email or not settings.metamcp_user_password:
-        return list(_STATIC_NAMESPACES)
-
+    url = f"{settings.litellm_base_url}/v1/mcp/server"
+    headers = {"Authorization": f"Bearer {settings.litellm_api_key}"} if settings.litellm_api_key else {}
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(
-                f"{settings.metamcp_admin_url}/api/auth/sign-in/email",
-                json={"email": settings.metamcp_user_email, "password": settings.metamcp_user_password},
-            )
+            resp = await client.get(url, headers=headers)
             resp.raise_for_status()
-            cookie_header = resp.headers.get("set-cookie", "")
-            token = next(
-                (p.split("=", 1)[1] for p in cookie_header.split(";") if "better-auth.session_token=" in p),
-                "",
-            )
-            cookie = f"better-auth.session_token={token}"
-
-            ns_resp = await client.get(
-                f"{settings.metamcp_admin_url}/trpc/frontend/frontend.namespaces.list",
-                headers={"Cookie": cookie},
-            )
-            ns_resp.raise_for_status()
-            data = ns_resp.json()
-            return [ns["name"] for ns in data["result"]["data"]["data"]]
-
+            data = resp.json()
+            return [s["server_name"] for s in data]
     except Exception:
-        return list(_STATIC_NAMESPACES)
+        return []
 
 
-async def fetch_tools_for_namespace(namespace: str) -> list[DiscoveredTool]:
-    """Fetch tools from MCP proxy for a single namespace.
+async def fetch_all_tools() -> list[DiscoveredTool]:
+    """Fetch all tools from LiteLLM's aggregated MCP gateway.
 
     Returns empty list on any error — graceful fallback.
     """
-    url = f"{_PROXY_BASE}/metamcp/{namespace}/mcp"
+    url = f"{settings.litellm_base_url}/mcp-rest/tools/list"
+    headers = {"Authorization": f"Bearer {settings.litellm_api_key}"} if settings.litellm_api_key else {}
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(url, json={"jsonrpc": "2.0", "method": "tools/list", "id": 1})
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(url, headers=headers)
             resp.raise_for_status()
             data = resp.json()
-            tools = data.get("result", {}).get("tools", [])
+            tools = data.get("tools", [])
+            # LiteLLM doesn't expose server_name per tool; use "litellm" as namespace
             return [
                 DiscoveredTool(
                     name=t["name"],
                     description=t.get("description", ""),
-                    namespace=namespace,
+                    namespace="litellm",
                 )
                 for t in tools
             ]
@@ -121,17 +101,13 @@ async def fetch_tools_for_namespace(namespace: str) -> list[DiscoveredTool]:
 
 
 async def index_all_tools() -> ToolIndex:
-    """Discover all namespaces and fetch their tools.
+    """Discover namespaces and fetch all tools from LiteLLM.
 
     Always returns a ToolIndex (may be empty). Never raises.
     Updates the module-level index as a side effect.
     """
     namespaces = await discover_namespaces()
-
-    all_tools: list[DiscoveredTool] = []
-    for ns in namespaces:
-        all_tools.extend(await fetch_tools_for_namespace(ns))
-
-    idx = ToolIndex(namespaces=namespaces, tools=all_tools)
+    tools = await fetch_all_tools()
+    idx = ToolIndex(namespaces=namespaces, tools=tools)
     set_tool_index(idx)
     return idx

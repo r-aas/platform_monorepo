@@ -11,17 +11,18 @@ from agent_gateway.mcp_recommender import recommend_tools
 router = APIRouter(prefix="/mcp", tags=["mcp"])
 
 
-async def _fetch_mcp_tools(namespace: str) -> list[dict]:
-    """Fetch available tools from a MetaMCP namespace via tools/list."""
-    url = f"http://genai-metamcp.genai.svc.cluster.local:12008/metamcp/{namespace}/mcp"
+async def _fetch_mcp_tools_from_litellm() -> list[dict]:
+    """Fetch available tools from LiteLLM's aggregated MCP gateway."""
+    from agent_gateway.config import settings
+    url = f"{settings.litellm_base_url}/mcp-rest/tools/list"
+    headers = {"Authorization": f"Bearer {settings.litellm_api_key}"} if settings.litellm_api_key else {}
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            # MCP tools/list via Streamable HTTP
-            resp = await client.post(url, json={"jsonrpc": "2.0", "method": "tools/list", "id": 1})
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(url, headers=headers)
             resp.raise_for_status()
             data = resp.json()
-            tools = data.get("result", {}).get("tools", [])
-            return [{"name": t["name"], "description": t.get("description", ""), "namespace": namespace} for t in tools]
+            tools = data.get("tools", [])
+            return [{"name": t["name"], "description": t.get("description", ""), "namespace": "litellm"} for t in tools]
     except Exception:
         return []
 
@@ -34,10 +35,7 @@ async def search_mcp(q: str = Query(..., description="Search query for hybrid RA
     if idx is not None:
         all_tools = [{"name": t.name, "description": t.description, "namespace": t.namespace} for t in idx.tools]
     else:
-        namespaces = ["genai", "platform"]
-        all_tools = []
-        for ns in namespaces:
-            all_tools.extend(await _fetch_mcp_tools(ns))
+        all_tools = await _fetch_mcp_tools_from_litellm()
 
     query_lower = q.lower()
     query_emb = await get_embedding(q)
@@ -114,10 +112,6 @@ async def list_namespaces():
                 ns_tool_counts[t.namespace] += 1
         return {"namespaces": [{"namespace": ns, "tool_count": count} for ns, count in ns_tool_counts.items()]}
 
-    # Fallback: live fetch from static namespace list
-    namespaces = ["genai", "platform"]
-    result = []
-    for ns in namespaces:
-        tools = await _fetch_mcp_tools(ns)
-        result.append({"namespace": ns, "tool_count": len(tools)})
-    return {"namespaces": result}
+    # Fallback: live fetch from LiteLLM
+    tools = await _fetch_mcp_tools_from_litellm()
+    return {"namespaces": [{"namespace": "litellm", "tool_count": len(tools)}]}

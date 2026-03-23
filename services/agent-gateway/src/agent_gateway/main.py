@@ -17,13 +17,7 @@ from agent_gateway.routers.skills import router as skills_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
-    # Register gateway as MCP server in MetaMCP (non-fatal if unreachable)
-    try:
-        from agent_gateway.metamcp_client import register_gateway_server
-        await register_gateway_server()
-    except Exception:
-        pass
-    # Auto-discover and index all MCP tools from MetaMCP namespaces (non-fatal)
+    # Auto-discover and index all MCP tools from LiteLLM MCP gateway (non-fatal)
     try:
         from agent_gateway.mcp_discovery import index_all_tools
         await index_all_tools()
