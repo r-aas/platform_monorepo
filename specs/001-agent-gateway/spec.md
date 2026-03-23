@@ -1,4 +1,5 @@
-<!-- status: draft -->
+<!-- status: shipped -->
+<!-- pr: !1 -->
 # Feature Specification: Agent Gateway
 
 **Feature Branch**: `001-agent-gateway`
