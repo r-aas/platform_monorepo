@@ -203,6 +203,25 @@ else
   echo "  ⚠ No API key found — run n8n-setup.sh first for verification"
 fi
 
+# ── Create __sessions MLflow experiment ──────────────────────────────────────
+# Required for sessions-v1 workflow to store chat history. Idempotent.
+MLFLOW_URL="http://mlflow.genai.127.0.0.1.nip.io"
+echo -n "  Ensuring __sessions MLflow experiment..."
+HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
+  "${MLFLOW_URL}/api/2.0/mlflow/experiments/get-by-name?experiment_name=__sessions" 2>/dev/null || echo "000")
+if [ "$HTTP" = "200" ]; then
+  echo " already exists"
+else
+  RESULT=$(curl -s -X POST "${MLFLOW_URL}/api/2.0/mlflow/experiments/create" \
+    -H "Content-Type: application/json" \
+    -d '{"name":"__sessions"}' 2>/dev/null || echo "{}")
+  if echo "$RESULT" | grep -q "experiment_id"; then
+    echo " created (id: $(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('experiment_id','?'))" 2>/dev/null))"
+  else
+    echo " ⚠ could not create (MLflow may not be ready yet)"
+  fi
+fi
+
 # ── Cleanup ──────────────────────────────────────────────────────────────────
 N8N_POD_NEW=$(kubectl get pod -n ${NAMESPACE} -l app.kubernetes.io/instance=${N8N_SVC} \
   --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | head -1)
