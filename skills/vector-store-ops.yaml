@@ -4,7 +4,7 @@ version: "1.0.0"
 tags: ["vector-db", "embeddings", "search"]
 
 mcp_servers:
-  - url: http://genai-metamcp.genai.svc.cluster.local:12008/metamcp/genai/mcp
+  - url: http://genai-litellm.genai.svc.cluster.local:4000/mcp/
     tool_filter: ["postgres_query", "postgres_execute", "qdrant_search", "qdrant_upsert", "qdrant_create_collection", "qdrant_delete_collection"]
 
 prompt_fragment: |

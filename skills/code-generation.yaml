@@ -4,7 +4,7 @@ version: "1.0.0"
 tags: ["code", "generation", "testing"]
 
 mcp_servers:
-  - url: http://genai-metamcp.genai.svc.cluster.local:12008/metamcp/genai/mcp
+  - url: http://genai-litellm.genai.svc.cluster.local:4000/mcp/
     tool_filter: ["gitlab_create_file", "gitlab_update_file", "gitlab_get_file", "gitlab_list_files", "gitlab_create_merge_request"]
 
 prompt_fragment: |

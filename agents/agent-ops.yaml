@@ -10,8 +10,7 @@ metadata:
     - benchmark-runner
     - n8n-workflow-ops
 mcp_servers:
-  - url: http://genai-metamcp.genai.svc.cluster.local:12008/metamcp/genai/mcp
-  - url: http://genai-metamcp.genai.svc.cluster.local:12008/metamcp/platform/mcp
+  - url: http://genai-litellm.genai.svc.cluster.local:4000/mcp/
 llm_config:
   $component_ref: _shared/llm-ollama
 system_prompt: |

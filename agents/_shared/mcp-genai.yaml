@@ -1,1 +1,1 @@
-url: http://genai-metamcp.genai.svc.cluster.local:12008/metamcp/genai/mcp
+url: http://genai-litellm.genai.svc.cluster.local:4000/mcp/

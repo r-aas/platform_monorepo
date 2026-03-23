@@ -4,7 +4,7 @@ version: "1.0.0"
 tags: ["docs", "documentation", "generation"]
 
 mcp_servers:
-  - url: http://genai-metamcp.genai.svc.cluster.local:12008/metamcp/genai/mcp
+  - url: http://genai-litellm.genai.svc.cluster.local:4000/mcp/
     tool_filter: ["gitlab_browse_files", "gitlab_manage_files", "gitlab_browse_wiki", "gitlab_manage_wiki"]
 
 prompt_fragment: |

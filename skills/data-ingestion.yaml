@@ -4,7 +4,7 @@ version: "1.0.0"
 tags: ["data", "etl", "ingestion"]
 
 mcp_servers:
-  - url: http://genai-metamcp.genai.svc.cluster.local:12008/metamcp/genai/mcp
+  - url: http://genai-litellm.genai.svc.cluster.local:4000/mcp/
     tool_filter: ["postgres_query", "postgres_execute", "s3_get_object", "s3_list_objects", "gcs_read_object", "gcs_list_objects"]
 
 prompt_fragment: |

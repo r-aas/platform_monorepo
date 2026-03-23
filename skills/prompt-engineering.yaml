@@ -4,7 +4,7 @@ version: "1.0.0"
 tags: ["prompt", "optimization", "eval"]
 
 mcp_servers:
-  - url: http://genai-metamcp.genai.svc.cluster.local:12008/metamcp/genai/mcp
+  - url: http://genai-litellm.genai.svc.cluster.local:4000/mcp/
     tool_filter: ["mlflow_create_experiment", "mlflow_log_metric", "mlflow_log_param", "mlflow_search_runs", "mlflow_get_run"]
 
 prompt_fragment: |

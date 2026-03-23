@@ -4,7 +4,7 @@ version: "1.0.0"
 tags: ["infrastructure", "deployment"]
 
 mcp_servers:
-  - url: http://genai-metamcp.genai.svc.cluster.local:12008/metamcp/genai/mcp
+  - url: http://genai-litellm.genai.svc.cluster.local:4000/mcp/
     tool_filter: ["kubectl_get", "kubectl_apply", "kubectl_logs", "kubectl_describe"]
 
 prompt_fragment: |
