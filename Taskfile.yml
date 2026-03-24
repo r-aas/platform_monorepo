@@ -27,7 +27,7 @@ tasks:
       - task: preflight
       - task: ensure-colima
       - task: k3d:cluster-up
-      - task: sync
+      - task: sync-if-needed
       - task: gitlab-setup
       - task: build-images
       - echo ""
@@ -98,6 +98,20 @@ tasks:
       - bash {{.PLATFORM_DIR}}/scripts/build-images.sh
 
   # ── Helmfile ────────────────────────────────────────────────
+
+  sync-if-needed:
+    desc: "Helmfile sync only if ArgoCD not yet managing (first bootstrap)"
+    internal: true
+    dir: "{{.PLATFORM_DIR}}"
+    env:
+      PLATFORM_ARCH: "{{.PLATFORM_ARCH}}"
+    cmds:
+      - |
+        if kubectl get app -n platform argocd 2>/dev/null | grep -q "Synced"; then
+          echo "▸ ArgoCD already managing workloads — skipping helmfile sync"
+        else
+          helmfile sync
+        fi
 
   sync:
     desc: "Helmfile sync — bootstrap/reconcile cluster infrastructure"
