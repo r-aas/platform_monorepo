@@ -60,6 +60,7 @@ async def chat_completions(request: Request):
             skills=resolved_skills,
             message=user_message,
             params=agent_params,
+            session_id=body.get("session_id", ""),
         )
 
         try:
