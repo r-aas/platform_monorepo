@@ -23,7 +23,7 @@ echo "── n8n Setup ──"
 # ── Wait for n8n pod ─────────────────────────────────────────────────────────
 echo -n "  Waiting for n8n pod..."
 kubectl wait --for=condition=Ready pod -l app.kubernetes.io/instance=${N8N_SVC} \
-  -n ${NAMESPACE} --timeout=120s >/dev/null 2>&1
+  -n ${NAMESPACE} --timeout=600s >/dev/null 2>&1
 echo " ready"
 
 # ── Check if already configured ──────────────────────────────────────────────
