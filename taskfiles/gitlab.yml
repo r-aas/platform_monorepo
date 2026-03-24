@@ -5,8 +5,6 @@ vars:
   REGISTRY_URL: '{{.REGISTRY_URL | default "registry.mewtwo.127.0.0.1.nip.io"}}'
   GITLAB_NS: '{{.GITLAB_NS | default "platform"}}'
   CHARTS_DIR: '{{.ROOT_DIR}}/charts'
-  # Legacy docker-compose (fallback only)
-  GITLAB_COMPOSE_FILE: '{{.GITLAB_COMPOSE_FILE | default "${HOME}/work/repos/platform_monorepo/docker-compose.gitlab.yml"}}'
 
 tasks:
   deploy:
@@ -116,15 +114,3 @@ tasks:
       - 'echo "GitLab:   {{.GITLAB_URL}}"'
       - 'echo "Registry: http://{{.REGISTRY_URL}}"'
 
-  # ── Legacy docker-compose (fallback) ──
-
-  deploy-compose:
-    desc: "[FALLBACK] Start GitLab via docker-compose (legacy)"
-    cmds:
-      - docker compose -f {{.GITLAB_COMPOSE_FILE}} up -d
-      - echo "Legacy docker-compose GitLab started."
-
-  stop-compose:
-    desc: "[FALLBACK] Stop GitLab docker-compose (legacy)"
-    cmds:
-      - docker compose -f {{.GITLAB_COMPOSE_FILE}} down

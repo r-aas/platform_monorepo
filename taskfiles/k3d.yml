@@ -69,14 +69,10 @@ tasks:
     internal: true
     cmds:
       - |
-        # Get Docker gateway IP for GitLab network (registry runs on docker-compose)
-        GATEWAY=$(docker network inspect platform_monorepo_gitlab --format '{{`{{(index .IPAM.Config 0).Gateway}}`}}' 2>/dev/null || echo "172.23.0.1")
         for node in $(docker ps --filter name=k3d-{{.K3D_CLUSTER}} --format '{{`{{.Names}}`}}'); do
           # Fallback DNS — 8.8.8.8 ensures external resolution works even if
           # Colima VM resolver (192.168.5.2) is unavailable (Tailscale not connected, etc)
           docker exec $node sh -c 'grep -q "8.8.8.8" /etc/resolv.conf || echo "nameserver 8.8.8.8" >> /etc/resolv.conf'
-          # Registry DNS — k3d nodes need to reach GitLab container registry via hostname
-          docker exec $node sh -c "grep -q 'registry.mewtwo.127.0.0.1.nip.io' /etc/hosts || echo '${GATEWAY} registry.mewtwo.127.0.0.1.nip.io' >> /etc/hosts"
         done
 
   status:
