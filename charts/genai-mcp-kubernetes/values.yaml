@@ -1,12 +1,11 @@
 replicaCount: 1
 
 image:
-  repository: node
-  tag: "24-alpine"
+  repository: mcp-kubernetes
+  tag: "latest"
   pullPolicy: IfNotPresent
 
 server:
-  package: "mcp-server-kubernetes"
   port: 3000
 
 rbac:

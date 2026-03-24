@@ -23,7 +23,9 @@ spec:
         - name: mcp-kubernetes
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["npx", "-y", {{ .Values.server.package | quote }}]
+          {{- with .Values.server.command }}
+          command: {{ toJson . }}
+          {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.server.port }}
