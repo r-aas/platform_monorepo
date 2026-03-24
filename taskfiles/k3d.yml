@@ -25,6 +25,8 @@ tasks:
     desc: Apply post-create fixes (DNS, local-path, registry). Idempotent — safe to re-run.
     cmds:
       - task: fix-node-dns
+      - kubectl rollout restart deploy coredns -n kube-system
+      - kubectl rollout status deploy coredns -n kube-system --timeout=30s
       - task: fix-local-path
       - echo "  ✓ Cluster k3d-{{.K3D_CLUSTER}} configured."
 

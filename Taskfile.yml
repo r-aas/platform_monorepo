@@ -61,7 +61,7 @@ tasks:
       - task: ensure-colima
       - task: k3d:cluster-start
       - task: build-images
-      - task: sync
+      - task: sync-if-needed
       - bash {{.PLATFORM_DIR}}/scripts/wait-healthy.sh 300
       - echo ""
       - echo "Platform resumed."
@@ -107,8 +107,8 @@ tasks:
       PLATFORM_ARCH: "{{.PLATFORM_ARCH}}"
     cmds:
       - |
-        if kubectl get app -n platform argocd 2>/dev/null | grep -q "Synced"; then
-          echo "▸ ArgoCD already managing workloads — skipping helmfile sync"
+        if kubectl get deploy argocd-server -n platform 2>/dev/null | grep -q "argocd-server"; then
+          echo "▸ ArgoCD already deployed — skipping helmfile sync (ArgoCD manages day-2)"
         else
           helmfile sync
         fi

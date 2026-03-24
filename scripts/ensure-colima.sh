@@ -16,6 +16,14 @@ warn() { echo "  ⚠ $*"; }
 # ── 1. Check if Docker is already responsive ────────────────
 if docker info &>/dev/null; then
   ok "Colima/Docker already running"
+  # Ensure fallback DNS is configured in Colima VM (survives restarts)
+  colima ssh -- sh -c '
+    if [ ! -f /etc/systemd/resolved.conf.d/fallback.conf ]; then
+      mkdir -p /etc/systemd/resolved.conf.d
+      echo -e "[Resolve]\nFallbackDNS=8.8.8.8 8.8.4.4" > /etc/systemd/resolved.conf.d/fallback.conf
+      systemctl restart systemd-resolved 2>/dev/null
+    fi
+  ' 2>/dev/null || true
   exit 0
 fi
 
@@ -58,7 +66,14 @@ colima start \
   --disk "$COLIMA_DISK" \
   --profile "$COLIMA_PROFILE"
 
-# ── 4. Verify Docker is responsive ──────────────────────────
+# ── 4. Configure fallback DNS ──────────────────────────────
+colima ssh -- sh -c '
+  mkdir -p /etc/systemd/resolved.conf.d
+  echo -e "[Resolve]\nFallbackDNS=8.8.8.8 8.8.4.4" > /etc/systemd/resolved.conf.d/fallback.conf
+  systemctl restart systemd-resolved 2>/dev/null
+' 2>/dev/null || true
+
+# ── 5. Verify Docker is responsive ──────────────────────────
 log "Waiting for Docker daemon..."
 for i in $(seq 1 30); do
   if docker info &>/dev/null; then
