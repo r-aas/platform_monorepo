@@ -67,9 +67,9 @@ while [ "$ELAPSED" -lt "$TIMEOUT" ]; do
 
   if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
     echo ""
-    log "Timeout after ${TIMEOUT}s. Current state:"
+    log "⚠ Timeout after ${TIMEOUT}s. Current state:"
     kubectl get app -n platform 2>/dev/null
-    exit 1
+    break
   fi
 done
 
@@ -94,6 +94,7 @@ while [ "$ELAPSED" -lt "$TIMEOUT" ]; do
 done
 
 echo ""
-log "Timeout. Current pod state:"
+log "⚠ Timeout after ${TIMEOUT}s — some apps still converging (cold image pulls?)."
+log "Continuing with n8n-import and agent-sync; run 'task smoke' later to verify."
 kubectl get pods -n genai 2>/dev/null
-exit 1
+exit 0

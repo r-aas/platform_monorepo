@@ -24,8 +24,8 @@ tasks:
   cluster-configure:
     desc: Apply post-create fixes (DNS, local-path, registry). Idempotent — safe to re-run.
     cmds:
-      - task: fix-local-path
       - task: fix-node-dns
+      - task: fix-local-path
       - echo "  ✓ Cluster k3d-{{.K3D_CLUSTER}} configured."
 
   cluster-down:
@@ -60,7 +60,7 @@ tasks:
         json.dump(cm, sys.stdout)
         " | kubectl apply --server-side --force-conflicts -f -
       - kubectl rollout restart deploy local-path-provisioner -n kube-system
-      - kubectl rollout status deploy local-path-provisioner -n kube-system --timeout=30s
+      - kubectl rollout status deploy local-path-provisioner -n kube-system --timeout=90s
 
   fix-node-dns:
     desc: Add fallback DNS + registry /etc/hosts to k3d nodes

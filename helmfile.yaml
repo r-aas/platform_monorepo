@@ -53,11 +53,12 @@ releases:
     needs:
       - ingress-nginx/ingress-nginx
 
-  # Tier 2: GitLab CE seed (first boot ~8 min, needs longer timeout)
+  # Tier 2: GitLab CE seed (first boot ~15 min on cold pull, don't block other releases)
   - name: gitlab-ce
     namespace: platform
     chart: ./charts/gitlab-ce
-    timeout: 900
+    wait: false
+    timeout: 1800
     labels:
       tier: platform
     needs:
@@ -68,11 +69,12 @@ releases:
       - charts/gitlab-ce/values-{{ env "PLATFORM_ARCH" | default "arm64" }}.yaml
       - charts/gitlab-ce/values-k3d.yaml
 
-  # Tier 3: ArgoCD seed
+  # Tier 3: ArgoCD seed (first pull ~5 min, needs longer timeout)
   - name: argocd
     namespace: platform
     chart: argo-cd/argo-cd
     version: 9.4.10
+    timeout: 600
     labels:
       tier: platform
     needs:
