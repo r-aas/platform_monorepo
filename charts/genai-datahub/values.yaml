@@ -25,7 +25,7 @@ datahub:
         driver: "com.mysql.cj.jdbc.Driver"
         username: "datahub"
         password:
-          secretRef: datahub-mysql-secret
+          secretRef: mysql-secrets
           secretKey: mysql-root-password
 
   # GMS

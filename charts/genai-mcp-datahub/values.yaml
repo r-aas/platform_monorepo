@@ -11,7 +11,7 @@ service:
   port: 3000
 
 env:
-  DATAHUB_URL: "http://datahub-datahub-gms.genai.svc.cluster.local:8080"
+  DATAHUB_GMS_URL: "http://datahub-datahub-gms.genai.svc.cluster.local:8080"
 
 resources:
   requests:
