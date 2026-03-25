@@ -1,4 +1,4 @@
-<!-- status: planned -->
+<!-- status: shipped -->
 
 # Feature Specification: DataHub Metadata Catalog Integration
 

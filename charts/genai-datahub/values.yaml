@@ -1,0 +1,114 @@
+datahub:
+  global:
+    datahub:
+      version: v1.4.0.3
+      gms:
+        port: 8080
+      appVersion: 1.0
+    graph_service_impl: elasticsearch
+    elasticsearch:
+      host: "prerequisites-elasticsearch-master"
+      port: "9200"
+    kafka:
+      bootstrap:
+        server: "prerequisites-kafka:9092"
+      zookeeper:
+        server: "prerequisites-zookeeper:2181"
+      schemaregistry:
+        url: "http://prerequisites-cp-schema-registry:8081"
+    sql:
+      datasource:
+        host: "prerequisites-mysql:3306"
+        hostForMysqlClient: "prerequisites-mysql"
+        port: "3306"
+        url: "jdbc:mysql://prerequisites-mysql:3306/datahub?verifyServerCertificate=false&useSSL=true&useUnicode=yes&characterEncoding=UTF-8&enabledTLSProtocols=TLSv1.2"
+        driver: "com.mysql.cj.jdbc.Driver"
+        username: "datahub"
+        password:
+          secretRef: datahub-mysql-secret
+          secretKey: mysql-root-password
+
+  # GMS
+  datahub-gms:
+    enabled: true
+    resources:
+      requests:
+        memory: 1Gi
+        cpu: 250m
+      limits:
+        memory: 2Gi
+        cpu: "1"
+
+  # Frontend
+  datahub-frontend:
+    enabled: true
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 100m
+      limits:
+        memory: 1Gi
+        cpu: "0.5"
+
+  # Actions (metadata automation)
+  datahub-actions:
+    enabled: true
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 100m
+      limits:
+        memory: 512Mi
+        cpu: "0.5"
+
+  # Ingestion CronJob — MLflow recipe on hourly schedule
+  datahub-ingestion-cron:
+    enabled: true
+    crons:
+      mlflow:
+        schedule: "0 * * * *"
+        image:
+          repository: datahub-ingestion-mlflow
+          tag: latest
+          pullPolicy: Never
+        recipe:
+          configmapName: ""
+          fileContent: |
+            source:
+              type: mlflow
+              config:
+                tracking_uri: "http://genai-mlflow.genai.svc.cluster.local"
+            sink:
+              type: datahub-rest
+              config:
+                server: "http://datahub-datahub-gms.genai.svc.cluster.local:8080"
+
+  # Prerequisites deployed separately
+  cp-kafka:
+    enabled: false
+  cp-zookeeper:
+    enabled: false
+  elasticsearch:
+    enabled: false
+  mysql:
+    enabled: false
+  neo4j:
+    enabled: false
+
+  # MySQL secret for GMS
+  mysqlSetupJob:
+    enabled: true
+    extraEnvs:
+      - name: MYSQL_USERNAME
+        value: datahub
+      - name: MYSQL_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: datahub-mysql-secret
+            key: mysql-root-password
+
+  elasticsearchSetupJob:
+    enabled: true
+
+  kafkaSetupJob:
+    enabled: true

@@ -1,0 +1,20 @@
+datahub:
+  datahub-frontend:
+    ingress:
+      enabled: true
+      className: nginx
+      hosts:
+        - host: datahub.genai.127.0.0.1.nip.io
+          paths:
+            - path: /
+              pathType: Prefix
+
+  datahub-gms:
+    ingress:
+      enabled: true
+      className: nginx
+      hosts:
+        - host: datahub-gms.genai.127.0.0.1.nip.io
+          paths:
+            - path: /
+              pathType: Prefix

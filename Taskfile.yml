@@ -160,6 +160,8 @@ tasks:
         echo "  MLflow:       http://mlflow.genai.127.0.0.1.nip.io"
         echo "  LiteLLM:      http://litellm.genai.127.0.0.1.nip.io"
         echo "  MinIO:        http://minio-console.genai.127.0.0.1.nip.io"
+        echo "  DataHub:      http://datahub.genai.127.0.0.1.nip.io"
+        echo "  DataHub GMS:  http://datahub-gms.genai.127.0.0.1.nip.io"
         echo ""
         echo "  Credentials:"
         echo "  ─────────────────────────────────────────"

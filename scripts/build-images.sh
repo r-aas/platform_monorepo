@@ -24,6 +24,8 @@ IMAGES=(
   "litellm-mlflow:latest:${PLATFORM_DIR}/images/litellm/Dockerfile:${PLATFORM_DIR}/images/litellm"
   "mcp-kubernetes:latest:${PLATFORM_DIR}/images/mcp-kubernetes/Dockerfile:${PLATFORM_DIR}/images/mcp-kubernetes"
   "genai-streaming-proxy:latest:${GENAI_MLOPS}/Dockerfile.streaming:${GENAI_MLOPS}"
+  "datahub-ingestion-mlflow:latest:${PLATFORM_DIR}/images/datahub-ingestion-mlflow/Dockerfile:${PLATFORM_DIR}/images/datahub-ingestion-mlflow"
+  "datahub-bridge:latest:${PLATFORM_DIR}/services/n8n-datahub-bridge/Dockerfile:${PLATFORM_DIR}/services/n8n-datahub-bridge"
 )
 
 if [ "$CHECK_ONLY" = "--check" ]; then

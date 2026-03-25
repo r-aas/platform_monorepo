@@ -1,0 +1,9 @@
+source:
+  type: mlflow
+  config:
+    tracking_uri: "http://genai-mlflow.genai.svc.cluster.local"
+
+sink:
+  type: datahub-rest
+  config:
+    server: "http://datahub-datahub-gms.genai.svc.cluster.local:8080"

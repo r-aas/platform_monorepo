@@ -1,0 +1,75 @@
+datahub-prerequisites:
+  # Elasticsearch
+  elasticsearch:
+    enabled: true
+    replicas: 1
+    minimumMasterNodes: 1
+    resources:
+      requests:
+        memory: 1Gi
+        cpu: 250m
+      limits:
+        memory: 2Gi
+        cpu: "1"
+    volumeClaimTemplate:
+      resources:
+        requests:
+          storage: 5Gi
+      storageClassName: local-path
+    antiAffinity: "soft"
+    esJavaOpts: "-Xmx1g -Xms1g"
+
+  # Kafka (via cp-kafka subchart)
+  cp-kafka:
+    enabled: true
+    brokers: 1
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 100m
+      limits:
+        memory: 1Gi
+        cpu: "0.5"
+    persistence:
+      size: 5Gi
+      storageClass: local-path
+
+  # Zookeeper (required by Kafka)
+  cp-zookeeper:
+    enabled: true
+    servers: 1
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 100m
+      limits:
+        memory: 512Mi
+        cpu: "0.5"
+    persistence:
+      dataLogDirStorageClass: local-path
+      dataDirStorageClass: local-path
+      dataDirSize: 2Gi
+      dataLogDirSize: 2Gi
+
+  # MySQL
+  mysql:
+    enabled: true
+    mysqlRootPassword: datahub
+    mysqlUser: datahub
+    mysqlPassword: datahub
+    mysqlDatabase: datahub
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 100m
+      limits:
+        memory: 1Gi
+        cpu: "0.5"
+    persistence:
+      enabled: true
+      size: 5Gi
+      storageClass: local-path
+
+  # Neo4j — disabled (using Elasticsearch for graph)
+  neo4j:
+    enabled: false
