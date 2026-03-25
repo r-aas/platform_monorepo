@@ -61,27 +61,9 @@ datahub:
         memory: 512Mi
         cpu: "0.5"
 
-  # Ingestion CronJob — MLflow recipe on hourly schedule
+  # Ingestion CronJob — disabled for initial deploy, enable after GMS healthy
   datahub-ingestion-cron:
-    enabled: true
-    crons:
-      mlflow:
-        schedule: "0 * * * *"
-        image:
-          repository: acryldata/datahub-ingestion
-          # tag defaults to global.datahub.version (v1.4.0.3)
-          pullPolicy: IfNotPresent
-        recipe:
-          configmapName: datahub-ingestion-recipe-mlflow
-          fileContent: |
-            source:
-              type: mlflow
-              config:
-                tracking_uri: "http://genai-mlflow.genai.svc.cluster.local"
-            sink:
-              type: datahub-rest
-              config:
-                server: "http://datahub-datahub-gms.genai.svc.cluster.local:8080"
+    enabled: false
 
   # Prerequisites deployed separately
   cp-kafka:
