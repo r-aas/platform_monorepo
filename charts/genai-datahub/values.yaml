@@ -72,7 +72,7 @@ datahub:
           # tag defaults to global.datahub.version (v1.4.0.3)
           pullPolicy: IfNotPresent
         recipe:
-          configmapName: ""
+          configmapName: datahub-ingestion-recipe-mlflow
           fileContent: |
             source:
               type: mlflow
