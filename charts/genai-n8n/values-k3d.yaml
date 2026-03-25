@@ -2,6 +2,9 @@ n8n:
   ingress:
     enabled: true
     className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
     hosts:
       - host: n8n.mewtwo.127.0.0.1.nip.io
         paths:
