@@ -1,8 +1,8 @@
+<!-- status: shipped -->
 # Feature Specification: P0 Hooks & Rules System Overhaul
 
 **Feature Branch**: `024-hooks-rules-system`
 **Created**: 2026-03-25
-**Status**: Shipped
 
 ## User Scenarios & Testing
 

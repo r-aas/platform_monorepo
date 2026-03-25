@@ -1,8 +1,8 @@
+<!-- status: draft -->
 # Feature Specification: Connected Systems Graph
 
 **Feature Branch**: `025-systems-graph`
 **Created**: 2026-03-25
-**Status**: Draft
 
 ## User Scenarios & Testing
 

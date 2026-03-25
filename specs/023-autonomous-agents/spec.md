@@ -1,8 +1,8 @@
+<!-- status: shipped -->
 # Feature Specification: Autonomous Platform Team
 
 **Feature Branch**: `023-autonomous-agents`
 **Created**: 2026-03-25
-**Status**: Shipped
 
 ## User Scenarios & Testing
 

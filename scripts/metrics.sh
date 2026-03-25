@@ -43,7 +43,7 @@ for spec_dir in "$SPECS_DIR"/*/; do
   [ -f "$spec_dir/tasks.md" ] || continue
   name=$(basename "$spec_dir")
   done_count=$(grep -cE '^- \[x\]' "$spec_dir/tasks.md" 2>/dev/null; true)
-  total_count=$(grep -cE '^- \[' "$spec_dir/tasks.md" 2>/dev/null; true)
+  total_count=$(grep -cE '^- \[(x| )\]' "$spec_dir/tasks.md" 2>/dev/null; true)
   [ "$total_count" -eq 0 ] && continue
   grand_done=$((grand_done + done_count))
   grand_total=$((grand_total + total_count))

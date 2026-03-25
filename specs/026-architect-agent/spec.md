@@ -1,8 +1,8 @@
+<!-- status: draft -->
 # Feature Specification: Architect Agent
 
 **Feature Branch**: `026-architect-agent`
 **Created**: 2026-03-25
-**Status**: Draft
 
 ## User Scenarios & Testing
 
