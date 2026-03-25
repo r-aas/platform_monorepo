@@ -1,82 +1,42 @@
 # Platform Monorepo — Session Resume
 
-## Session: 2026-03-22 — Factory Worker Run 18
+## Session: 2026-03-24 — Bootstrap Reliability + Benchmarkable Agents
 
 ### Built
+- `task up` works zero-to-healthy in one command (19/19 smoke)
+- `task down` → `task up` verified end-to-end
+- `task stop` → `task start` verified (19/19 smoke)
+- Session continuity: multi-turn conversations with recall
+- Custom `mcp-kubernetes` Docker image (pre-installed npm package)
+- `sync-if-needed` skips helmfile when ArgoCD already deployed
+- Docker-compose GitLab fully removed — k8s only
 
-#### F.03: Skill gap analysis — GET /factory/gaps
+### Key Architecture Changes
+- `cluster-up` split into `cluster-create` (idempotent) + `cluster-configure` (always runs)
+- `cluster-configure`: fix-node-dns → CoreDNS restart → fix-local-path
+- CoreDNS restart after DNS fix (root cause of all DNS cascade failures)
+- `ensure-colima` adds FallbackDNS=8.8.8.8 to Colima VM systemd-resolved
+- `sync-if-needed` checks argocd-server deploy existence (not app sync status)
+- `wait-healthy` timeout is non-fatal (exit 0)
+- GitLab CE runs as StatefulSet in k3d (no docker-compose)
+- Session append uses native n8n HTTP Request nodes (Code node sandbox blocks ALL outbound HTTP)
 
-**New file: `benchmark/gap_analysis.py`**
-- `find_referenced_skills(agents)` → set[str] — all skill names referenced across agents
-- `find_defined_skills(skills)` → set[str] — all skill names in registry
-- `analyze_skill_gaps(referenced, defined)` → `GapAnalysisResult`
-  - `missing_skills`: referenced but not defined
-  - `unused_skills`: defined but not referenced
-  - `covered_skills`: both defined and referenced
-  - `coverage_ratio`: len(covered) / len(referenced), 1.0 if none referenced
+### Critical Gotchas
+- **n8n task runner sandbox blocks ALL outbound HTTP from Code nodes.** fetch, require('http'), axios, $helpers.httpRequest — all fail silently. Use native HTTP Request nodes.
+- **CoreDNS must be restarted after DNS fix.** Adding 8.8.8.8 to node resolv.conf is not enough — CoreDNS caches the old upstream config.
+- **ArgoCD app sync status is "Unknown" during startup.** Don't check app sync to decide whether to run helmfile — check if argocd-server deploy exists.
 
-**New endpoint: `GET /factory/gaps`**
-- Non-fatal: survives MLflow unavailability
-- Returns sorted lists for deterministic output
-
-**Test file: `tests/test_gap_analysis.py`** — 12 tests
-
-#### F.04: Auto-skill-evolution — GET /factory/evolve
-
-**Added to `routers/factory.py`**
-- `scan_skill_yamls(skills_dir)` — returns all *.yaml paths in skills_dir
-- `GET /factory/evolve` — runs `optimize_skill_prompt()` per skill, sorts by improvement desc
-  - Skips skills that error during optimization (non-fatal)
-  - Returns `{skills_analyzed, results: [{skill, before_score, after_score, improvement, uncovered_terms, improved_prompt}]}`
-
-**Test file: `tests/test_skill_evolution.py`** — 6 tests
-
-### Test Status
-
-322 tests passing (+37 from run 18 — counting F.01+F.02 tests from prior run):
-- 12 new in test_gap_analysis.py (F.03)
-- 6 new in test_skill_evolution.py (F.04)
-- All prior 304 tests still passing
-
-### Commits This Run
-
-- `b160d3c` feat(agent-gateway): skill gap analysis — GET /factory/gaps [F.03]
-- `8327982` feat(agent-gateway): auto-skill-evolution — GET /factory/evolve [F.04]
-
-### Branch
-
-`001-agent-gateway` — clean
-
-### Phase Summary
-
-| Phase | Status |
-|-------|--------|
-| A — Foundation | ✅ Done (14 items) |
-| B — Complete + Expand | ✅ Done (B.07/B.08 blocked) |
-| C — MCP Mesh | ✅ Done (4 items) |
-| D — Intelligence | ✅ Done (7 items) |
-| E — Orchestration | ✅ Done (4 items) |
-| F — Self-Optimization | ✅ Done (F.01-F.04) |
-
-### Factory Endpoints Summary
-
-All 4 factory endpoints now live:
-- `GET /factory/health` — agents, skills, MCP tools, eval datasets count + status
-- `GET /factory/regression` — per-skill pass_rate regression vs. MLflow history
-- `GET /factory/gaps` — missing/unused/covered skills, coverage_ratio
-- `GET /factory/evolve` — prompt improvement suggestions sorted by gain
+### Benchmarkable Agents (added late in session)
+- 3 agents with real system prompts: mlops, developer, platform-admin
+- 12 prompts seeded into MLflow (3 agents × 1 SYSTEM + 3 TASK each)
+- 45 benchmark test cases across 9 files (data/benchmarks/*.json)
+- Native agent-eval workflow at `/webhook/agent-eval` — no standalone scripts
+- LLM-as-judge scoring (relevance, helpfulness) with structured JSON output
+- Available models: qwen2.5:14b, qwen2.5:7b, mistral:7b-instruct
 
 ### Next Steps
-
-- [local] All Phases A-F done. Consider:
-  1. Create PR to merge `001-agent-gateway` → main (entire spec 001 complete)
-  2. Start spec 002 (new capability area)
-  3. Backlog grooming: add Phase G items based on what's missing
-
-- [local] B.07 (python runtime) and B.08 (claude-code runtime) remain blocked pending evaluation
-
-### Notes
-
-- Prior run (run 17 logged as "Run 17" but actually later) completed F.01+F.02 without updating ledger — this run corrected the ledger
-- MagicMock `name` param gotcha: sets display name, not `.name` attribute — see lessons.md
-- Phase F completes the full spec 001 factory implementation (322 tests)
+- [local] Migrate prompt-eval-v1 from axios to native HTTP Request nodes (broken in k3d sandbox)
+- [local] Upload benchmark test cases as MLflow datasets (via /webhook/datasets)
+- [local] Model matrix comparison via agent-eval (same test cases, different models)
+- [local] Langfuse trace logging (needs HTTP Request nodes in Trace Logger)
+- [local] Evolve genai-mlops-workflows skill with sandbox/session learnings

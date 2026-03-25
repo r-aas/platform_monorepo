@@ -120,7 +120,7 @@ config:
     drop_params: true
     num_retries: 2
     request_timeout: 120
-    success_callback: ["mlflow"]
+    # success_callback: ["mlflow"]  # Disabled — adds ~16s latency per call. Enable for production tracing.
 
 # ---------------------------------------------------------------------------
 # Environment variables

@@ -6,10 +6,10 @@ n8n:
     tag: "1.123.21"
   resources:
     requests:
-      memory: 512Mi
+      memory: 1Gi
       cpu: 250m
     limits:
-      memory: 1Gi
+      memory: 2Gi
       cpu: "1.0"
   main:
     extraEnvVars:
