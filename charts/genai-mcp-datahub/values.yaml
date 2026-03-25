@@ -12,6 +12,7 @@ service:
 
 env:
   DATAHUB_GMS_URL: "http://datahub-datahub-gms.genai.svc.cluster.local:8080"
+  DATAHUB_GMS_TOKEN: "no-auth"
 
 resources:
   requests:
