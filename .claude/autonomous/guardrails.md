@@ -18,15 +18,16 @@
 - **Never delete existing guardrail references** from any prompt
 - **Always log** the update in lessons.md "Prompt Update History" before applying
 
-## Concurrency Protection
+## Concurrency Protection (Worktree Isolation)
 
-- **Lock file**: `/Users/r/work/repos/platform_monorepo/.claude/autonomous/.factory-lock`
-- Before starting work (after boot sequence), check if lock file exists:
-  - If it exists AND was created less than 20 minutes ago → **abort** (another worker is active)
-  - If it exists AND is older than 20 minutes → **stale lock** — remove it and proceed
-  - If it doesn't exist → create it with contents: `{worker-task-id} {ISO timestamp}`
-- **Always delete the lock file** at end of run, even if aborting early
-- If you fail to delete it (crash), the 20-minute staleness check prevents permanent deadlock
+Workers use **git worktrees** for isolation instead of lock files:
+- Create a worktree at `/tmp/factory-worktree-$$` on a temporary branch
+- All work happens in the worktree — never modify the main working tree directly
+- Multiple workers CAN run simultaneously (each gets its own worktree)
+- On completion: fast-forward merge to main if possible, otherwise flag for R
+- **Always clean up worktree** at end of run: `git worktree remove <path> --force`
+- Clean up the temporary branch after merge: `git branch -d <branch>`
+- If worktree creation fails (e.g., /tmp full), abort
 
 ## Lessons Size Limits
 

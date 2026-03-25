@@ -2,7 +2,7 @@
 
 **Feature Branch**: `023-autonomous-agents`
 **Created**: 2026-03-25
-**Status**: Draft
+**Status**: Shipped
 
 ## User Scenarios & Testing
 

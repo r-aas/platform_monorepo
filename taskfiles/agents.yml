@@ -1,0 +1,60 @@
+version: "3"
+
+tasks:
+  default:
+    desc: List agent tasks
+    cmds:
+      - task agents --list
+
+  list:
+    desc: List all registered agents
+    cmds:
+      - |
+        echo ""
+        echo "  Agents (~/.claude/agents/):"
+        echo "  ─────────────────────────────────────────"
+        for f in ~/.claude/agents/*.md; do
+          name=$(basename "$f" .md)
+          desc=$(head -5 "$f" | grep 'description:' | sed 's/.*description: //')
+          printf "  %-22s %s\n" "$name" "$desc"
+        done
+        echo ""
+        echo "  Scheduled Tasks (~/.claude/scheduled-tasks/):"
+        echo "  ─────────────────────────────────────────"
+        for d in ~/.claude/scheduled-tasks/*/; do
+          name=$(basename "$d")
+          desc=$(head -5 "$d/SKILL.md" | grep 'description:' | sed 's/.*description: //')
+          printf "  %-22s %s\n" "$name" "$desc"
+        done
+        echo ""
+
+  memory:
+    desc: Show agent memory status
+    cmds:
+      - |
+        echo ""
+        echo "  Agent Memory (~/.claude/agent-memory/):"
+        echo "  ─────────────────────────────────────────"
+        for d in ~/.claude/agent-memory/*/; do
+          name=$(basename "$d")
+          if [ -f "$d/MEMORY.md" ]; then
+            lines=$(wc -l < "$d/MEMORY.md" | tr -d ' ')
+            printf "  %-22s %s lines\n" "$name" "$lines"
+          else
+            printf "  %-22s (empty)\n" "$name"
+          fi
+        done
+        echo ""
+
+  invoke:
+    desc: "Invoke an agent by name (usage: task agents:invoke -- platform-doctor)"
+    vars:
+      AGENT_NAME: "{{.CLI_ARGS}}"
+    preconditions:
+      - sh: '[ -n "{{.CLI_ARGS}}" ]'
+        msg: "Usage: task agents:invoke -- <agent-name>"
+      - sh: '[ -f "$HOME/.claude/agents/{{.CLI_ARGS}}.md" ]'
+        msg: "Agent '{{.CLI_ARGS}}' not found in ~/.claude/agents/"
+    cmds:
+      - 'echo "Invoking {{.AGENT_NAME}}..."'
+      - 'echo "Run in Claude Code: @{{.AGENT_NAME}}"'

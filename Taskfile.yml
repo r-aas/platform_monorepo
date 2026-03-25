@@ -12,6 +12,7 @@ vars:
 includes:
   k3d: ~/work/taskfiles/k3d.yml
   factory: ~/work/taskfiles/factory.yml
+  agents: ~/work/repos/platform_monorepo/taskfiles/agents.yml
 
 tasks:
   default:
