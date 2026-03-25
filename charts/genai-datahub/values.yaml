@@ -68,9 +68,9 @@ datahub:
       mlflow:
         schedule: "0 * * * *"
         image:
-          repository: datahub-ingestion-mlflow
-          tag: latest
-          pullPolicy: Never
+          repository: acryldata/datahub-ingestion
+          # tag defaults to global.datahub.version (v1.4.0.3)
+          pullPolicy: IfNotPresent
         recipe:
           configmapName: ""
           fileContent: |
