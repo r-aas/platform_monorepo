@@ -1,0 +1,26 @@
+%% C4 Context Diagram — Auto-generated from live k3d cluster
+%% Re-generate: task arch:context
+C4Context
+  title Platform Context — mewtwo k3d cluster
+
+  Person(r, "R", "Platform engineer")
+  Person(ci, "GitLab CI", "CI/CD runner")
+
+  System_Ext(ollama, "Ollama", "LLM inference (native Mac, Metal GPU)")
+  System_Ext(browser, "Browser", "Web UIs via ingress")
+
+  Enterprise_Boundary(platform, "mewtwo k3d cluster") {
+    System(ns_dev, "dev", "0 services: ")
+    System(ns_genai, "genai", "15 services: agent-gateway,litellm,mcp-gitlab,mcp-kubernetes,mcp-n8n")
+    System(ns_ingress-nginx, "ingress-nginx", "2 services: ingress-nginx-controller,ingress-nginx-controller-admission")
+    System(ns_platform, "platform", "5 services: argocd-applicationset-controller,argocd-redis,argocd-repo-server,argocd-server,gitlab-ce")
+    System(ns_prod, "prod", "0 services: ")
+    System(ns_stage, "stage", "0 services: ")
+  }
+
+  Rel(r, ns_genai, "Chat, eval, monitor")
+  Rel(r, ns_platform, "GitOps, CI/CD")
+  Rel(ci, ns_platform, "Pipeline triggers")
+  Rel(browser, ns_genai, "Web UIs (n8n, MLflow, MinIO)")
+  Rel(browser, ns_platform, "Web UIs (ArgoCD, GitLab)")
+  Rel(ns_genai, ollama, "LLM inference via LiteLLM proxy")

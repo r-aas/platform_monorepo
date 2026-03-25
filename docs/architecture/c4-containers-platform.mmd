@@ -1,0 +1,16 @@
+%% C4 Container Diagram — platform namespace
+%% Auto-generated from live k3d cluster
+%% Re-generate: task arch:containers
+C4Container
+  title platform Namespace Containers
+
+  Boundary(ns_platform, "platform") {
+    Container(argocd_applicationset_controller, "argocd-applicationset-controller", "argocd", "Deployment — 7000/TCP")
+    Container(argocd_redis, "argocd-redis", "redis", "Deployment — 6379/TCP")
+    Container(argocd_repo_server, "argocd-repo-server", "argocd", "Deployment — 8081/TCP")
+    Container(argocd_server, "argocd-server", "argocd", "Deployment — 80/TCP,443/TCP")
+    Container(gitlab_ce, "gitlab-ce", "gitlab-ce", "StatefulSet — 80/TCP,2222/TCP,5050/TCP")
+  }
+
+  System_Ext(ollama, "Ollama", "LLM on Mac host 192.168.5.2:11434")
+

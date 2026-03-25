@@ -1,4 +1,4 @@
-<!-- status: draft -->
+<!-- status: shipped -->
 # Feature Specification: Architect Agent
 
 **Feature Branch**: `026-architect-agent`

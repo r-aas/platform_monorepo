@@ -1,0 +1,53 @@
+version: "3"
+
+tasks:
+  default:
+    desc: List architecture tasks
+    cmds:
+      - task arch --list
+
+  context:
+    desc: "Generate C4 Context diagram from live cluster"
+    cmds:
+      - bash {{.PLATFORM_DIR}}/scripts/arch/gen-context.sh
+
+  containers:
+    desc: "Generate C4 Container diagrams for genai and platform namespaces"
+    cmds:
+      - bash {{.PLATFORM_DIR}}/scripts/arch/gen-containers.sh genai
+      - bash {{.PLATFORM_DIR}}/scripts/arch/gen-containers.sh platform
+      - bash {{.PLATFORM_DIR}}/scripts/arch/gen-containers.sh ingress-nginx
+
+  components:
+    desc: "Generate C4 Component diagram for agent-gateway (usage: task arch:components -- service-name)"
+    cmds:
+      - bash {{.PLATFORM_DIR}}/scripts/arch/gen-components.sh {{.CLI_ARGS | default "agent-gateway"}}
+
+  verify:
+    desc: "Detect drift between diagrams and live cluster state"
+    cmds:
+      - bash {{.PLATFORM_DIR}}/scripts/arch/verify.sh
+
+  test:
+    desc: "Run connectivity tests derived from container diagrams"
+    cmds:
+      - bash {{.PLATFORM_DIR}}/scripts/arch/test.sh
+
+  index:
+    desc: "Rebuild docs/architecture/INDEX.md"
+    cmds:
+      - bash {{.PLATFORM_DIR}}/scripts/arch/index.sh
+
+  all:
+    desc: "Regenerate all C4 diagrams, verify, and rebuild index"
+    cmds:
+      - task: context
+      - task: containers
+      - task: components
+      - task: verify
+      - task: index
+
+  regenerate:
+    desc: "Alias for arch:all — run after shipping a spec that changes platform services"
+    cmds:
+      - task: all

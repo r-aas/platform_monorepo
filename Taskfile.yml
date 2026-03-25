@@ -13,6 +13,7 @@ includes:
   k3d: ~/work/taskfiles/k3d.yml
   factory: ~/work/taskfiles/factory.yml
   agents: ~/work/repos/platform_monorepo/taskfiles/agents.yml
+  arch: ~/work/repos/platform_monorepo/taskfiles/arch.yml
 
 tasks:
   default:

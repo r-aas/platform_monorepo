@@ -1,0 +1,27 @@
+%% C4 Component Diagram — agent-gateway
+%% Auto-generated from source code analysis
+%% Re-generate: task arch:components -- agent-gateway
+C4Component
+  title agent-gateway Components
+
+  Boundary(svc_agent_gateway, "agent-gateway") {
+    Component(main, "main", "FastAPI Router", "Routes: / | mixed | 0 endpoints")
+    Component(mcp_server, "mcp_server", "FastAPI Router", "Routes: /gateway-mcp | post | 1 endpoints")
+    Component(agents, "agents", "FastAPI Router", "Routes: /agents | get | 4 endpoints")
+    Component(chat, "chat", "FastAPI Router", "Routes: / | post | 1 endpoints")
+    Component(delegation, "delegation", "FastAPI Router", "Routes: / | post | 1 endpoints")
+    Component(factory, "factory", "FastAPI Router", "Routes: /factory | get | 4 endpoints")
+    Component(mcp, "mcp", "FastAPI Router", "Routes: /mcp | get | 3 endpoints")
+    Component(skills, "skills", "FastAPI Router", "Routes: /skills | delete,get,post,put | 9 endpoints")
+    Component(loader, "loader", "Service", "0 classes, 4 functions")
+    Component(pipeline_loader, "pipeline_loader", "Service", "0 classes, 2 functions")
+    Component(sync, "sync", "Service", "0 classes, 2 functions")
+    Component(runner, "runner", "Service", "2 classes, 3 functions")
+    Component(models, "models", "Model", "10 classes, 0 functions")
+    Component(base, "base", "Runtime", "1 classes, 0 functions")
+    Component(http, "http", "Runtime", "1 classes, 0 functions")
+    Component(n8n, "n8n", "Runtime", "1 classes, 2 functions")
+    Component(export, "export", "Service", "0 classes, 6 functions")
+    Component(import_, "import_", "Service", "0 classes, 4 functions")
+  }
+

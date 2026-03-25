@@ -1,0 +1,13 @@
+%% C4 Container Diagram — ingress-nginx namespace
+%% Auto-generated from live k3d cluster
+%% Re-generate: task arch:containers
+C4Container
+  title ingress-nginx Namespace Containers
+
+  Boundary(ns_ingress-nginx, "ingress-nginx") {
+    Container(ingress_nginx_controller, "ingress-nginx-controller", "controller", "Deployment — 80/TCP,443/TCP")
+    Container(ingress_nginx_controller_admission, "ingress-nginx-controller-admission", "", "Service — 443/TCP")
+  }
+
+  System_Ext(ollama, "Ollama", "LLM on Mac host 192.168.5.2:11434")
+
