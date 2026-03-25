@@ -26,17 +26,24 @@
 - **CoreDNS must be restarted after DNS fix.** Adding 8.8.8.8 to node resolv.conf is not enough — CoreDNS caches the old upstream config.
 - **ArgoCD app sync status is "Unknown" during startup.** Don't check app sync to decide whether to run helmfile — check if argocd-server deploy exists.
 
-### Benchmarkable Agents (added late in session)
+### Benchmarkable Agents
 - 3 agents with real system prompts: mlops, developer, platform-admin
-- 12 prompts seeded into MLflow (3 agents × 1 SYSTEM + 3 TASK each)
-- 45 benchmark test cases across 9 files (data/benchmarks/*.json)
-- Native agent-eval workflow at `/webhook/agent-eval` — no standalone scripts
+- 42 prompts seeded into MLflow, 45 benchmark test cases (9 suites × 5 cases)
+- Native `/webhook/agent-eval` — supports agent mode + prompt mode + lite mode
 - LLM-as-judge scoring (relevance, helpfulness) with structured JSON output
-- Available models: qwen2.5:14b, qwen2.5:7b, mistral:7b-instruct
+- **39/45 pass rate** (qwen2.5:7b, lite mode, 25 min)
+- **38/45 pass rate** (qwen2.5:14b, lite mode, higher quality scores: rel=0.88, hlp=0.77)
+
+### Performance Optimizations
+- LiteLLM MLflow success_callback disabled — 30s → 1.8s per LLM call
+- Lite eval mode: skip agent-gateway, call LiteLLM directly (~10x faster)
+- n8n memory bumped to 2Gi (task runner OOMs at 1Gi under benchmark load)
+- n8n ingress proxy-read-timeout: 300s (eval calls take 30-120s)
+- Models registered in LiteLLM: qwen2.5:14b, qwen2.5:7b, mistral:7b-instruct
 
 ### Next Steps
-- [local] Migrate prompt-eval-v1 from axios to native HTTP Request nodes (broken in k3d sandbox)
 - [local] Upload benchmark test cases as MLflow datasets (via /webhook/datasets)
-- [local] Model matrix comparison via agent-eval (same test cases, different models)
+- [local] Tune prompts for platform-admin.plan failures (3/5 on both models)
+- [local] Run mistral:7b-instruct benchmark for 3-model matrix
 - [local] Langfuse trace logging (needs HTTP Request nodes in Trace Logger)
-- [local] Evolve genai-mlops-workflows skill with sandbox/session learnings
+- [local] Add template rendering to prompt-mode eval (fetch from MLflow, apply variables)
