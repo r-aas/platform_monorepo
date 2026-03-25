@@ -282,6 +282,11 @@ tasks:
     cmds:
       - cat {{.PLATFORM_DIR}}/RESUME.md
 
+  metrics:
+    desc: "Platform metrics: spec delivery, task burn-down, assets (--smoke for live checks)"
+    cmds:
+      - bash {{.PLATFORM_DIR}}/scripts/metrics.sh {{.CLI_ARGS}}
+
   doctor:
     desc: Verify platform health (preflight + smoke)
     cmds:
