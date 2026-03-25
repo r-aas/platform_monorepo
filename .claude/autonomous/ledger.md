@@ -3,18 +3,19 @@
 <!-- Machine-readable state. Updated by factory worker + R. -->
 
 ## Current Phase
-B — Skill Library Expansion (A complete for MVP)
+G — Agent Eval Pipeline (A-F complete, 322 tests)
 
 ## Phase Map
 
 | Phase | Name | Goal | Status |
 |-------|------|------|--------|
 | A | Foundation | Agent gateway MVP — agents, skills, chat, search | ✅ Done (25 tests) |
-| B | Complete + Expand | Finish gateway gaps, expand skill library | 🔄 Active |
-| C | MCP Mesh | Gateway MCP server, tool discovery, auto-registration | Queued |
-| D | Intelligence | Embeddings search, benchmark runner, prompt optimization | Queued |
-| E | Orchestration | Workflow GitOps, agent chains, multi-agent | Queued |
-| F | Self-Optimization | Factory monitors quality, proposes improvements | Queued |
+| B | Complete + Expand | Finish gateway gaps, expand skill library | ✅ Done (B.07/B.08 blocked) |
+| C | MCP Mesh | Gateway MCP server, tool discovery, auto-registration | ✅ Done |
+| D | Intelligence | Embeddings search, benchmark runner, prompt optimization | ✅ Done |
+| E | Orchestration | Workflow GitOps, agent chains, multi-agent | ✅ Done |
+| F | Self-Optimization | Factory monitors quality, proposes improvements | ✅ Done |
+| G | Agent Eval Pipeline | E2E benchmarks, prompt tuning, model comparison, dataset management | 🔄 Active |
 
 ## Active Backlog
 
@@ -97,6 +98,41 @@ B — Skill Library Expansion (A complete for MVP)
 - [x] F.02 Skill regression detection — benchmark scores drop → alert (fc6adfb)
 - [x] F.03 Gap analysis — identify missing skills from usage patterns (b160d3c)
 - [x] F.04 Auto-skill-evolution — improve skills based on eval results (8327982)
+
+### Phase G — Agent Eval Pipeline
+
+#### Priority 1 — Eval Integration
+
+- [ ] G.01 Upload benchmark test cases as MLflow datasets (via /webhook/datasets action=upload)
+      Domain: D4/eval-framework | Files: data/benchmarks/*.json → MLflow __datasets experiment
+- [ ] G.02 Add template rendering to prompt-mode eval (fetch prompt from MLflow, apply Jinja2 variables)
+      Domain: D4/eval-framework | Files: n8n-data/workflows/agent-eval Code node
+- [ ] G.03 Tune platform-admin.plan prompts — currently 3/5 pass rate on both 7b and 14b
+      Domain: D2/agent-definitions | Files: agents/platform-admin.yaml, data/seed-prompts.json
+- [ ] G.04 Add Langfuse trace logging to Trace Logger via HTTP Request node
+      Domain: D6/observability | Files: n8n-data/workflows/chat.json (Trace Logger output → HTTP Request)
+- [ ] G.05 Wire agent-eval results to MLflow experiment runs (store scores, latency, model as metrics)
+      Domain: D4/eval-framework | Files: n8n-data/workflows/agent-eval Code node
+
+#### Priority 2 — Model Comparison
+
+- [ ] G.06 Automate model matrix benchmark — run all agents × tasks × models, aggregate to MLflow
+      Domain: D4/eval-framework | Files: scripts/benchmark-matrix.sh or Taskfile task
+- [ ] G.07 Baseline storage — store first benchmark run per agent/task/model as baseline
+      Domain: D4/eval-framework | Files: /webhook/traces action=baseline_set
+- [ ] G.08 Drift detection — compare new benchmark runs against stored baselines
+      Domain: D4/eval-framework | Files: /webhook/traces action=drift_check
+- [ ] G.09 Add `task benchmark` to platform Taskfile (runs agent-eval for all agents)
+      Domain: D1/automation | Files: Taskfile.yml or taskfiles/benchmark.yml
+
+#### Priority 3 — Advanced Eval
+
+- [ ] G.10 Custom judge prompts — create domain-specific judges (code-quality, ops-accuracy, security-awareness)
+      Domain: D4/eval-framework | Files: data/seed-prompts.json (judge.* entries)
+- [ ] G.11 Regression test mode — `task benchmark -- --regression` fails CI if pass rate drops below baseline
+      Domain: D4/eval-framework | Files: scripts/benchmark-matrix.sh
+- [ ] G.12 Prompt A/B eval — run same test cases against production vs staging prompt versions
+      Domain: D4/eval-framework | Files: /webhook/eval action=ab_eval integration
 
 ## Completed
 

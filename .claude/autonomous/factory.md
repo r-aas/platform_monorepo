@@ -57,11 +57,11 @@ The gateway and everything it orchestrates.
 | Subdomain | Produces | Status |
 |-----------|----------|--------|
 | gateway-core | Agent Gateway service | MVP done (spec 001) |
-| agent-definitions | Agent YAMLs | 2 agents (mlops, agent-ops) |
-| skill-library | Skill YAMLs + registry | 6 skills defined |
-| runtimes | n8n, python, claude-code | n8n done, others TODO |
+| agent-definitions | Agent YAMLs | 5 agents (mlops, developer, platform-admin, data-engineer, agent-ops) |
+| skill-library | Skill YAMLs + registry | 12 skills defined |
+| runtimes | n8n, python, claude-code, http | n8n + http done, python/cc blocked |
 | composition | Composer + prompt merging | Done |
-| search | Hybrid RAG (keyword + embeddings) | Keyword done, embeddings TODO |
+| search | Hybrid RAG (keyword + embeddings) | Done (hybrid scoring + fallback) |
 
 ### D3: MCP Mesh
 The tool surface layer that agents use.
@@ -71,37 +71,38 @@ The tool surface layer that agents use.
 | metamcp-admin | MCP: namespace management | MCP server exists |
 | genai-namespace | MCP tools: n8n, mlflow, k8s | Configured |
 | platform-namespace | MCP tools: gitlab, argocd | Configured |
-| gateway-mcp | MCP: gateway API as tools | Not started (T045) |
-| tool-discovery | Search + auto-registration | Keyword search done |
+| gateway-mcp | MCP: gateway API as tools | Done (JSON-RPC 2.0) |
+| tool-discovery | Search + auto-registration | Done (hybrid + MetaMCP) |
 
 ### D4: Intelligence
 RAG, evaluation, and continuous improvement.
 
 | Subdomain | Produces | Status |
 |-----------|----------|--------|
-| embeddings | Vector search via Ollama | TODO in all search endpoints |
-| eval-framework | Benchmark runner + datasets | Datasets exist, runner TODO |
-| mlflow-tracking | Experiment tracking | Connected |
-| prompt-optimization | Auto-improve system prompts | Not started |
+| embeddings | Vector search via Ollama | Done (EmbeddingCache + LRU) |
+| eval-framework | Agent benchmarks + LLM-as-judge | Active — 45 test cases, 3 models, /webhook/agent-eval |
+| mlflow-tracking | Experiment tracking + prompt registry | Done (42 prompts seeded) |
+| prompt-optimization | Auto-improve system prompts | Done (D.07, coverage-based) |
 
 ### D5: Orchestration
 Multi-agent workflows and pipeline composition.
 
 | Subdomain | Produces | Status |
 |-----------|----------|--------|
-| workflow-gitops | Export/import n8n workflows | Not started (Phase 6) |
-| agent-chains | Agent-to-agent delegation | Not started |
-| multi-agent | Parallel agent coordination | Not started |
-| n8n-workflows | Workflow templates | Exists (genai-mlops) |
+| workflow-gitops | Export/import n8n workflows | Done (validation gates) |
+| agent-chains | Agent-to-agent delegation | Done (E.02) |
+| multi-agent | Pipeline definitions + execution | Done (E.03) |
+| n8n-workflows | Workflow templates | Done (genai-mlops, 10 workflows) |
 
 ### D6: Observability
 Monitoring and tracing for the entire stack.
 
 | Subdomain | Produces | Status |
 |-----------|----------|--------|
-| agent-tracing | MLflow traces per invocation | Endpoint exists, logging TODO |
+| agent-tracing | MLflow traces per invocation | Done (Trace Logger + HTTP Request node) |
+| langfuse | LLM observability + cost tracking | Not started (G.04) |
 | dashboard | Topology + metrics UI | Observatory exists, needs rework |
-| alerting | Failure detection | Not started |
+| alerting | Failure detection + drift | Partial (drift_check exists, alerting TODO) |
 
 ## How Domains Compose
 
