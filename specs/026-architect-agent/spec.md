@@ -83,12 +83,47 @@ As R, the architect agent tracks how requirements change over time — what was 
 
 ---
 
+### User Story 6 - Living C4 Architecture Diagrams (Priority: P1)
+
+As R, the architect agent maintains an indexed set of Mermaid diagrams following the C4 model (Context, Container, Component, Code) that represent the entire platform — generated from live API queries, not hand-drawn — so I can zoom into any layer and verify the diagram matches reality.
+
+**Why this priority**: Diagrams rot faster than code. Auto-generated diagrams from live queries are always accurate. The C4 model provides the zoom levels (system → container → component → code) that R needs to navigate the platform.
+
+**Independent Test**: Run `task arch:context` and verify the generated Mermaid diagram matches the actual k3d cluster services.
+
+**Acceptance Scenarios**:
+
+1. **Given** the k3d cluster is running, **When** `task arch:context` executes, **Then** a C4 Context diagram is generated showing all external actors (R, CI, Ollama) and the platform boundary
+2. **Given** the genai namespace has services, **When** `task arch:containers` executes, **Then** a C4 Container diagram is generated from `kubectl get svc -n genai` showing agent-gateway, n8n, MLflow, LiteLLM, DataHub and their connections
+3. **Given** agent-gateway has routers and services, **When** `task arch:components -- agent-gateway` executes, **Then** a C4 Component diagram is generated from the FastAPI route table showing routers, registries, and runtimes
+4. **Given** all diagrams exist, **When** `task arch:verify` executes, **Then** it queries live APIs and flags any entity in a diagram that doesn't exist in reality (drift detection)
+
+---
+
+### User Story 7 - Diagram-Driven Testing (Priority: P2)
+
+As R, the C4 diagrams serve as testable contracts — every connection in a diagram has a corresponding connectivity test, and every entity has a health check — so the diagrams ARE the test suite.
+
+**Why this priority**: If the diagram says "agent-gateway → n8n", there should be a test that verifies that connection works. This makes architecture diagrams executable, not decorative.
+
+**Independent Test**: Run `task arch:test` and verify it tests every connection in the container diagram.
+
+**Acceptance Scenarios**:
+
+1. **Given** the container diagram shows agent-gateway → n8n, **When** `task arch:test` runs, **Then** it curls from agent-gateway pod to n8n service and reports pass/fail
+2. **Given** a new service is added to k3d, **When** it's not in any diagram, **Then** `task arch:verify` flags "undocumented service" as drift
+3. **Given** a diagram shows a connection that no longer exists, **When** `task arch:test` fails for that connection, **Then** the architect agent proposes a diagram update
+
+---
+
 ### Edge Cases
 
 - R mentions something that sounds like a requirement but is actually a question → Agent asks for clarification before adding to backlog
 - Multiple requirements captured in one message → Agent creates separate backlog entries
 - Requirement conflicts with an existing spec → Agent flags the conflict
 - R says "forget that" or "never mind" → Agent removes the draft requirement
+- Diagram generation fails because a service is temporarily down → Use last-known-good diagram, flag stale entities
+- C4 Code-level diagrams for external services (n8n, MLflow) → Skip code level for services we don't own
 
 ## Requirements
 
@@ -104,6 +139,12 @@ As R, the architect agent tracks how requirements change over time — what was 
 - **FR-008**: Agent MUST track requirement changes with timestamps and reasons in a changelog section
 - **FR-009**: Agent MUST integrate with DataHub to store requirements as metadata entities (when available)
 - **FR-010**: Agent definition MUST be a Claude Code agent at `~/.claude/agents/architect.md`
+- **FR-011**: Agent MUST maintain C4 model diagrams (Context, Container, Component, Code) as indexed Mermaid files in `docs/architecture/`
+- **FR-012**: Diagrams MUST be generated from live API queries via Taskfile tasks (`task arch:context`, `task arch:containers`, `task arch:components`, `task arch:code`)
+- **FR-013**: Each diagram MUST have a generation script in `scripts/arch/` that queries k8s API, FastAPI route tables, or Helm values to build the Mermaid source
+- **FR-014**: `task arch:verify` MUST compare diagrams against live state and report drift (undocumented services, missing connections, stale entities)
+- **FR-015**: `task arch:test` MUST generate connectivity tests from container diagrams — every arrow becomes a curl/wget test
+- **FR-016**: Diagrams MUST be versioned in git alongside specs — the architect agent updates them when the platform changes
 
 ### Key Entities
 
@@ -112,6 +153,11 @@ As R, the architect agent tracks how requirements change over time — what was 
 - **Requirements Backlog**: Ordered list of draft requirements pending speccing
 - **Spec Artifact**: Full speckit output (spec.md, plan.md, tasks.md)
 - **Changelog**: Append-only log of requirement modifications
+- **C4 Context Diagram**: Highest zoom — shows the platform as a single box with external actors (R, CI runners, Ollama, browsers)
+- **C4 Container Diagram**: Per-namespace — shows services, databases, message queues and their connections
+- **C4 Component Diagram**: Per-service — shows internal modules, routers, registries (generated from code/API introspection)
+- **C4 Code Diagram**: Per-module — class/function level (only for services we own: agent-gateway, bridge services)
+- **Architecture Index**: `docs/architecture/INDEX.md` — links to all diagrams with last-generated timestamps and drift status
 
 ## Success Criteria
 
@@ -123,6 +169,10 @@ As R, the architect agent tracks how requirements change over time — what was 
 - **SC-004**: Spec refinement preserves FR numbering and acceptance scenario structure
 - **SC-005**: Requirement changes are logged with timestamp and reason 100% of the time
 - **SC-006**: Agent responds to "spec this" within 30 seconds with a complete spec draft
+- **SC-007**: C4 diagrams at all 4 levels are generated from live queries in under 60 seconds total
+- **SC-008**: `task arch:verify` detects 100% of services present in k3d but missing from diagrams
+- **SC-009**: `task arch:test` generates and runs connectivity tests for every arrow in container diagrams
+- **SC-010**: Diagrams are regenerated automatically when specs ship (PostToolUse hook on spec status change)
 
 ## Assumptions
 
