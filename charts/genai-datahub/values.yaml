@@ -7,21 +7,21 @@ datahub:
       appVersion: "1.0"
     graph_service_impl: elasticsearch
     elasticsearch:
-      host: "prerequisites-elasticsearch-master"
+      host: "elasticsearch-master"
       port: "9200"
     kafka:
       bootstrap:
-        server: "prerequisites-kafka:9092"
+        server: "genai-datahub-prereqs-kafka:9092"
       zookeeper:
-        server: "prerequisites-zookeeper:2181"
+        server: "genai-datahub-prereqs-zookeeper:2181"
       schemaregistry:
-        url: "http://prerequisites-cp-schema-registry:8081"
+        url: "http://genai-datahub-prereqs-cp-schema-registry:8081"
     sql:
       datasource:
-        host: "prerequisites-mysql:3306"
-        hostForMysqlClient: "prerequisites-mysql"
+        host: "genai-datahub-prereqs-mysql:3306"
+        hostForMysqlClient: "genai-datahub-prereqs-mysql"
         port: "3306"
-        url: "jdbc:mysql://prerequisites-mysql:3306/datahub?verifyServerCertificate=false&useSSL=true&useUnicode=yes&characterEncoding=UTF-8&enabledTLSProtocols=TLSv1.2"
+        url: "jdbc:mysql://genai-datahub-prereqs-mysql:3306/datahub?verifyServerCertificate=false&useSSL=true&useUnicode=yes&characterEncoding=UTF-8&enabledTLSProtocols=TLSv1.2"
         driver: "com.mysql.cj.jdbc.Driver"
         username: "datahub"
         password:
@@ -86,7 +86,7 @@ datahub:
       - name: MYSQL_PASSWORD
         valueFrom:
           secretKeyRef:
-            name: datahub-mysql-secret
+            name: mysql-secrets
             key: mysql-root-password
 
   elasticsearchSetupJob:
