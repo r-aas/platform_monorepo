@@ -88,6 +88,6 @@
 
 ### T013: End-to-end hook verification
 - [x] Run test script that simulates all blocked/allowed scenarios
-- [ ] Verify CLAUDE.md line count < 200
-- [ ] Verify migrated content accessible via skills
+- [x] Verify CLAUDE.md line count < 200 (171 lines)
+- [x] Verify migrated content accessible via skills (ARM64: 21 refs, networking: 3 refs, CI: 3 refs, n8n: 1 ref)
 - **Depends on**: T001-T012
