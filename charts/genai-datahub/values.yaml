@@ -77,17 +77,9 @@ datahub:
   neo4j:
     enabled: false
 
-  # MySQL secret for GMS
+  # MySQL setup job — env vars are auto-populated from global.sql
   mysqlSetupJob:
     enabled: true
-    extraEnvs:
-      - name: MYSQL_USERNAME
-        value: datahub
-      - name: MYSQL_PASSWORD
-        valueFrom:
-          secretKeyRef:
-            name: mysql-secrets
-            key: mysql-root-password
 
   elasticsearchSetupJob:
     enabled: true
