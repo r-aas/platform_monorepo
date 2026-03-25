@@ -16,8 +16,11 @@ shipped=0 planned=0 in_progress=0 draft=0 total=0
 for spec_dir in "$SPECS_DIR"/*/; do
   [ -f "$spec_dir/spec.md" ] || continue
   total=$((total + 1))
-  status=$(head -3 "$spec_dir/spec.md" | sed -n 's/.*status:[[:space:]]*\([a-z-]*\).*/\1/p' | head -1)
+  # Check both <!-- status: X --> and **Status**: X formats
+  status=$(head -10 "$spec_dir/spec.md" | sed -n 's/.*status:[[:space:]]*\([a-zA-Z-]*\).*/\1/p' | head -1)
+  [ -z "$status" ] && status=$(head -10 "$spec_dir/spec.md" | sed -n 's/.*\*\*Status\*\*:[[:space:]]*\([a-zA-Z-]*\).*/\1/p' | head -1)
   [ -z "$status" ] && status="unknown"
+  status=$(echo "$status" | tr '[:upper:]' '[:lower:]')
   case "$status" in
     shipped)     shipped=$((shipped + 1)) ;;
     in-progress) in_progress=$((in_progress + 1)) ;;
