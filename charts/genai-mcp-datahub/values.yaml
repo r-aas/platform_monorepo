@@ -8,7 +8,7 @@ image:
 replicas: 1
 
 service:
-  port: 3000
+  port: 8000
 
 env:
   DATAHUB_GMS_URL: "http://genai-datahub-datahub-gms.genai.svc.cluster.local:8080"
