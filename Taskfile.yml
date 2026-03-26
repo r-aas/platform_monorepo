@@ -279,6 +279,26 @@ tasks:
     cmds:
       - kubectl -n genai logs -l app.kubernetes.io/instance=genai-n8n --tail=50 -f
 
+  # ── Benchmarks ─────────────────────────────────────────────
+
+  benchmark:
+    desc: "Run AgenticOps benchmarks (usage: task benchmark -- --agent mlops --model qwen2.5:7b)"
+    dir: "${HOME}/work/repos/genai-mlops"
+    cmds:
+      - uv run python scripts/benchmark.py {{.CLI_ARGS}}
+
+  benchmark-matrix:
+    desc: "Full model × agent matrix (3 models, direct runtime, logged to MLflow)"
+    dir: "${HOME}/work/repos/genai-mlops"
+    cmds:
+      - uv run python scripts/benchmark.py --type agent --runtime direct --matrix --log-mlflow -v
+
+  benchmark-compare:
+    desc: "Compare gateway vs direct runtimes (default model, logged to MLflow)"
+    dir: "${HOME}/work/repos/genai-mlops"
+    cmds:
+      - uv run python scripts/benchmark.py --type agent --runtime all --log-mlflow -v
+
   # ── Utilities ───────────────────────────────────────────────
 
   resume:
