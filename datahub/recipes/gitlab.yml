@@ -1,0 +1,15 @@
+# GitLab ingestion recipe for DataHub
+# Ingests repos, merge requests, and issues as DataHub entities
+# Note: DataHub's native gitlab source requires the datahub[gitlab] extra
+source:
+  type: git
+  config:
+    repo: "http://gitlab.mewtwo.127.0.0.1.nip.io/root/platform_monorepo.git"
+    deploy_key: ""  # Not needed for public repos; set if private
+    branch: "main"
+
+sink:
+  type: datahub-rest
+  config:
+    server: "http://genai-datahub-datahub-gms.genai.svc.cluster.local:8080"
+    token: "eyJhbGciOiJIUzI1NiJ9.eyJhY3RvclR5cGUiOiJVU0VSIiwiYWN0b3JJZCI6ImRhdGFodWIiLCJ0eXBlIjoiUEVSU09OQUwiLCJ2ZXJzaW9uIjoiMiIsImp0aSI6IjllYTIyY2JlLTg5N2EtNDg1MC04OTgzLTJkOWFiN2FjYTQxNyIsInN1YiI6ImRhdGFodWIiLCJpc3MiOiJkYXRhaHViLW1ldGFkYXRhLXNlcnZpY2UifQ.nxY9PlPJSbnQphoyt4qVP_8TTjHK--Nz6dyZTMzZ5YM"
