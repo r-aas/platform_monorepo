@@ -11,7 +11,10 @@ server:
 
 gitlab:
   apiUrl: "http://gitlab-ce.platform.svc.cluster.local"
-  token: "glpat-gJUm5txwvpYLXDBAGo3lP286MQp1OjEH.01.0w03rlitn"
+  # token injected from existingSecret or values-secrets.yaml (gitignored)
+  token: ""
+  existingSecret: "gitlab-mcp-token"
+  existingSecretKey: "token"
 
 service:
   type: ClusterIP

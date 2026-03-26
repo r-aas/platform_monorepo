@@ -60,7 +60,7 @@
 
 ## Notes
 
-- GitLab PAT embedded in git remote URL: `glpat-yGDTb8B7H5v4owSrN3Vxh286MQp1OjEH.01.0w06dez0e`
+- GitLab PAT was embedded in git remote URL (rotated — see k8s secret `gitlab-mcp-token`)
 - DataHub PAT (no-expiry): stored in bridge/MCP values.yaml
 - Vault has 35 markdown files, 4 top-level folders (areas, projects, archive, calendar)
 - Obsidian source excludes _templates/ and _attachments/ by default

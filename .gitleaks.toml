@@ -1,0 +1,8 @@
+title = "gitleaks config"
+
+[allowlist]
+  description = "known local-dev values that are not real secrets"
+  regexTarget = "match"
+  regexes = [
+    '''genai-mlops-n8n-encryption-key-k3d''',
+  ]

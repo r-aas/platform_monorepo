@@ -10,7 +10,8 @@ service:
 
 env:
   DATAHUB_GMS_URL: "http://genai-datahub-datahub-gms.genai.svc.cluster.local:8080"
-  DATAHUB_TOKEN: "eyJhbGciOiJIUzI1NiJ9.eyJhY3RvclR5cGUiOiJVU0VSIiwiYWN0b3JJZCI6ImRhdGFodWIiLCJ0eXBlIjoiUEVSU09OQUwiLCJ2ZXJzaW9uIjoiMiIsImp0aSI6IjllYTIyY2JlLTg5N2EtNDg1MC04OTgzLTJkOWFiN2FjYTQxNyIsInN1YiI6ImRhdGFodWIiLCJpc3MiOiJkYXRhaHViLW1ldGFkYXRhLXNlcnZpY2UifQ.nxY9PlPJSbnQphoyt4qVP_8TTjHK--Nz6dyZTMzZ5YM"
+  # DATAHUB_TOKEN injected from k8s secret "datahub-tokens"
+  DATAHUB_TOKEN: ""
 
 resources:
   requests:

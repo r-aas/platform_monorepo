@@ -12,7 +12,7 @@ mcp = FastMCP("metamcp-admin")
 
 METAMCP_URL = os.environ.get("METAMCP_URL", "http://metamcp.genai.127.0.0.1.nip.io")
 METAMCP_EMAIL = os.environ.get("METAMCP_EMAIL", "admin@metamcp.local")
-METAMCP_PASSWORD = os.environ.get("METAMCP_PASSWORD", "changeme")
+METAMCP_PASSWORD = os.environ["METAMCP_PASSWORD"]  # no default — must be set
 METAMCP_NAMESPACE = os.environ.get("METAMCP_K8S_NAMESPACE", "genai")
 METAMCP_LABEL = os.environ.get("METAMCP_LABEL", "app.kubernetes.io/name=metamcp")
 

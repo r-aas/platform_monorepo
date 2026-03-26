@@ -67,7 +67,7 @@ app_exists "genai-n8n" && \
 app_exists "genai-mlflow" && \
   http_check "http://mlflow.genai.127.0.0.1.nip.io/health"   "MLflow"
 app_exists "genai-litellm" && \
-  http_check "http://litellm.genai.127.0.0.1.nip.io/v1/models" "LiteLLM" 200 "Authorization: Bearer sk-litellm-mewtwo-local"
+  http_check "http://litellm.genai.127.0.0.1.nip.io/v1/models" "LiteLLM" 200 "Authorization: Bearer ${LITELLM_API_KEY:-sk-litellm-mewtwo-local}"
 app_exists "genai-minio" && \
   http_check "http://minio.genai.127.0.0.1.nip.io/minio/health/live" "MinIO"
 app_exists "genai-minio" && \
@@ -86,7 +86,7 @@ if app_exists "genai-litellm"; then
     # Test LiteLLM → Ollama chat
     CHAT_RESP=$(curl -s --max-time 30 http://litellm.genai.127.0.0.1.nip.io/v1/chat/completions \
       -H "Content-Type: application/json" \
-      -H "Authorization: Bearer sk-litellm-mewtwo-local" \
+      -H "Authorization: Bearer ${LITELLM_API_KEY:-sk-litellm-mewtwo-local}" \
       -d '{"model":"qwen2.5:14b","messages":[{"role":"user","content":"Reply OK"}],"max_tokens":5}' 2>/dev/null)
     if echo "$CHAT_RESP" | grep -q '"choices"'; then
       ok "LiteLLM → Ollama chat"
@@ -100,7 +100,7 @@ fi
 
 # n8n → LiteLLM connectivity
 if app_exists "genai-n8n" && app_exists "genai-litellm"; then
-  if kubectl exec -n genai deploy/genai-n8n -- wget -q -O- --header='Authorization: Bearer sk-litellm-mewtwo-local' http://genai-litellm.genai.svc.cluster.local:4000/v1/models 2>/dev/null | grep -q '"id"'; then
+  if kubectl exec -n genai deploy/genai-n8n -- wget -q -O- --header='Authorization: Bearer ${LITELLM_API_KEY:-sk-litellm-mewtwo-local}' http://genai-litellm.genai.svc.cluster.local:4000/v1/models 2>/dev/null | grep -q '"id"'; then
     ok "n8n → LiteLLM"
   else
     fail "n8n → LiteLLM (unreachable)"
