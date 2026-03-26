@@ -1,0 +1,42 @@
+replicaCount: 1
+
+image:
+  repository: agent-registry
+  tag: latest
+  pullPolicy: Never
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  host: agent-registry.genai.127.0.0.1.nip.io
+  annotations: {}
+
+env:
+  REGISTRY_DATABASE_URL: "postgresql+asyncpg://pgvector:pgvector@genai-pgvector:5432/agent_registry"
+  REGISTRY_OLLAMA_URL: "http://192.168.5.2:11434"
+  REGISTRY_EMBEDDING_MODEL: "nomic-embed-text"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 30
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10

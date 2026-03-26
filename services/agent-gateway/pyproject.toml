@@ -16,6 +16,7 @@ dependencies = [
     "httpx>=0.28.0",
     "pyyaml>=6.0",
     "sse-starlette>=2.0.0",
+    "agent-platform @ git+https://github.com/r-aas/agent-platform.git",
 ]
 
 [project.scripts]

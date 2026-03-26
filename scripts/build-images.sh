@@ -26,6 +26,7 @@ IMAGES=(
   "genai-streaming-proxy:latest:${GENAI_MLOPS}/Dockerfile.streaming:${GENAI_MLOPS}"
   "datahub-ingestion-mlflow:latest:${PLATFORM_DIR}/images/datahub-ingestion-mlflow/Dockerfile:${PLATFORM_DIR}/images/datahub-ingestion-mlflow"
   "datahub-bridge:latest:${PLATFORM_DIR}/services/n8n-datahub-bridge/Dockerfile:${PLATFORM_DIR}/services/n8n-datahub-bridge"
+  "agent-registry:latest:${PLATFORM_DIR}/images/agent-registry/Dockerfile:${HOME}/work/repos/agent-platform"
 )
 
 if [ "$CHECK_ONLY" = "--check" ]; then
