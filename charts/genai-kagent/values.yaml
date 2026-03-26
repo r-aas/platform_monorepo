@@ -1,0 +1,110 @@
+kagent:
+  # ──────────────────────────────────────────────
+  # Database — use existing pgvector instance
+  # ──────────────────────────────────────────────
+  database:
+    postgres:
+      url: "postgresql://pgvector:pgvector@genai-pgvector.genai.svc.cluster.local:5432/kagent"
+      vectorEnabled: true
+      bundled:
+        enabled: false
+
+  # ──────────────────────────────────────────────
+  # Controller
+  # ──────────────────────────────────────────────
+  controller:
+    replicas: 1
+    loglevel: "info"
+    watchNamespaces:
+      - genai
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+
+  # ──────────────────────────────────────────────
+  # UI — exposed via ingress
+  # ──────────────────────────────────────────────
+  ui:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  # ──────────────────────────────────────────────
+  # LLM Provider — LiteLLM proxy to Ollama
+  # ──────────────────────────────────────────────
+  providers:
+    default: openAI
+    openAI:
+      provider: OpenAI
+      model: "qwen2.5:14b"
+      apiKeySecretRef: kagent-litellm
+      apiKeySecretKey: OPENAI_API_KEY
+      config:
+        baseUrl: "http://genai-litellm.genai.svc.cluster.local:4000/v1"
+
+  # ──────────────────────────────────────────────
+  # Built-in agents — only k8s + helm relevant
+  # ──────────────────────────────────────────────
+  agents:
+    k8s-agent:
+      enabled: true
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    helm-agent:
+      enabled: true
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    # Disable agents we don't use
+    kgateway-agent:
+      enabled: false
+    istio-agent:
+      enabled: false
+    promql-agent:
+      enabled: false
+    observability-agent:
+      enabled: false
+    argo-rollouts-agent:
+      enabled: false
+    cilium-policy-agent:
+      enabled: false
+    cilium-manager-agent:
+      enabled: false
+    cilium-debug-agent:
+      enabled: false
+
+  # ──────────────────────────────────────────────
+  # Tools — disable unused
+  # ──────────────────────────────────────────────
+  tools:
+    grafana-mcp:
+      enabled: false
+    querydoc:
+      enabled: false
+
+  # ──────────────────────────────────────────────
+  # Observability — off for now, wire to Langfuse later
+  # ──────────────────────────────────────────────
+  otel:
+    tracing:
+      enabled: false
+    logging:
+      enabled: false

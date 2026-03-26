@@ -163,6 +163,8 @@ tasks:
         echo "  DataHub:      http://datahub.genai.127.0.0.1.nip.io"
         echo "  DataHub GMS:  http://datahub-gms.genai.127.0.0.1.nip.io"
         echo "  Agent Reg:   http://agent-registry.genai.127.0.0.1.nip.io"
+        echo "  Langfuse:     http://langfuse.genai.127.0.0.1.nip.io"
+        echo "  kagent:       http://kagent.genai.127.0.0.1.nip.io"
         echo ""
         echo "  Credentials:"
         echo "  ─────────────────────────────────────────"

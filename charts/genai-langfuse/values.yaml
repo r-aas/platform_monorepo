@@ -1,0 +1,132 @@
+langfuse:
+  # ──────────────────────────────────────────────
+  # Core Langfuse settings
+  # ──────────────────────────────────────────────
+  langfuse:
+    salt:
+      value: "ahTzeDP8SkIKFL9424mgDx4OYAGikhMIzOGKUVR28rg="
+
+    encryptionKey:
+      value: "3783e3a23f06d9d0fd74c3255cf4f3c4aadf61b674d53f0ef8de68952f61df29"
+
+    nextauth:
+      url: http://langfuse.genai.127.0.0.1.nip.io
+      secret:
+        value: "E7Nt6J/dPwUQUCqyH56Bom4yudMzNpbFtsescvXGE3E="
+
+    features:
+      telemetryEnabled: false
+      signUpDisabled: false
+
+    logging:
+      level: info
+      format: text
+
+    # Ingress — nginx on k3d
+    ingress:
+      enabled: true
+      className: nginx
+      hosts:
+        - host: langfuse.genai.127.0.0.1.nip.io
+          paths:
+            - path: /
+              pathType: Prefix
+
+    # Single replica for local dev
+    replicas: 1
+
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+
+    # Web deployment
+    web:
+      service:
+        type: ClusterIP
+        port: 3000
+      livenessProbe:
+        initialDelaySeconds: 30
+        periodSeconds: 15
+      readinessProbe:
+        initialDelaySeconds: 30
+        periodSeconds: 15
+
+    # Worker deployment
+    worker:
+      livenessProbe:
+        initialDelaySeconds: 30
+        periodSeconds: 15
+
+  # ──────────────────────────────────────────────
+  # PostgreSQL — external (genai-pgvector)
+  # ──────────────────────────────────────────────
+  postgresql:
+    deploy: false
+    host: genai-pgvector.genai.svc.cluster.local
+    port: 5432
+    auth:
+      username: pgvector
+      password: pgvector
+      database: langfuse
+
+  # ──────────────────────────────────────────────
+  # ClickHouse — subchart (no existing instance)
+  # ──────────────────────────────────────────────
+  clickhouse:
+    deploy: true
+    auth:
+      username: default
+      password: "clickhouse-langfuse"
+    # Minimal for local dev — single node, no HA
+    replicaCount: 1
+    shards: 1
+    resourcesPreset: medium
+    clusterEnabled: false
+    image:
+      repository: bitnamilegacy/clickhouse
+    zookeeper:
+      image:
+        repository: bitnamilegacy/zookeeper
+    persistence:
+      size: 10Gi
+
+  # ──────────────────────────────────────────────
+  # Redis/Valkey — subchart (no existing instance)
+  # ──────────────────────────────────────────────
+  redis:
+    deploy: true
+    auth:
+      password: "valkey-langfuse"
+    architecture: standalone
+    image:
+      repository: bitnamilegacy/valkey
+    primary:
+      extraFlags:
+        - "--maxmemory-policy noeviction"
+      persistence:
+        size: 2Gi
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+
+  # ──────────────────────────────────────────────
+  # S3/MinIO — external (genai-minio)
+  # ──────────────────────────────────────────────
+  s3:
+    deploy: false
+    bucket: langfuse
+    region: us-east-1
+    endpoint: http://genai-minio.genai.svc.cluster.local:9000
+    forcePathStyle: true
+    accessKeyId:
+      value: minio
+    secretAccessKey:
+      value: minio123

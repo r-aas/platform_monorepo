@@ -1,0 +1,11 @@
+apiVersion: v2
+name: genai-langfuse
+description: Langfuse LLM observability and prompt management
+type: application
+version: 0.1.0
+appVersion: "3.161.0"
+
+dependencies:
+  - name: langfuse
+    version: "1.5.23"
+    repository: "https://langfuse.github.io/langfuse-k8s"

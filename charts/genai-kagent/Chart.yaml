@@ -1,0 +1,11 @@
+apiVersion: v2
+name: genai-kagent
+description: kagent — K8s-native agent platform (CNCF sandbox, Google ADK)
+type: application
+version: 0.1.0
+appVersion: "0.8.0"
+
+dependencies:
+  - name: kagent
+    version: "0.8.0"
+    repository: "oci://ghcr.io/kagent-dev/kagent/helm"

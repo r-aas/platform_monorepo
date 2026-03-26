@@ -1,0 +1,6 @@
+dependencies:
+- name: langfuse
+  repository: https://langfuse.github.io/langfuse-k8s
+  version: 1.5.23
+digest: sha256:bcf6d70f7019afd9509088ef7b2bd27a7b035a51c557066f8c10aa4c31bf27e8
+generated: "2026-03-26T17:47:40.710728-06:00"
