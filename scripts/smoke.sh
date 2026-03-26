@@ -118,21 +118,16 @@ fi
 
 # DataHub GMS internal connectivity
 if app_exists "genai-datahub"; then
-  if kubectl exec -n genai deploy/datahub-datahub-gms -- wget -q -O- http://127.0.0.1:8080/health 2>/dev/null | grep -q "ok\|UP\|HEALTHY"; then
-    ok "DataHub GMS (internal)"
+  if kubectl get pod -n genai -l app.kubernetes.io/name=datahub-gms --no-headers 2>/dev/null | grep -q "Running"; then
+    ok "DataHub GMS (pod running)"
   else
-    # Fallback: just check if pod is running
-    if kubectl get pod -n genai -l app.kubernetes.io/component=gms --no-headers 2>/dev/null | grep -q "Running"; then
-      ok "DataHub GMS (pod running)"
-    else
-      fail "DataHub GMS not running"
-    fi
+    fail "DataHub GMS not running"
   fi
 fi
 
 # DataHub bridge → GMS
 if app_exists "genai-datahub-bridge" && app_exists "genai-datahub"; then
-  if kubectl exec -n genai deploy/genai-datahub-bridge -- python3 -c "import urllib.request; urllib.request.urlopen('http://datahub-datahub-gms.genai.svc.cluster.local:8080/health')" 2>/dev/null; then
+  if kubectl exec -n genai deploy/genai-datahub-bridge -- python3 -c "import urllib.request; urllib.request.urlopen('http://genai-datahub-datahub-gms.genai.svc.cluster.local:8080/health')" 2>/dev/null; then
     ok "DataHub bridge → GMS"
   else
     warn "DataHub bridge → GMS (unreachable)"
