@@ -1,0 +1,6 @@
+apiVersion: v2
+name: genai-open-ontologies
+description: Open Ontologies MCP server — OWL2/SHACL ontology engine (Streamable HTTP)
+type: application
+version: 0.1.0
+appVersion: "latest"

@@ -1,0 +1,247 @@
+@prefix : <http://r-aas.dev/ontology/platform#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# ════════════════════════════════════════════
+# Platform Instances — R's k3d mewtwo cluster
+# Generated from: kubectl get svc,ingress -A
+# ════════════════════════════════════════════
+
+# ── Host infrastructure ───────────────────
+
+:mac-host a :System ;
+    rdfs:label "M4 Max MacBook Pro" ;
+    rdfs:comment "Physical host. 16 cores (12P+4E), 128 GB RAM. Runs Ollama natively (Metal GPU)." ;
+    :contains :ollama, :colima .
+
+:colima a :System ;
+    rdfs:label "Colima" ;
+    rdfs:comment "Linux VM (dockerd engine). 8 CPU, 32 GB RAM, 200 GB disk." ;
+    :memberOf :mac-host ;
+    :contains :k3d .
+
+:k3d a :System ;
+    rdfs:label "k3d" ;
+    rdfs:comment "k3s-in-Docker." ;
+    :memberOf :colima ;
+    :contains :mewtwo .
+
+# ── Cluster ───────────────────────────────
+
+:mewtwo a :Cluster ;
+    rdfs:label "mewtwo" ;
+    rdfs:comment "k3d shared cluster. Ports 80/443, ingress-nginx." ;
+    :memberOf :k3d ;
+    :contains :ns-platform, :ns-genai .
+
+# ── Namespaces ────────────────────────────
+
+:ns-platform a :Namespace ;
+    rdfs:label "platform" ;
+    :memberOf :mewtwo ;
+    :contains :gitlab, :argocd .
+
+:ns-genai a :Namespace ;
+    rdfs:label "genai" ;
+    :memberOf :mewtwo ;
+    :contains :n8n, :litellm, :mlflow, :minio, :agent-gateway, :open-ontologies,
+              :datahub-gms, :datahub-frontend, :datahub-actions,
+              :datahub-mysql, :datahub-elasticsearch, :datahub-kafka, :datahub-zookeeper,
+              :mcp-kubernetes, :mcp-gitlab, :mcp-n8n, :mcp-datahub, :datahub-bridge,
+              :pg-mlflow, :pg-n8n, :pgvector .
+
+# ── Platform namespace ────────────────────
+
+:gitlab a :GitServer ;
+    rdfs:label "GitLab CE" ;
+    :port 80 ;
+    :protocol "http" ;
+    :healthPath "/-/readiness" ;
+    :image "gitlab/gitlab-ce:18.0.0-ce.0" ;
+    :ingressHost "gitlab.mewtwo.127.0.0.1.nip.io" ;
+    :address "gitlab-ce.platform.svc.cluster.local" .
+
+:argocd a :GitOpsController ;
+    rdfs:label "ArgoCD" ;
+    :port 80 ;
+    :protocol "http" ;
+    :healthPath "/healthz" ;
+    :address "argocd-server.platform.svc.cluster.local" ;
+    :ingressHost "argocd.mewtwo.127.0.0.1.nip.io" .
+
+# ── GenAI namespace — core services ──────
+
+:n8n a :WorkflowEngine ;
+    rdfs:label "n8n" ;
+    :port 5678 ;
+    :protocol "http" ;
+    :healthPath "/healthz" ;
+    :ingressHost "n8n.mewtwo.127.0.0.1.nip.io" ;
+    :address "genai-n8n.genai.svc.cluster.local" ;
+    :dependsOn :litellm, :mlflow .
+
+:litellm a :LLMProxy ;
+    rdfs:label "LiteLLM" ;
+    :port 4000 ;
+    :protocol "http" ;
+    :healthPath "/health" ;
+    :ingressHost "litellm.genai.127.0.0.1.nip.io" ;
+    :address "genai-litellm.genai.svc.cluster.local" ;
+    :dependsOn :ollama .
+
+:ollama a :Service ;
+    rdfs:label "Ollama" ;
+    rdfs:comment "Native on Mac host (Metal GPU). Not in k8s." ;
+    :port 11434 ;
+    :protocol "http" ;
+    :address "192.168.5.2" .
+
+:mlflow a :MLPlatform ;
+    rdfs:label "MLflow" ;
+    :port 80 ;
+    :protocol "http" ;
+    :healthPath "/health" ;
+    :ingressHost "mlflow.genai.127.0.0.1.nip.io" ;
+    :address "genai-mlflow.genai.svc.cluster.local" ;
+    :dependsOn :minio, :pg-mlflow .
+
+:minio a :ObjectStore ;
+    rdfs:label "MinIO" ;
+    :port 9000 ;
+    :protocol "http" ;
+    :ingressHost "minio.genai.127.0.0.1.nip.io" ;
+    :address "genai-minio.genai.svc.cluster.local" .
+
+:agent-gateway a :APIService ;
+    rdfs:label "Agent Gateway" ;
+    :port 8000 ;
+    :protocol "http" ;
+    :healthPath "/health" ;
+    :ingressHost "agent-gateway.genai.127.0.0.1.nip.io" ;
+    :address "genai-agent-gateway.genai.svc.cluster.local" ;
+    :dependsOn :n8n, :litellm, :mlflow .
+
+:open-ontologies a :MCPServer ;
+    rdfs:label "Open Ontologies" ;
+    :port 8080 ;
+    :protocol "http" ;
+    :ingressHost "open-ontologies.genai.127.0.0.1.nip.io" ;
+    :address "genai-open-ontologies.genai.svc.cluster.local" .
+
+# ── GenAI namespace — MCP servers ─────────
+
+:mcp-kubernetes a :MCPServer ;
+    rdfs:label "MCP Kubernetes" ;
+    :port 3000 ;
+    :protocol "http" ;
+    :address "genai-mcp-kubernetes.genai.svc.cluster.local" .
+
+:mcp-gitlab a :MCPServer ;
+    rdfs:label "MCP GitLab" ;
+    :port 3000 ;
+    :protocol "http" ;
+    :address "genai-mcp-gitlab.genai.svc.cluster.local" .
+
+:mcp-n8n a :MCPServer ;
+    rdfs:label "MCP n8n" ;
+    :port 3000 ;
+    :protocol "http" ;
+    :address "genai-mcp-n8n.genai.svc.cluster.local" .
+
+:mcp-datahub a :MCPServer ;
+    rdfs:label "MCP DataHub" ;
+    :port 8000 ;
+    :protocol "http" ;
+    :address "genai-mcp-datahub.genai.svc.cluster.local" ;
+    :dependsOn :datahub-gms .
+
+# ── GenAI namespace — databases ───────────
+
+:pg-mlflow a :Database ;
+    rdfs:label "PostgreSQL (MLflow)" ;
+    :port 5432 ;
+    :protocol "tcp" ;
+    :address "genai-pg-mlflow.genai.svc.cluster.local" .
+
+:pg-n8n a :Database ;
+    rdfs:label "PostgreSQL (n8n)" ;
+    :port 5432 ;
+    :protocol "tcp" ;
+    :address "genai-pg-n8n.genai.svc.cluster.local" .
+
+:pgvector a :Database ;
+    rdfs:label "PostgreSQL (pgvector)" ;
+    :port 5432 ;
+    :protocol "tcp" ;
+    :address "genai-pgvector.genai.svc.cluster.local" .
+
+# ── GenAI namespace — DataHub ─────────────
+
+:datahub-gms a :MetadataCatalog ;
+    rdfs:label "DataHub GMS" ;
+    :port 8080 ;
+    :protocol "http" ;
+    :healthPath "/health" ;
+    :ingressHost "datahub-gms.genai.127.0.0.1.nip.io" ;
+    :address "genai-datahub-datahub-gms.genai.svc.cluster.local" ;
+    :dependsOn :datahub-mysql, :datahub-elasticsearch, :datahub-kafka .
+
+:datahub-frontend a :APIService ;
+    rdfs:label "DataHub Frontend" ;
+    :port 9002 ;
+    :protocol "http" ;
+    :healthPath "/health" ;
+    :ingressHost "datahub.genai.127.0.0.1.nip.io" ;
+    :address "genai-datahub-datahub-frontend.genai.svc.cluster.local" ;
+    :dependsOn :datahub-gms .
+
+:datahub-actions a :Service ;
+    rdfs:label "DataHub Actions" ;
+    :port 9093 ;
+    :protocol "http" ;
+    :address "genai-datahub-acryl-datahub-actions.genai.svc.cluster.local" ;
+    :dependsOn :datahub-gms, :datahub-kafka .
+
+:datahub-bridge a :APIService ;
+    rdfs:label "DataHub Bridge" ;
+    :port 8000 ;
+    :protocol "http" ;
+    :healthPath "/health" ;
+    :address "genai-datahub-bridge.genai.svc.cluster.local" ;
+    :dependsOn :datahub-gms .
+
+:datahub-mysql a :Database ;
+    rdfs:label "DataHub MySQL" ;
+    :port 3306 ;
+    :protocol "tcp" ;
+    :address "genai-datahub-prereqs-mysql.genai.svc.cluster.local" .
+
+:datahub-elasticsearch a :Service ;
+    rdfs:label "DataHub Elasticsearch" ;
+    :port 9200 ;
+    :protocol "http" ;
+    :address "elasticsearch-master.genai.svc.cluster.local" .
+
+:datahub-kafka a :MessageBroker ;
+    rdfs:label "DataHub Kafka" ;
+    :port 9092 ;
+    :protocol "tcp" ;
+    :address "genai-datahub-prereqs-kafka.genai.svc.cluster.local" ;
+    :dependsOn :datahub-zookeeper .
+
+:datahub-zookeeper a :Service ;
+    rdfs:label "DataHub Zookeeper" ;
+    :port 2181 ;
+    :protocol "tcp" ;
+    :address "genai-datahub-prereqs-zookeeper.genai.svc.cluster.local" .
+
+# ── Data flows ────────────────────────────
+
+:n8n :flowsTo :litellm, :mlflow .
+:litellm :flowsTo :ollama .
+:mlflow :flowsTo :minio .
+:agent-gateway :flowsTo :n8n, :litellm .
+:datahub-gms :flowsTo :datahub-elasticsearch, :datahub-kafka .
+:datahub-actions :flowsTo :datahub-gms .
+:datahub-frontend :flowsTo :datahub-gms .
+:datahub-bridge :flowsTo :datahub-gms .

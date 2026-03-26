@@ -1,0 +1,84 @@
+@prefix : <http://r-aas.dev/ontology/platform#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# ════════════════════════════════════════════
+# SHACL Shapes — constraints on the platform ontology
+# ════════════════════════════════════════════
+
+# Every Service must have a port
+:ServiceShape a sh:NodeShape ;
+    sh:targetClass :Service ;
+    sh:property [
+        sh:path :port ;
+        sh:datatype xsd:integer ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Every Service must declare exactly one port." ;
+    ] ;
+    sh:property [
+        sh:path :protocol ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:message "Every Service must declare a protocol (http, grpc, tcp)." ;
+    ] .
+
+# Every APIService must have a health path
+:APIServiceShape a sh:NodeShape ;
+    sh:targetClass :APIService ;
+    sh:property [
+        sh:path :healthPath ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:message "Every API Service must have a healthPath for readiness probes." ;
+    ] .
+
+# Every System must contain at least one thing
+:SystemShape a sh:NodeShape ;
+    sh:targetClass :System ;
+    sh:property [
+        sh:path :contains ;
+        sh:minCount 1 ;
+        sh:message "A System must contain at least one service or subsystem." ;
+    ] .
+
+# Every Operation must have a command or content
+:OperationShape a sh:NodeShape ;
+    sh:targetClass :Operation ;
+    sh:property [
+        sh:path :command ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:message "Every Operation must have a command to execute." ;
+    ] .
+
+# Every Workflow must have at least one step
+:WorkflowShape a sh:NodeShape ;
+    sh:targetClass :Workflow ;
+    sh:property [
+        sh:path :hasStep ;
+        sh:minCount 1 ;
+        sh:message "A Workflow must have at least one step." ;
+    ] .
+
+# Every Decision must have a condition
+:DecisionShape a sh:NodeShape ;
+    sh:targetClass :Decision ;
+    sh:property [
+        sh:path :condition ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:message "Every Decision must specify a condition." ;
+    ] .
+
+# Invariant: flowsTo target must be a different service
+:FlowsToShape a sh:PropertyShape ;
+    sh:path :flowsTo ;
+    sh:class :Service ;
+    sh:message "flowsTo target must be a Service." .
+
+# Invariant: dependsOn must not create self-loops
+:DependsOnShape a sh:PropertyShape ;
+    sh:path :dependsOn ;
+    sh:class :Service ;
+    sh:message "dependsOn target must be a Service." .

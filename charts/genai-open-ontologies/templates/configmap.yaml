@@ -1,0 +1,14 @@
+{{- if .Values.ontology.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-ontology
+  labels:
+    app.kubernetes.io/name: open-ontologies
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  {{- range $key, $val := .Values.ontology.data }}
+  {{ $key }}: |
+    {{- $val | nindent 4 }}
+  {{- end }}
+{{- end }}

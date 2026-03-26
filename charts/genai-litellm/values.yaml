@@ -117,6 +117,12 @@ config:
       url: "http://genai-agent-gateway:8000/gateway-mcp"
       description: "Agent gateway management — list/invoke agents and skills"
 
+    # Open Ontologies — OWL2/SHACL ontology engine with SPARQL
+    open_ontologies:
+      transport: "http"
+      url: "http://genai-open-ontologies:8080/mcp"
+      description: "Ontology engine — OWL2 reasoning, SHACL validation, SPARQL queries"
+
   general_settings:
     master_key: "os.environ/LITELLM_MASTER_KEY"
     store_model_in_db: true       # enables DB-backed model/MCP registry (requires DB)

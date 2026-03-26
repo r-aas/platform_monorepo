@@ -1,0 +1,390 @@
+<http://r-aas.dev/ontology/platform#argocd> <http://r-aas.dev/ontology/platform#healthPath> "/healthz" .
+<http://r-aas.dev/ontology/platform#ns-genai> a <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#gitlab> a <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#MLPlatform> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#GitOpsController> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#argocd> a <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#datahub-frontend> a <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#DeployOperation> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#MessageBroker> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#DebugOperation> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#APIService> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#n8n> a <http://r-aas.dev/ontology/platform#APIService> .
+<http://r-aas.dev/ontology/platform#datahub-gms> a <http://r-aas.dev/ontology/platform#APIService> .
+<http://r-aas.dev/ontology/platform#MetadataCatalog> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#gitlab> a <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#ns-genai> a <http://r-aas.dev/ontology/platform#System> .
+<http://r-aas.dev/ontology/platform#agent-gateway> a <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#datahub-mysql> a <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#minio> a <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#datahub-mysql> a <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#datahub-zookeeper> a <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#datahub-gms> a <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#mlflow> a <http://r-aas.dev/ontology/platform#APIService> , <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#argocd> a <http://r-aas.dev/ontology/platform#APIService> .
+<http://r-aas.dev/ontology/platform#gitlab> a <http://r-aas.dev/ontology/platform#APIService> .
+<http://r-aas.dev/ontology/platform#GitServer> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#datahub-kafka> a <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#LLMProxy> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#Decision> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#Database> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#mewtwo> a <http://r-aas.dev/ontology/platform#System> .
+<http://r-aas.dev/ontology/platform#WorkflowEngine> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#n8n> a <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#mewtwo> a <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#litellm> a <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#datahub-elasticsearch> a <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#datahub-frontend> a <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#Namespace> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#ObjectStore> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#WorkflowEngine> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#n8n> a <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#agent-gateway> a <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#argocd> a <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#MCPServer> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#ns-platform> a <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#MetadataCatalog> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#datahub-actions> a <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#GitServer> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#MCPServer> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#minio> a <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#datahub-gms> a <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#LLMProxy> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#datahub-kafka> a <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#ollama> a <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#MLPlatform> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#mlflow> a <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#Cluster> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#litellm> a <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#BuildOperation> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
+<http://r-aas.dev/ontology/platform#ns-platform> a <http://r-aas.dev/ontology/platform#System> .
+<http://r-aas.dev/ontology/platform#litellm> a <http://r-aas.dev/ontology/platform#APIService> .
+<http://r-aas.dev/ontology/platform#datahub-frontend> <http://r-aas.dev/ontology/platform#flowsTo> <http://r-aas.dev/ontology/platform#datahub-gms> .
+<http://r-aas.dev/ontology/platform#datahub-actions> <http://r-aas.dev/ontology/platform#flowsTo> <http://r-aas.dev/ontology/platform#datahub-gms> .
+<http://r-aas.dev/ontology/platform#datahub-gms> <http://r-aas.dev/ontology/platform#flowsTo> <http://r-aas.dev/ontology/platform#datahub-kafka> , <http://r-aas.dev/ontology/platform#datahub-elasticsearch> .
+<http://r-aas.dev/ontology/platform#agent-gateway> <http://r-aas.dev/ontology/platform#flowsTo> <http://r-aas.dev/ontology/platform#litellm> , <http://r-aas.dev/ontology/platform#n8n> .
+<http://r-aas.dev/ontology/platform#mlflow> <http://r-aas.dev/ontology/platform#flowsTo> <http://r-aas.dev/ontology/platform#minio> .
+<http://r-aas.dev/ontology/platform#litellm> <http://r-aas.dev/ontology/platform#flowsTo> <http://r-aas.dev/ontology/platform#ollama> .
+<http://r-aas.dev/ontology/platform#n8n> <http://r-aas.dev/ontology/platform#flowsTo> <http://r-aas.dev/ontology/platform#mlflow> , <http://r-aas.dev/ontology/platform#litellm> .
+<http://r-aas.dev/ontology/platform#datahub-zookeeper> <http://r-aas.dev/ontology/platform#address> "datahub-prereqs-zookeeper.genai.svc.cluster.local" ;
+	<http://r-aas.dev/ontology/platform#protocol> "tcp" ;
+	<http://r-aas.dev/ontology/platform#port> 2181 ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "DataHub Zookeeper" ;
+	a <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#datahub-kafka> <http://r-aas.dev/ontology/platform#dependsOn> <http://r-aas.dev/ontology/platform#datahub-zookeeper> ;
+	<http://r-aas.dev/ontology/platform#address> "datahub-prereqs-kafka.genai.svc.cluster.local" ;
+	<http://r-aas.dev/ontology/platform#protocol> "tcp" ;
+	<http://r-aas.dev/ontology/platform#port> 9092 ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "DataHub Kafka" ;
+	a <http://r-aas.dev/ontology/platform#MessageBroker> .
+<http://r-aas.dev/ontology/platform#datahub-elasticsearch> <http://r-aas.dev/ontology/platform#address> "datahub-prereqs-elasticsearch-master.genai.svc.cluster.local" ;
+	<http://r-aas.dev/ontology/platform#protocol> "http" ;
+	<http://r-aas.dev/ontology/platform#port> 9200 ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Search index for DataHub." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "DataHub Elasticsearch" ;
+	a <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#datahub-mysql> <http://r-aas.dev/ontology/platform#address> "datahub-prereqs-mysql.genai.svc.cluster.local" ;
+	<http://r-aas.dev/ontology/platform#protocol> "tcp" ;
+	<http://r-aas.dev/ontology/platform#port> 3306 ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "DataHub MySQL" ;
+	a <http://r-aas.dev/ontology/platform#Database> .
+<http://r-aas.dev/ontology/platform#datahub-actions> <http://r-aas.dev/ontology/platform#dependsOn> <http://r-aas.dev/ontology/platform#datahub-kafka> , <http://r-aas.dev/ontology/platform#datahub-gms> ;
+	<http://r-aas.dev/ontology/platform#address> "datahub-datahub-actions.genai.svc.cluster.local" ;
+	<http://r-aas.dev/ontology/platform#protocol> "http" ;
+	<http://r-aas.dev/ontology/platform#port> 9093 ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Event-driven actions processor." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "DataHub Actions" ;
+	a <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#datahub-frontend> <http://r-aas.dev/ontology/platform#dependsOn> <http://r-aas.dev/ontology/platform#datahub-gms> ;
+	<http://r-aas.dev/ontology/platform#address> "datahub-datahub-frontend.genai.svc.cluster.local" ;
+	<http://r-aas.dev/ontology/platform#ingressHost> "datahub.genai.127.0.0.1.nip.io" ;
+	<http://r-aas.dev/ontology/platform#healthPath> "/health" ;
+	<http://r-aas.dev/ontology/platform#protocol> "http" ;
+	<http://r-aas.dev/ontology/platform#port> 9002 ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "DataHub Frontend" ;
+	a <http://r-aas.dev/ontology/platform#APIService> .
+<http://r-aas.dev/ontology/platform#datahub-gms> <http://r-aas.dev/ontology/platform#dependsOn> <http://r-aas.dev/ontology/platform#datahub-kafka> , <http://r-aas.dev/ontology/platform#datahub-elasticsearch> , <http://r-aas.dev/ontology/platform#datahub-mysql> ;
+	<http://r-aas.dev/ontology/platform#address> "datahub-datahub-gms.genai.svc.cluster.local" ;
+	<http://r-aas.dev/ontology/platform#healthPath> "/health" ;
+	<http://r-aas.dev/ontology/platform#protocol> "http" ;
+	<http://r-aas.dev/ontology/platform#port> 8080 ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "DataHub metadata service (backend)." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "DataHub GMS" ;
+	a <http://r-aas.dev/ontology/platform#MetadataCatalog> .
+<http://r-aas.dev/ontology/platform#agent-gateway> <http://r-aas.dev/ontology/platform#dependsOn> <http://r-aas.dev/ontology/platform#mlflow> , <http://r-aas.dev/ontology/platform#litellm> , <http://r-aas.dev/ontology/platform#n8n> ;
+	<http://r-aas.dev/ontology/platform#address> "genai-agent-gateway.genai.svc.cluster.local" ;
+	<http://r-aas.dev/ontology/platform#ingressHost> "agent-gateway.genai.127.0.0.1.nip.io" ;
+	<http://r-aas.dev/ontology/platform#healthPath> "/health" ;
+	<http://r-aas.dev/ontology/platform#protocol> "http" ;
+	<http://r-aas.dev/ontology/platform#port> 8000 ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "OpenAI-compatible /v1/chat/completions for agents." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Agent Gateway" ;
+	a <http://r-aas.dev/ontology/platform#APIService> .
+<http://r-aas.dev/ontology/platform#minio> <http://r-aas.dev/ontology/platform#address> "genai-minio.genai.svc.cluster.local" ;
+	<http://r-aas.dev/ontology/platform#protocol> "http" ;
+	<http://r-aas.dev/ontology/platform#port> 9000 ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "MinIO" ;
+	a <http://r-aas.dev/ontology/platform#ObjectStore> .
+<http://r-aas.dev/ontology/platform#mlflow> <http://r-aas.dev/ontology/platform#dependsOn> <http://r-aas.dev/ontology/platform#minio> ;
+	<http://r-aas.dev/ontology/platform#address> "genai-mlflow.genai.svc.cluster.local" ;
+	<http://r-aas.dev/ontology/platform#ingressHost> "mlflow.genai.127.0.0.1.nip.io" ;
+	<http://r-aas.dev/ontology/platform#healthPath> "/health" ;
+	<http://r-aas.dev/ontology/platform#protocol> "http" ;
+	<http://r-aas.dev/ontology/platform#port> 5000 ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "MLflow" ;
+	a <http://r-aas.dev/ontology/platform#MLPlatform> .
+<http://r-aas.dev/ontology/platform#ollama> <http://r-aas.dev/ontology/platform#address> "192.168.5.2" ;
+	<http://r-aas.dev/ontology/platform#protocol> "http" ;
+	<http://r-aas.dev/ontology/platform#port> 11434 ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Native on Mac host (Metal GPU). Not containerized." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Ollama" ;
+	a <http://r-aas.dev/ontology/platform#Service> .
+<http://r-aas.dev/ontology/platform#litellm> <http://r-aas.dev/ontology/platform#dependsOn> <http://r-aas.dev/ontology/platform#ollama> ;
+	<http://r-aas.dev/ontology/platform#address> "genai-litellm.genai.svc.cluster.local" ;
+	<http://r-aas.dev/ontology/platform#ingressHost> "litellm.genai.127.0.0.1.nip.io" ;
+	<http://r-aas.dev/ontology/platform#healthPath> "/health" ;
+	<http://r-aas.dev/ontology/platform#protocol> "http" ;
+	<http://r-aas.dev/ontology/platform#port> 4000 ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "LiteLLM" ;
+	a <http://r-aas.dev/ontology/platform#LLMProxy> .
+<http://r-aas.dev/ontology/platform#n8n> <http://r-aas.dev/ontology/platform#dependsOn> <http://r-aas.dev/ontology/platform#mlflow> , <http://r-aas.dev/ontology/platform#litellm> ;
+	<http://r-aas.dev/ontology/platform#address> "genai-n8n.genai.svc.cluster.local" ;
+	<http://r-aas.dev/ontology/platform#ingressHost> "n8n.dev.127.0.0.1.nip.io" ;
+	<http://r-aas.dev/ontology/platform#healthPath> "/healthz" ;
+	<http://r-aas.dev/ontology/platform#protocol> "http" ;
+	<http://r-aas.dev/ontology/platform#port> 5678 ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "n8n" ;
+	a <http://r-aas.dev/ontology/platform#WorkflowEngine> .
+<http://r-aas.dev/ontology/platform#argocd> <http://r-aas.dev/ontology/platform#ingressHost> "argocd.platform.127.0.0.1.nip.io" ;
+	<http://r-aas.dev/ontology/platform#address> "argocd-server.platform.svc.cluster.local" ;
+	<http://r-aas.dev/ontology/platform#protocol> "https" ;
+	<http://r-aas.dev/ontology/platform#port> 443 ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "ArgoCD" ;
+	a <http://r-aas.dev/ontology/platform#GitOpsController> .
+<http://r-aas.dev/ontology/platform#gitlab> <http://r-aas.dev/ontology/platform#address> "gitlab-webservice-default.platform.svc.cluster.local" ;
+	<http://r-aas.dev/ontology/platform#ingressHost> "gitlab.platform.127.0.0.1.nip.io" ;
+	<http://r-aas.dev/ontology/platform#image> "gitlab/gitlab-ce:18.0.0-ce.0" ;
+	<http://r-aas.dev/ontology/platform#healthPath> "/-/readiness" ;
+	<http://r-aas.dev/ontology/platform#protocol> "http" ;
+	<http://r-aas.dev/ontology/platform#port> 80 ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "GitLab CE" ;
+	a <http://r-aas.dev/ontology/platform#GitServer> .
+<http://r-aas.dev/ontology/platform#ns-genai> <http://r-aas.dev/ontology/platform#contains> <http://r-aas.dev/ontology/platform#agent-gateway> , <http://r-aas.dev/ontology/platform#datahub-zookeeper> , <http://r-aas.dev/ontology/platform#datahub-kafka> , <http://r-aas.dev/ontology/platform#datahub-elasticsearch> , <http://r-aas.dev/ontology/platform#datahub-mysql> , <http://r-aas.dev/ontology/platform#datahub-actions> , <http://r-aas.dev/ontology/platform#datahub-frontend> , <http://r-aas.dev/ontology/platform#datahub-gms> , <http://r-aas.dev/ontology/platform#minio> , <http://r-aas.dev/ontology/platform#mlflow> , <http://r-aas.dev/ontology/platform#litellm> , <http://r-aas.dev/ontology/platform#n8n> ;
+	<http://r-aas.dev/ontology/platform#memberOf> <http://r-aas.dev/ontology/platform#mewtwo> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "genai" ;
+	a <http://r-aas.dev/ontology/platform#Namespace> .
+<http://r-aas.dev/ontology/platform#ns-platform> <http://r-aas.dev/ontology/platform#contains> <http://r-aas.dev/ontology/platform#argocd> , <http://r-aas.dev/ontology/platform#gitlab> ;
+	<http://r-aas.dev/ontology/platform#memberOf> <http://r-aas.dev/ontology/platform#mewtwo> ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "platform" ;
+	a <http://r-aas.dev/ontology/platform#Namespace> .
+<http://r-aas.dev/ontology/platform#mewtwo> <http://r-aas.dev/ontology/platform#contains> <http://r-aas.dev/ontology/platform#ns-genai> , <http://r-aas.dev/ontology/platform#ns-platform> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "k3d shared cluster on M4 Max MacBook Pro." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "mewtwo" ;
+	a <http://r-aas.dev/ontology/platform#Cluster> .
+<http://r-aas.dev/ontology/platform#outputParam> <http://www.w3.org/2000/01/rdf-schema#range> <http://www.w3.org/2001/XMLSchema#string> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#Operation> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Named output parameter from an operation." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "output parameter" ;
+	a <http://www.w3.org/2002/07/owl#DatatypeProperty> .
+<http://r-aas.dev/ontology/platform#inputParam> <http://www.w3.org/2000/01/rdf-schema#range> <http://www.w3.org/2001/XMLSchema#string> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#Operation> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Named input parameter for an operation." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "input parameter" ;
+	a <http://www.w3.org/2002/07/owl#DatatypeProperty> .
+<http://r-aas.dev/ontology/platform#command> <http://www.w3.org/2000/01/rdf-schema#range> <http://www.w3.org/2001/XMLSchema#string> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#Operation> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Shell command or action to execute." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "command" ;
+	a <http://www.w3.org/2002/07/owl#DatatypeProperty> .
+<http://r-aas.dev/ontology/platform#condition> <http://www.w3.org/2000/01/rdf-schema#range> <http://www.w3.org/2001/XMLSchema#string> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#Decision> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Condition expression for a decision branch." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "condition" ;
+	a <http://www.w3.org/2002/07/owl#DatatypeProperty> .
+<http://r-aas.dev/ontology/platform#address> <http://www.w3.org/2000/01/rdf-schema#range> <http://www.w3.org/2001/XMLSchema#string> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#Service> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Internal cluster DNS or address." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "address" ;
+	a <http://www.w3.org/2002/07/owl#DatatypeProperty> .
+<http://r-aas.dev/ontology/platform#ingressHost> <http://www.w3.org/2000/01/rdf-schema#range> <http://www.w3.org/2001/XMLSchema#string> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#APIService> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "External hostname for ingress routing." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "ingress host" ;
+	a <http://www.w3.org/2002/07/owl#DatatypeProperty> .
+<http://r-aas.dev/ontology/platform#image> <http://www.w3.org/2000/01/rdf-schema#range> <http://www.w3.org/2001/XMLSchema#string> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#Service> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Container image reference." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "image" ;
+	a <http://www.w3.org/2002/07/owl#DatatypeProperty> .
+<http://r-aas.dev/ontology/platform#healthPath> <http://www.w3.org/2000/01/rdf-schema#range> <http://www.w3.org/2001/XMLSchema#string> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#APIService> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "HTTP health check endpoint path." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "health path" ;
+	a <http://www.w3.org/2002/07/owl#DatatypeProperty> .
+<http://r-aas.dev/ontology/platform#protocol> <http://www.w3.org/2000/01/rdf-schema#range> <http://www.w3.org/2001/XMLSchema#string> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#Service> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Network protocol (http, grpc, tcp)." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "protocol" ;
+	a <http://www.w3.org/2002/07/owl#DatatypeProperty> .
+<http://r-aas.dev/ontology/platform#port> <http://www.w3.org/2000/01/rdf-schema#range> <http://www.w3.org/2001/XMLSchema#integer> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#Service> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Network port number." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "port" ;
+	a <http://www.w3.org/2002/07/owl#DatatypeProperty> .
+<http://r-aas.dev/ontology/platform#branchFalse> <http://www.w3.org/2000/01/rdf-schema#range> <http://r-aas.dev/ontology/platform#Operation> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#Decision> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Follow when decision condition is false." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "branch false" ;
+	<http://www.w3.org/2000/01/rdf-schema#subPropertyOf> <http://r-aas.dev/ontology/platform#nextStep> ;
+	a <http://www.w3.org/2002/07/owl#ObjectProperty> .
+<http://r-aas.dev/ontology/platform#branchTrue> <http://www.w3.org/2000/01/rdf-schema#range> <http://r-aas.dev/ontology/platform#Operation> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#Decision> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Follow when decision condition is true." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "branch true" ;
+	<http://www.w3.org/2000/01/rdf-schema#subPropertyOf> <http://r-aas.dev/ontology/platform#nextStep> ;
+	a <http://www.w3.org/2002/07/owl#ObjectProperty> .
+<http://r-aas.dev/ontology/platform#memberOf> <http://www.w3.org/2000/01/rdf-schema#range> <http://r-aas.dev/ontology/platform#System> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#Thing> ;
+	<http://www.w3.org/2002/07/owl#inverseOf> <http://r-aas.dev/ontology/platform#contains> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Inverse of contains." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "member of" ;
+	a <http://www.w3.org/2002/07/owl#ObjectProperty> .
+<http://r-aas.dev/ontology/platform#hasStep> <http://www.w3.org/2000/01/rdf-schema#range> <http://r-aas.dev/ontology/platform#Operation> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#Workflow> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Workflow includes this operation." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "has step" ;
+	a <http://www.w3.org/2002/07/owl#ObjectProperty> .
+<http://r-aas.dev/ontology/platform#seeAlso> <http://www.w3.org/2000/01/rdf-schema#range> <http://r-aas.dev/ontology/platform#Thing> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#Thing> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Related but not sequential." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "see also" ;
+	a <http://www.w3.org/2002/07/owl#ObjectProperty> .
+<http://r-aas.dev/ontology/platform#alternative> <http://www.w3.org/2000/01/rdf-schema#range> <http://r-aas.dev/ontology/platform#Operation> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#Operation> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Different approach to the same goal." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "alternative" ;
+	a <http://www.w3.org/2002/07/owl#ObjectProperty> .
+<http://r-aas.dev/ontology/platform#nextStep> <http://www.w3.org/2000/01/rdf-schema#range> <http://r-aas.dev/ontology/platform#Operation> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#Operation> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Natural successor in a workflow." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "next step" ;
+	a <http://www.w3.org/2002/07/owl#ObjectProperty> .
+<http://r-aas.dev/ontology/platform#requires> <http://www.w3.org/2000/01/rdf-schema#range> <http://r-aas.dev/ontology/platform#Operation> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#Operation> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Must complete before this. Ordering constraint." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "requires" ;
+	a <http://www.w3.org/2002/07/owl#ObjectProperty> .
+<http://r-aas.dev/ontology/platform#dependsOn> <http://www.w3.org/2000/01/rdf-schema#range> <http://r-aas.dev/ontology/platform#Service> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#Service> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Runtime dependency. Service cannot function without target." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "depends on" ;
+	a <http://www.w3.org/2002/07/owl#ObjectProperty> .
+<http://r-aas.dev/ontology/platform#flowsTo> <http://www.w3.org/2000/01/rdf-schema#range> <http://r-aas.dev/ontology/platform#Service> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#Service> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Data flow from one service to another." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "flows to" ;
+	a <http://www.w3.org/2002/07/owl#ObjectProperty> .
+<http://r-aas.dev/ontology/platform#contains> <http://www.w3.org/2000/01/rdf-schema#range> <http://r-aas.dev/ontology/platform#Thing> ;
+	<http://www.w3.org/2000/01/rdf-schema#domain> <http://r-aas.dev/ontology/platform#System> ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "System contains a service or subsystem." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "contains" ;
+	a <http://www.w3.org/2002/07/owl#ObjectProperty> .
+<http://r-aas.dev/ontology/platform#Pattern> <http://www.w3.org/2000/01/rdf-schema#comment> "Reusable template for common scenarios." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Pattern" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#Invariant> <http://www.w3.org/2000/01/rdf-schema#comment> "Constraint or anti-pattern that must always hold." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Invariant" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#Decision> <http://www.w3.org/2000/01/rdf-schema#comment> "Branch point with conditions leading to different operations." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Decision" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Operation> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#Workflow> <http://www.w3.org/2000/01/rdf-schema#comment> "Named path through operations with parameter bindings." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Workflow" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#BuildOperation> <http://www.w3.org/2000/01/rdf-schema#comment> "Build/compile/package step." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Build Operation" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Operation> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#DeployOperation> <http://www.w3.org/2000/01/rdf-schema#comment> "Deployment or release step." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Deploy Operation" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Operation> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#DebugOperation> <http://www.w3.org/2000/01/rdf-schema#comment> "Diagnostic or troubleshooting step." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Debug Operation" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Operation> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#Operation> <http://www.w3.org/2000/01/rdf-schema#comment> "An atomic, reusable step with typed inputs and outputs." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Operation" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#GitOpsController> <http://www.w3.org/2000/01/rdf-schema#comment> "Reconciles desired state from git (ArgoCD, Flux)." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "GitOps Controller" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Service> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#GitServer> <http://www.w3.org/2000/01/rdf-schema#comment> "Source code hosting (GitLab, Gitea, etc)." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Git Server" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#APIService> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#ObjectStore> <http://www.w3.org/2000/01/rdf-schema#comment> "S3-compatible object storage (MinIO, etc)." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Object Store" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Service> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#MLPlatform> <http://www.w3.org/2000/01/rdf-schema#comment> "ML experiment tracking and model registry (MLflow, etc)." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "ML Platform" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#APIService> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#MetadataCatalog> <http://www.w3.org/2000/01/rdf-schema#comment> "Metadata management (DataHub, Amundsen, etc)." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Metadata Catalog" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#APIService> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#MCPServer> <http://www.w3.org/2000/01/rdf-schema#comment> "Model Context Protocol server exposing tools." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "MCP Server" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#APIService> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#WorkflowEngine> <http://www.w3.org/2000/01/rdf-schema#comment> "Automation engine executing workflows (n8n, Airflow, etc)." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Workflow Engine" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#APIService> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#LLMProxy> <http://www.w3.org/2000/01/rdf-schema#comment> "Service that routes LLM requests to model backends." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "LLM Proxy" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#APIService> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#MessageBroker> <http://www.w3.org/2000/01/rdf-schema#comment> "Async messaging (Kafka, Redis pub/sub, etc)." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Message Broker" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Service> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#Database> <http://www.w3.org/2000/01/rdf-schema#comment> "Persistent data store (PostgreSQL, MySQL, etc)." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Database" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Service> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#APIService> <http://www.w3.org/2000/01/rdf-schema#comment> "HTTP/gRPC service exposing an API." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "API Service" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Service> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#Service> <http://www.w3.org/2000/01/rdf-schema#comment> "A running component with ports and endpoints." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Service" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#Namespace> <http://www.w3.org/2000/01/rdf-schema#comment> "A Kubernetes namespace within a cluster." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Namespace" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#System> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#Cluster> <http://www.w3.org/2000/01/rdf-schema#comment> "A Kubernetes cluster (k3d, EKS, etc)." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Cluster" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#System> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#System> <http://www.w3.org/2000/01/rdf-schema#comment> "A boundary containing services. Like a namespace or deployment unit." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "System" ;
+	<http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform#Thing> <http://www.w3.org/2000/01/rdf-schema#comment> "Root of all platform concepts." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Thing" ;
+	a <http://www.w3.org/2002/07/owl#Class> .
+<http://r-aas.dev/ontology/platform> <http://www.w3.org/2002/07/owl#versionInfo> "0.1.0" ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "Typed model of R's k3d platform: systems, services, operations, workflows, decisions, invariants, and patterns." ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Platform Ontology" ;
+	a <http://www.w3.org/2002/07/owl#Ontology>

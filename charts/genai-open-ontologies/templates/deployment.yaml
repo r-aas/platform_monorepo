@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app.kubernetes.io/name: open-ontologies
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: genai-mlops
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: open-ontologies
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: open-ontologies
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- if .Values.ontology.enabled }}
+      annotations:
+        checksum/ontology: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      {{- end }}
+    spec:
+      containers:
+        - name: open-ontologies
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.server.port }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.ontology.enabled }}
+          volumeMounts:
+            - name: ontology
+              mountPath: /ontology
+              readOnly: true
+          {{- end }}
+      {{- if .Values.ontology.enabled }}
+      volumes:
+        - name: ontology
+          configMap:
+            name: {{ .Release.Name }}-ontology
+      {{- end }}

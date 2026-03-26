@@ -1,0 +1,278 @@
+@prefix : <http://r-aas.dev/ontology/platform#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+
+# ════════════════════════════════════════════
+# Platform Ontology — R's infrastructure as knowledge
+# ════════════════════════════════════════════
+
+<http://r-aas.dev/ontology/platform> a owl:Ontology ;
+    rdfs:label "Platform Ontology" ;
+    rdfs:comment "Typed model of R's k3d platform: systems, services, operations, workflows, decisions, invariants, and patterns." ;
+    owl:versionInfo "0.1.0" .
+
+# ── Abstract hierarchy ──────────────────────
+
+:Thing a owl:Class ;
+    rdfs:label "Thing" ;
+    rdfs:comment "Root of all platform concepts." .
+
+# ── System types ────────────────────────────
+
+:System a owl:Class ;
+    rdfs:subClassOf :Thing ;
+    rdfs:label "System" ;
+    rdfs:comment "A boundary containing services. Like a namespace or deployment unit." .
+
+:Cluster a owl:Class ;
+    rdfs:subClassOf :System ;
+    rdfs:label "Cluster" ;
+    rdfs:comment "A Kubernetes cluster (k3d, EKS, etc)." .
+
+:Namespace a owl:Class ;
+    rdfs:subClassOf :System ;
+    rdfs:label "Namespace" ;
+    rdfs:comment "A Kubernetes namespace within a cluster." .
+
+# ── Service types ───────────────────────────
+
+:Service a owl:Class ;
+    rdfs:subClassOf :Thing ;
+    rdfs:label "Service" ;
+    rdfs:comment "A running component with ports and endpoints." .
+
+:APIService a owl:Class ;
+    rdfs:subClassOf :Service ;
+    rdfs:label "API Service" ;
+    rdfs:comment "HTTP/gRPC service exposing an API." .
+
+:Database a owl:Class ;
+    rdfs:subClassOf :Service ;
+    rdfs:label "Database" ;
+    rdfs:comment "Persistent data store (PostgreSQL, MySQL, etc)." .
+
+:MessageBroker a owl:Class ;
+    rdfs:subClassOf :Service ;
+    rdfs:label "Message Broker" ;
+    rdfs:comment "Async messaging (Kafka, Redis pub/sub, etc)." .
+
+:LLMProxy a owl:Class ;
+    rdfs:subClassOf :APIService ;
+    rdfs:label "LLM Proxy" ;
+    rdfs:comment "Service that routes LLM requests to model backends." .
+
+:WorkflowEngine a owl:Class ;
+    rdfs:subClassOf :APIService ;
+    rdfs:label "Workflow Engine" ;
+    rdfs:comment "Automation engine executing workflows (n8n, Airflow, etc)." .
+
+:MCPServer a owl:Class ;
+    rdfs:subClassOf :APIService ;
+    rdfs:label "MCP Server" ;
+    rdfs:comment "Model Context Protocol server exposing tools." .
+
+:MetadataCatalog a owl:Class ;
+    rdfs:subClassOf :APIService ;
+    rdfs:label "Metadata Catalog" ;
+    rdfs:comment "Metadata management (DataHub, Amundsen, etc)." .
+
+:MLPlatform a owl:Class ;
+    rdfs:subClassOf :APIService ;
+    rdfs:label "ML Platform" ;
+    rdfs:comment "ML experiment tracking and model registry (MLflow, etc)." .
+
+:ObjectStore a owl:Class ;
+    rdfs:subClassOf :Service ;
+    rdfs:label "Object Store" ;
+    rdfs:comment "S3-compatible object storage (MinIO, etc)." .
+
+:GitServer a owl:Class ;
+    rdfs:subClassOf :APIService ;
+    rdfs:label "Git Server" ;
+    rdfs:comment "Source code hosting (GitLab, Gitea, etc)." .
+
+:GitOpsController a owl:Class ;
+    rdfs:subClassOf :Service ;
+    rdfs:label "GitOps Controller" ;
+    rdfs:comment "Reconciles desired state from git (ArgoCD, Flux)." .
+
+# ── Operation types ─────────────────────────
+
+:Operation a owl:Class ;
+    rdfs:subClassOf :Thing ;
+    rdfs:label "Operation" ;
+    rdfs:comment "An atomic, reusable step with typed inputs and outputs." .
+
+:DebugOperation a owl:Class ;
+    rdfs:subClassOf :Operation ;
+    rdfs:label "Debug Operation" ;
+    rdfs:comment "Diagnostic or troubleshooting step." .
+
+:DeployOperation a owl:Class ;
+    rdfs:subClassOf :Operation ;
+    rdfs:label "Deploy Operation" ;
+    rdfs:comment "Deployment or release step." .
+
+:BuildOperation a owl:Class ;
+    rdfs:subClassOf :Operation ;
+    rdfs:label "Build Operation" ;
+    rdfs:comment "Build/compile/package step." .
+
+# ── Workflow / Decision / Pattern ───────────
+
+:Workflow a owl:Class ;
+    rdfs:subClassOf :Thing ;
+    rdfs:label "Workflow" ;
+    rdfs:comment "Named path through operations with parameter bindings." .
+
+:Decision a owl:Class ;
+    rdfs:subClassOf :Operation ;
+    rdfs:label "Decision" ;
+    rdfs:comment "Branch point with conditions leading to different operations." .
+
+:Invariant a owl:Class ;
+    rdfs:subClassOf :Thing ;
+    rdfs:label "Invariant" ;
+    rdfs:comment "Constraint or anti-pattern that must always hold." .
+
+:Pattern a owl:Class ;
+    rdfs:subClassOf :Thing ;
+    rdfs:label "Pattern" ;
+    rdfs:comment "Reusable template for common scenarios." .
+
+# ── Object properties (relations) ──────────
+
+:contains a owl:ObjectProperty ;
+    rdfs:label "contains" ;
+    rdfs:comment "System contains a service or subsystem." ;
+    rdfs:domain :System ;
+    rdfs:range :Thing .
+
+:flowsTo a owl:ObjectProperty ;
+    rdfs:label "flows to" ;
+    rdfs:comment "Data flow from one service to another." ;
+    rdfs:domain :Service ;
+    rdfs:range :Service .
+
+:dependsOn a owl:ObjectProperty ;
+    rdfs:label "depends on" ;
+    rdfs:comment "Runtime dependency. Service cannot function without target." ;
+    rdfs:domain :Service ;
+    rdfs:range :Service .
+
+:requires a owl:ObjectProperty ;
+    rdfs:label "requires" ;
+    rdfs:comment "Must complete before this. Ordering constraint." ;
+    rdfs:domain :Operation ;
+    rdfs:range :Operation .
+
+:nextStep a owl:ObjectProperty ;
+    rdfs:label "next step" ;
+    rdfs:comment "Natural successor in a workflow." ;
+    rdfs:domain :Operation ;
+    rdfs:range :Operation .
+
+:alternative a owl:ObjectProperty ;
+    rdfs:label "alternative" ;
+    rdfs:comment "Different approach to the same goal." ;
+    rdfs:domain :Operation ;
+    rdfs:range :Operation .
+
+:seeAlso a owl:ObjectProperty ;
+    rdfs:label "see also" ;
+    rdfs:comment "Related but not sequential." ;
+    rdfs:domain :Thing ;
+    rdfs:range :Thing .
+
+:hasStep a owl:ObjectProperty ;
+    rdfs:label "has step" ;
+    rdfs:comment "Workflow includes this operation." ;
+    rdfs:domain :Workflow ;
+    rdfs:range :Operation .
+
+:memberOf a owl:ObjectProperty ;
+    rdfs:label "member of" ;
+    rdfs:comment "Inverse of contains." ;
+    owl:inverseOf :contains ;
+    rdfs:domain :Thing ;
+    rdfs:range :System .
+
+:branchTrue a owl:ObjectProperty ;
+    rdfs:subPropertyOf :nextStep ;
+    rdfs:label "branch true" ;
+    rdfs:comment "Follow when decision condition is true." ;
+    rdfs:domain :Decision ;
+    rdfs:range :Operation .
+
+:branchFalse a owl:ObjectProperty ;
+    rdfs:subPropertyOf :nextStep ;
+    rdfs:label "branch false" ;
+    rdfs:comment "Follow when decision condition is false." ;
+    rdfs:domain :Decision ;
+    rdfs:range :Operation .
+
+# ── Datatype properties ─────────────────────
+
+:port a owl:DatatypeProperty ;
+    rdfs:label "port" ;
+    rdfs:comment "Network port number." ;
+    rdfs:domain :Service ;
+    rdfs:range xsd:integer .
+
+:protocol a owl:DatatypeProperty ;
+    rdfs:label "protocol" ;
+    rdfs:comment "Network protocol (http, grpc, tcp)." ;
+    rdfs:domain :Service ;
+    rdfs:range xsd:string .
+
+:healthPath a owl:DatatypeProperty ;
+    rdfs:label "health path" ;
+    rdfs:comment "HTTP health check endpoint path." ;
+    rdfs:domain :APIService ;
+    rdfs:range xsd:string .
+
+:image a owl:DatatypeProperty ;
+    rdfs:label "image" ;
+    rdfs:comment "Container image reference." ;
+    rdfs:domain :Service ;
+    rdfs:range xsd:string .
+
+:ingressHost a owl:DatatypeProperty ;
+    rdfs:label "ingress host" ;
+    rdfs:comment "External hostname for ingress routing." ;
+    rdfs:domain :APIService ;
+    rdfs:range xsd:string .
+
+:address a owl:DatatypeProperty ;
+    rdfs:label "address" ;
+    rdfs:comment "Internal cluster DNS or address." ;
+    rdfs:domain :Service ;
+    rdfs:range xsd:string .
+
+:condition a owl:DatatypeProperty ;
+    rdfs:label "condition" ;
+    rdfs:comment "Condition expression for a decision branch." ;
+    rdfs:domain :Decision ;
+    rdfs:range xsd:string .
+
+:command a owl:DatatypeProperty ;
+    rdfs:label "command" ;
+    rdfs:comment "Shell command or action to execute." ;
+    rdfs:domain :Operation ;
+    rdfs:range xsd:string .
+
+:inputParam a owl:DatatypeProperty ;
+    rdfs:label "input parameter" ;
+    rdfs:comment "Named input parameter for an operation." ;
+    rdfs:domain :Operation ;
+    rdfs:range xsd:string .
+
+:outputParam a owl:DatatypeProperty ;
+    rdfs:label "output parameter" ;
+    rdfs:comment "Named output parameter from an operation." ;
+    rdfs:domain :Operation ;
+    rdfs:range xsd:string .
