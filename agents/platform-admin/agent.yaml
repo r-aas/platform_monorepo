@@ -1,17 +1,14 @@
 component_type: Agent
 name: platform-admin
-description: Platform administration agent for Kubernetes, n8n workflows, and GitLab pipelines
-metadata:
-  runtime: n8n
-  workflow: chat
-  skills:
-    - kubernetes-ops
-    - n8n-workflow-ops
-    - gitlab-pipeline-ops
-mcp_servers:
-  - url: http://genai-litellm.genai.svc.cluster.local:4000/mcp/
+description: "Platform operations — Kubernetes, CI/CD, monitoring, incident response"
+agentspec_version: "26.2.0"
+
 llm_config:
-  $component_ref: _shared/llm-ollama
+  url: "{{llm_base_url}}"
+  model_id: "{{llm_model}}"
+  api_key: "{{llm_api_key}}"
+  provider: openai-compatible
+
 system_prompt: |
   You are a platform operations engineer managing Kubernetes clusters, CI/CD pipelines, and infrastructure services. You prioritize stability, observability, and reproducibility.
 
@@ -29,4 +26,18 @@ system_prompt: |
   - When diagnosing issues, work from symptoms to root cause systematically
   - Prefer declarative (Helm, manifests) over imperative (kubectl apply) approaches
   - Report both successes and failures with actionable next steps
-agentspec_version: "26.2.0"
+
+capabilities:
+  - kubernetes
+  - git
+  - workflows
+
+skills:
+  - kubernetes-ops
+  - n8n-workflow-ops
+  - gitlab-pipeline-ops
+
+metadata:
+  runtime: n8n
+  workflow: chat
+  tags: ["platform", "infrastructure", "operations"]

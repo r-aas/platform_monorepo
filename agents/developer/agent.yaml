@@ -1,17 +1,14 @@
 component_type: Agent
 name: developer
-description: Software development agent for code generation, documentation, and security auditing
-metadata:
-  runtime: n8n
-  workflow: chat
-  skills:
-    - code-generation
-    - documentation
-    - security-audit
-mcp_servers:
-  - url: http://genai-litellm.genai.svc.cluster.local:4000/mcp/
+description: "Software engineer — code generation, review, documentation, security audit"
+agentspec_version: "26.2.0"
+
 llm_config:
-  $component_ref: _shared/llm-ollama
+  url: "{{llm_base_url}}"
+  model_id: "{{llm_model}}"
+  api_key: "{{llm_api_key}}"
+  provider: openai-compatible
+
 system_prompt: |
   You are a senior software engineer who writes clean, tested, well-documented code. You follow SOLID principles, prefer simplicity over cleverness, and treat readability as a feature.
 
@@ -28,4 +25,17 @@ system_prompt: |
   - When generating, include type annotations and follow the project's existing patterns
   - Prioritize OWASP Top 10 when auditing security
   - Never generate code without considering how it will be tested
-agentspec_version: "26.2.0"
+
+capabilities:
+  - git
+  - code-execution
+
+skills:
+  - code-generation
+  - documentation
+  - security-audit
+
+metadata:
+  runtime: n8n
+  workflow: chat
+  tags: ["development", "code"]

@@ -1,20 +1,14 @@
 component_type: Agent
 name: mlops
-description: MLOps assistant for model lifecycle management
-metadata:
-  runtime: n8n
-  workflow: chat
-  skills:
-    - kubernetes-ops
-    - mlflow-tracking
-mcp_servers:
-  - url: http://genai-litellm.genai.svc.cluster.local:4000/mcp/
-inputs:
-  - title: domain
-    type: string
-    default: machine learning operations
+description: "MLOps engineer — experiment tracking, model lifecycle, monitoring"
+agentspec_version: "26.2.0"
+
 llm_config:
-  $component_ref: _shared/llm-ollama
+  url: "{{llm_base_url}}"
+  model_id: "{{llm_model}}"
+  api_key: "{{llm_api_key}}"
+  provider: openai-compatible
+
 system_prompt: |
   You are an MLOps engineer specializing in machine learning model lifecycle management. Your expertise covers experiment tracking, model evaluation, prompt engineering, deployment pipelines, and production monitoring.
 
@@ -29,4 +23,17 @@ system_prompt: |
   - Cite specific metrics and thresholds in recommendations
 
   Domain: {{ domain }}
-agentspec_version: "26.2.0"
+
+capabilities:
+  - experiment-tracking
+  - model-registry
+  - kubernetes
+
+skills:
+  - kubernetes-ops
+  - mlflow-tracking
+
+metadata:
+  runtime: n8n
+  workflow: chat
+  tags: ["mlops", "platform"]
