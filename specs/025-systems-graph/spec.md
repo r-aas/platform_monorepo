@@ -1,4 +1,4 @@
-<!-- status: draft -->
+<!-- status: shipped -->
 # Feature Specification: Connected Systems Graph
 
 **Feature Branch**: `025-systems-graph`
