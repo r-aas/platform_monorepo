@@ -132,7 +132,9 @@ build:
 container-scan:
   stage: scan
   image:
-    name: aquasec/trivy:latest
+    # SECURITY: Pin to exact version. Trivy was compromised in March 2026 supply chain attack.
+    # See: https://github.com/BerriAI/litellm/issues/24518
+    name: aquasec/trivy:0.62.1
     entrypoint: [""]
   script:
     - >-
