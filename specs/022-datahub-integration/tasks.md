@@ -194,7 +194,7 @@
 
 ## Notes
 
-- DataHub prerequisites use `prerequisites-` prefix for service names (kafka: `prerequisites-kafka:9092`, mysql: `prerequisites-mysql:3306`) — match quickstart-values pattern from datahub-helm repo
+- DataHub prerequisites use release-prefixed service names: ES is `elasticsearch-master`, others use `genai-datahub-prereqs-` prefix (kafka: `genai-datahub-prereqs-kafka:9092`, mysql: `genai-datahub-prereqs-mysql:3306`)
 - MySQL overlay FS PV: set `storageClass: local-path` in prerequisites values to avoid sshfs chown failure (same issue as Bitnami PostgreSQL)
 - Ingestion image `pullPolicy: Never` — must be built and k3d-imported before ArgoCD deploys
 - `datahub-ingestion-cron` CronJob name is `datahub-ingestion-cron-<key>` where key is the cron name in values (e.g., `mlflow`)
@@ -203,3 +203,9 @@
 - All 6 bridge service tests pass (test_models: 5, test_emitter: 1)
 - Helm dependency update successful for both upstream charts (prereqs + core)
 - Both local charts (bridge + mcp-datahub) pass `helm lint`
+- MySQL prereqs chart only creates `root` user, not `datahub` — use `root` in global.sql.datasource.username
+- MySQL `mysql-secrets` secret must be created by prereqs chart (upstream chart expects pre-existing)
+- MCP server requires both `DATAHUB_GMS_URL` and `DATAHUB_GMS_TOKEN` env vars
+- datahub chart schema requires `appVersion` and `gms.port` as strings (not numbers)
+- Ingestion cron disabled for initial deploy — inline recipe YAML causes configmap template parse error
+- Bridge service does NOT depend on `acryl-datahub` Python package — uses raw httpx + pydantic only

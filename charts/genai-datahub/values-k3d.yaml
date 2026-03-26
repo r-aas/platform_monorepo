@@ -6,8 +6,7 @@ datahub:
       hosts:
         - host: datahub.genai.127.0.0.1.nip.io
           paths:
-            - path: /
-              pathType: Prefix
+            - /
 
   datahub-gms:
     ingress:
@@ -16,5 +15,4 @@ datahub:
       hosts:
         - host: datahub-gms.genai.127.0.0.1.nip.io
           paths:
-            - path: /
-              pathType: Prefix
+            - /
