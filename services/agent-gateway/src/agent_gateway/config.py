@@ -38,6 +38,14 @@ class Settings(BaseSettings):
     # External URL (for A2A agent cards)
     gateway_external_url: str = "http://agent-gateway.genai.127.0.0.1.nip.io"
 
+    # Sandbox runtime
+    sandbox_namespace: str = "genai"
+    sandbox_image: str = "agent-sandbox:latest"
+    sandbox_service_account: str = "agent-sandbox"
+    sandbox_timeout: int = 3600
+    sandbox_cpu_limit: str = "2"
+    sandbox_memory_limit: str = "4Gi"
+
     # A2A protocol
     a2a_protocol_version: str = "0.2.5"
 

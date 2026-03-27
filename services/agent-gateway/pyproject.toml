@@ -20,6 +20,7 @@ dependencies = [
     "asyncpg>=0.30.0",
     "pgvector>=0.3.6",
     "agent-platform @ git+https://github.com/r-aas/agent-platform.git",
+    "kubernetes>=35.0.0",
 ]
 
 [project.scripts]
