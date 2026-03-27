@@ -122,7 +122,7 @@ env:
   pgdb_remote_url: "postgresql://plane:plane@genai-pg-plane.genai.svc.cluster.local:5432/plane"
 
   # External Redis (reuse langfuse redis — it's a general-purpose Valkey)
-  remote_redis_url: "redis://genai-langfuse-redis-primary.genai.svc.cluster.local:6379/"
+  remote_redis_url: "redis://:valkey-langfuse@genai-langfuse-redis-primary.genai.svc.cluster.local:6379/"
 
   # External MinIO (shared genai-minio)
   docstore_bucket: "plane-uploads"
