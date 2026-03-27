@@ -1,59 +1,73 @@
 # Platform Monorepo — Session Resume
 
-## Session: 2026-03-27 — Unified Agent Gateway (Plan Complete)
+## Session: 2026-03-27 (continued) — Sandbox Runtime + Promotions
 
 ### What Was Built
 
-**Unified Agent Gateway** — Merged agent-registry into agent-gateway as single service.
-- PostgreSQL + pgvector replaces MLflow for agent/skill/environment CRUD
-- MCP proxy aggregates 87 tools from 3 k8s backends (kubernetes: 22, gitlab: 44, n8n: 21)
-- SSE response parsing, MCP session management, per-server auth tokens
-- Tool name prefixing: `{server}.{tool}` (e.g., `kubernetes.kubectl_get`)
-- Namespace-scoped MCP endpoints: `/mcp/proxy/ns/{namespace}`, `/mcp/proxy/server/{server}`
-- 12 MCP management tools via gateway-mcp JSON-RPC
-- Deleted `genai-agent-registry` chart + k8s deployment
-- Skills registry converted to async (fixed `RuntimeError: no event loop in thread`)
+**n8n MCP Proxy Wiring** — chat-v1 workflow now routes through agent-gateway MCP proxy.
+- Switched MCP Client from SSE to Streamable HTTP (`/mcp/proxy`)
+- Added `Mcp-Session-Id` header to all streamable HTTP responses
+- Replaced LiteLLM Chat Model (openAiApi broken) with Ollama Chat Model (ollamaApi)
+- Replaced axios with fetch in Delegate Tool (axios frozen-Error crash)
+- AI Agent mode works: 88 tools available via MCP proxy
 
-**agent-platform v0.2.0** — Slimmed to models-only library (AgentSpec, SkillManifest, EnvironmentBinding). Deleted registry/, adapters/, sandbox/ subpackages. 30 deps removed.
+**Performance Optimizations** — agent-gateway connection and startup improvements.
+- SQLAlchemy engine: pool_size=10, max_overflow=20, pool_recycle=3600, pool_pre_ping
+- Persistent httpx.AsyncClient with connection limits (50 max, 20 keepalive)
+- Parallel startup: MCP refresh + legacy discovery + MLflow init via asyncio.gather
+- Graceful shutdown: close HTTP client in lifespan teardown
 
-**Migration script** — `scripts/migrate-mlflow-to-pg.py` (idempotent, reads MLflow → upserts via REST API)
+**DataHub Auth Fix** — MCP server now healthy with 6 tools.
+- Disabled DataHub GMS auth for k3d dev cluster (`metadata_service_authentication.enabled: false`)
+- Set `DATAHUB_GMS_TOKEN: "no-auth"` placeholder (server just checks non-empty)
+- Fixed seed URL: port 8000 (minibridge), not 3000
+- All 4 MCP servers healthy: 94 tools total (kubernetes: 23, gitlab: 44, n8n: 21, datahub: 6)
 
-### Current State
+**Sandbox Runtime** — ephemeral k8s Jobs for agent code execution.
+- `SandboxRuntime` class: creates Jobs with ConfigMap, NetworkPolicy, resource limits, TTL
+- `agent-sandbox` Docker image: Python 3.12 + uv, LLM tool-use loop (bash, read_file, write_file)
+- REST API: `POST /sandbox/jobs`, `GET /sandbox/jobs/{name}`, `/logs`, `/result`, `DELETE`
+- RBAC: sandbox-manager Role for gateway, agent-sandbox SA for sandbox pods
+- NetworkPolicy restricts sandbox egress to LiteLLM + MCP servers + DNS only
+- Tested: sandbox wrote fib.py, ran it, returned correct fibonacci output
 
-| Component | Status | Details |
-|-----------|--------|---------|
-| agent-gateway | Healthy | 3 agents, 0 skills, 1 env, 4 MCP servers |
-| MCP proxy | 87 tools | platform: 66, orchestration: 21, data: 0 (datahub down) |
-| datahub MCP | CrashLoopBackOff | Pre-existing issue |
-| Langfuse | Deployed | Needs UI sign-up + API key wiring to LiteLLM |
-| MLflow → PG migration | Not run | Script ready, needs verification |
+**Promotion Workflow** — shadow → canary → primary agent versioning.
+- `promotion_stage` + `canary_weight` columns on agents table
+- REST API: `POST /agents/{name}/promote`, `/rollback`, `GET /promotion`, `PUT /canary-weight`
+- Auto-behavior: shadow → canary sets 10% weight, canary → primary resets to 0%
+- Full lifecycle tested: shadow → canary(20%) → primary
 
-### Pushed
+### Verified Working
 
-- `platform_monorepo` → GitLab (`0a22832`)
-- `agent-platform` → GitHub (`6e76d00`, v0.2.0)
-- `genai-mlops` → GitLab (`2a1e608`, 5 commits)
+- `GET /health/detail` — healthy, 3 agents, 1 env, 4 MCP servers
+- `GET /mcp/servers` — 4 servers all healthy, 94 tools
+- `POST /sandbox/jobs` — creates k8s Job, executes task, returns result
+- `POST /agents/mlops/promote` — full promotion lifecycle works
+- `POST /mcp/proxy` (tools/list) — 94 tools (was 88, +6 datahub)
+- `POST /v1/chat/completions` with `agent:mlops` — end-to-end works
+- n8n chat webhook `/webhook/chat` — AI Agent mode with MCP tools
+- DataHub frontend accessible (auth disabled for k3d)
 
 ### Known Issues
 
-1. **genai-mcp-datahub CrashLoopBackOff**: DataHub MCP server issue (pre-existing)
-2. **Langfuse keys**: Need UI sign-up → create project → set LANGFUSE_PUBLIC_KEY/SECRET_KEY in LiteLLM
-3. **kagent MCP tools**: RemoteMCPServer returns `None` for tools → Pydantic crash
+1. ~~**datahub MCP unhealthy**~~ — FIXED. Disabled auth, set token, fixed port.
+2. **openAiApi credential type broken in n8n** — LangChain sub-nodes can't use openAiApi. Workaround: ollamaApi directly to Ollama (bypasses LiteLLM proxy). Acceptable for local dev.
+3. **qwen2.5:14b unreliable with 94 tools** — LLM hallucinate tool calls or respond in Chinese with many tools. May need tool filtering or more capable model.
 
-### Next Commands
+### Commits Pushed
 
-```bash
-# Run MLflow → PG migration
-AGW_URL=http://agent-gateway.genai.127.0.0.1.nip.io \
-MLFLOW_TRACKING_URI=http://mlflow.genai.127.0.0.1.nip.io \
-python scripts/migrate-mlflow-to-pg.py
+- `3900a4b` feat: agent promotion workflow — shadow → canary → primary
+- `3a4c5b2` feat: sandbox runtime — ephemeral k8s Jobs for agent code execution
+- `c84d294` fix: datahub MCP server port 8000 in seed config
+- `07b17fa` fix: disable DataHub auth for k3d, set MCP token
+- `ef13da3` perf: agent-gateway connection pooling + persistent HTTP client
+- `c3d5f5f` fix: add kubectl to mcp-kubernetes image
+- `815e84e` fix: retry with fresh session on 400/401 from MCP backends
 
-# Complete Langfuse setup
-open http://langfuse.genai.127.0.0.1.nip.io
+### Next
 
-# Verify n8n chat through new MCP proxy
-# chat-v1 workflow with mcp_tools: 'all' → agent-gateway proxy
-
-# Fix datahub MCP
-kubectl logs -n genai deployment/genai-mcp-datahub --tail=20
-```
+1. **Import n8n workflows to k3d** — `task n8n-import` with updated chat.json
+2. **Sandbox improvements** — pre-warmed pod pool, workspace PVC, artifact collection
+3. **Canary traffic routing** — integrate canary_weight into chat endpoint routing logic
+4. **DataHub ingestion** — ingest k8s resources, GitLab repos, MLflow experiments
+5. **Agent eval framework** — automated shadow vs primary comparison scoring
