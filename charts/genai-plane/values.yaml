@@ -29,6 +29,8 @@ rabbitmq:
   local_setup: true
   image: rabbitmq:3.13.6-management-alpine
   volumeSize: 200Mi
+  # Disable persistence — sshfs doesn't support chown (k3d/Colima)
+  storageClass: ""
   resources:
     requests:
       memory: 128Mi
