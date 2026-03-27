@@ -33,7 +33,7 @@ DEFAULT_SERVERS = [
     },
     {
         "name": "datahub",
-        "url": "http://genai-mcp-datahub.genai.svc.cluster.local:3000/mcp",
+        "url": "http://genai-mcp-datahub.genai.svc.cluster.local:8000/mcp",
         "transport": "streamable-http",
         "namespace": "data",
         "description": "DataHub metadata catalog — datasets, pipelines, lineage",
