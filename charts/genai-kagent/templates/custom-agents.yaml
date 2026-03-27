@@ -1,4 +1,7 @@
 # Custom agents — mirrors agents/ directory definitions as kagent CRDs
+# NOTE: MCP tools temporarily removed — kagent runtime requires tools list
+# from RemoteMCPServer on startup, and our servers return None (protocol mismatch).
+# Re-add once MCP Streamable HTTP compatibility is verified.
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
@@ -22,12 +25,6 @@ spec:
       - Quantify trade-offs (latency vs quality, cost vs accuracy)
       - Cite specific metrics and thresholds in recommendations
     modelConfig: default-model-config
-    tools:
-      - type: McpServer
-        mcpServer:
-          name: kubernetes-ops
-          kind: RemoteMCPServer
-          apiGroup: kagent.dev
     a2aConfig:
       skills:
         - id: experiment-tracking
@@ -69,12 +66,6 @@ spec:
       - Prioritize OWASP Top 10 when auditing security
       - Never generate code without considering how it will be tested
     modelConfig: default-model-config
-    tools:
-      - type: McpServer
-        mcpServer:
-          name: gitlab-ops
-          kind: RemoteMCPServer
-          apiGroup: kagent.dev
     a2aConfig:
       skills:
         - id: code-review
@@ -117,22 +108,6 @@ spec:
       - Prefer declarative (Helm, manifests) over imperative (kubectl apply) approaches
       - Report both successes and failures with actionable next steps
     modelConfig: default-model-config
-    tools:
-      - type: McpServer
-        mcpServer:
-          name: kubernetes-ops
-          kind: RemoteMCPServer
-          apiGroup: kagent.dev
-      - type: McpServer
-        mcpServer:
-          name: n8n-workflow-ops
-          kind: RemoteMCPServer
-          apiGroup: kagent.dev
-      - type: McpServer
-        mcpServer:
-          name: gitlab-ops
-          kind: RemoteMCPServer
-          apiGroup: kagent.dev
     a2aConfig:
       skills:
         - id: k8s-diagnosis
