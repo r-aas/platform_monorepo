@@ -39,7 +39,7 @@ rabbitmq:
 
 # --- Override images to Docker Hub for ARM64 ---
 web:
-  image: makeplane/plane-frontend:stable
+  image: makeplane/plane-frontend
   pullPolicy: IfNotPresent
   resources:
     requests:
@@ -50,7 +50,7 @@ web:
       cpu: "0.5"
 
 space:
-  image: makeplane/plane-space:stable
+  image: makeplane/plane-space
   pullPolicy: IfNotPresent
   resources:
     requests:
@@ -61,7 +61,7 @@ space:
       cpu: "0.5"
 
 admin:
-  image: makeplane/plane-admin:stable
+  image: makeplane/plane-admin
   pullPolicy: IfNotPresent
   resources:
     requests:
@@ -72,7 +72,7 @@ admin:
       cpu: "0.5"
 
 live:
-  image: makeplane/plane-live:stable
+  image: makeplane/plane-live
   pullPolicy: IfNotPresent
   resources:
     requests:
@@ -83,7 +83,7 @@ live:
       cpu: "0.5"
 
 api:
-  image: makeplane/plane-backend:stable
+  image: makeplane/plane-backend
   pullPolicy: IfNotPresent
   resources:
     requests:
@@ -94,7 +94,7 @@ api:
       cpu: "1.0"
 
 worker:
-  image: makeplane/plane-backend:stable
+  image: makeplane/plane-backend
   pullPolicy: IfNotPresent
   resources:
     requests:
@@ -105,7 +105,7 @@ worker:
       cpu: "1.0"
 
 beatworker:
-  image: makeplane/plane-backend:stable
+  image: makeplane/plane-backend
   pullPolicy: IfNotPresent
   resources:
     requests:
