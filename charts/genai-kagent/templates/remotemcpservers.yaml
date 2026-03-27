@@ -1,0 +1,53 @@
+# MCP servers already deployed in the genai namespace
+---
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: kubernetes-ops
+  namespace: {{ .Release.Namespace }}
+spec:
+  description: "Kubernetes cluster management — kubectl get/describe/logs/apply"
+  protocol: STREAMABLE_HTTP
+  url: "http://genai-mcp-kubernetes.genai.svc.cluster.local:3000/mcp"
+  timeout: 30s
+  allowedNamespaces:
+    from: Same
+---
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: n8n-workflow-ops
+  namespace: {{ .Release.Namespace }}
+spec:
+  description: "n8n workflow management and execution"
+  protocol: STREAMABLE_HTTP
+  url: "http://genai-mcp-n8n.genai.svc.cluster.local:3000/mcp"
+  timeout: 30s
+  allowedNamespaces:
+    from: Same
+---
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: gitlab-ops
+  namespace: {{ .Release.Namespace }}
+spec:
+  description: "GitLab repository, MR, and pipeline management"
+  protocol: STREAMABLE_HTTP
+  url: "http://genai-mcp-gitlab.genai.svc.cluster.local:3000/mcp"
+  timeout: 30s
+  allowedNamespaces:
+    from: Same
+---
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: datahub-metadata
+  namespace: {{ .Release.Namespace }}
+spec:
+  description: "DataHub metadata catalog — search datasets, pipelines, lineage"
+  protocol: STREAMABLE_HTTP
+  url: "http://genai-mcp-datahub.genai.svc.cluster.local:3000/mcp"
+  timeout: 30s
+  allowedNamespaces:
+    from: Same
