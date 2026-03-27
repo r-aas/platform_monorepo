@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     sandbox_warm_pool_size: int = 0  # 0 = disabled, N = keep N warm pods ready
     sandbox_workspace_size: str = "1Gi"  # PVC size for workspace storage
 
+    # Claude Code runtime
+    claude_code_image: str = "agent-claude:latest"
+
     # A2A protocol
     a2a_protocol_version: str = "0.2.5"
 

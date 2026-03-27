@@ -16,6 +16,7 @@ from agent_gateway.routers.mcp_proxy import router as mcp_proxy_router
 from agent_gateway.routers.promotions import router as promotions_router
 from agent_gateway.routers.registry import router as registry_router
 from agent_gateway.routers.sandbox import router as sandbox_router
+from agent_gateway.routers.schedule import router as schedule_router
 from agent_gateway.routers.skills import router as skills_router
 
 logger = logging.getLogger(__name__)
@@ -77,6 +78,7 @@ app.include_router(gateway_mcp_router)
 app.include_router(factory_router)
 app.include_router(registry_router)
 app.include_router(sandbox_router)
+app.include_router(schedule_router)
 app.include_router(promotions_router)
 app.include_router(mcp_proxy_router)
 
