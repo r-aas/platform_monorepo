@@ -43,13 +43,8 @@ def _row_to_skill(row) -> SkillDefinition:
     )
 
 
-def create_skill(skill: SkillDefinition) -> None:
-    """Create a new skill — sync wrapper for backward compat."""
-    import asyncio
-    asyncio.get_event_loop().run_until_complete(_create_skill_async(skill))
-
-
-async def _create_skill_async(skill: SkillDefinition) -> None:
+async def create_skill(skill: SkillDefinition) -> None:
+    """Create a new skill."""
     import json
     manifest = json.dumps({
         "mcp_servers": [s.model_dump() for s in skill.mcp_servers],
@@ -66,29 +61,23 @@ async def _create_skill_async(skill: SkillDefinition) -> None:
     )
 
 
-def get_skill(name: str) -> SkillDefinition:
-    """Get a skill by name — sync wrapper for backward compat."""
-    import asyncio
-    loop = asyncio.get_event_loop()
-    row = loop.run_until_complete(_db_get_skill(name))
+async def get_skill(name: str) -> SkillDefinition:
+    """Get a skill by name."""
+    row = await _db_get_skill(name)
     return _row_to_skill(row)
 
 
-def list_skills() -> list[SkillDefinition]:
-    """List all skills — sync wrapper for backward compat."""
-    import asyncio
-    loop = asyncio.get_event_loop()
-    rows = loop.run_until_complete(_db_list_skills())
+async def list_skills() -> list[SkillDefinition]:
+    """List all skills."""
+    rows = await _db_list_skills()
     return [_row_to_skill(r) for r in rows]
 
 
-def update_skill(skill: SkillDefinition) -> None:
-    """Update a skill — sync wrapper."""
-    import asyncio
-    asyncio.get_event_loop().run_until_complete(_create_skill_async(skill))
+async def update_skill(skill: SkillDefinition) -> None:
+    """Update a skill."""
+    await create_skill(skill)
 
 
-def delete_skill(name: str, force: bool = False) -> None:
+async def delete_skill(name: str, force: bool = False) -> None:
     """Delete a skill."""
-    import asyncio
-    asyncio.get_event_loop().run_until_complete(_db_delete_skill(name))
+    await _db_delete_skill(name)

@@ -1,7 +1,5 @@
 """Skills CRUD API router."""
 
-import asyncio
-
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 
@@ -19,7 +17,7 @@ router = APIRouter(prefix="/skills", tags=["skills"])
 @router.get("/search")
 async def search_skills(q: str = Query(..., description="Search query for hybrid RAG over skills registry")):
     """Hybrid search: keyword + semantic similarity over skill names, tags, tasks, descriptions."""
-    skills = await asyncio.to_thread(list_skills)
+    skills = await list_skills()
     query_lower = q.lower()
 
     query_emb = await get_embedding(q)
@@ -72,7 +70,7 @@ async def search_skills(q: str = Query(..., description="Search query for hybrid
 @router.post("", status_code=201)
 async def create_skill_endpoint(skill: SkillDefinition):
     try:
-        await asyncio.to_thread(create_skill, skill)
+        await create_skill(skill)
     except ValueError as e:
         return JSONResponse(status_code=409, content={"error": {"message": str(e), "code": "skill_exists"}})
     return {"name": skill.name, "version": skill.version}
@@ -80,7 +78,7 @@ async def create_skill_endpoint(skill: SkillDefinition):
 
 @router.get("")
 async def list_skills_endpoint():
-    skills = await asyncio.to_thread(list_skills)
+    skills = await list_skills()
     return {
         "skills": [
             {
@@ -98,7 +96,7 @@ async def list_skills_endpoint():
 @router.get("/{name}")
 async def get_skill_endpoint(name: str):
     try:
-        skill = await asyncio.to_thread(get_skill, name)
+        skill = await get_skill(name)
     except KeyError:
         return JSONResponse(
             status_code=404, content={"error": {"message": f"Skill '{name}' not found", "code": "skill_not_found"}}
@@ -110,7 +108,7 @@ async def get_skill_endpoint(name: str):
 async def update_skill_endpoint(name: str, skill: SkillDefinition):
     skill.name = name
     try:
-        await asyncio.to_thread(update_skill, skill)
+        await update_skill(skill)
     except Exception as e:
         return JSONResponse(status_code=404, content={"error": {"message": str(e)}})
     return {"name": skill.name, "version": skill.version, "changes": "Updated."}
@@ -119,7 +117,7 @@ async def update_skill_endpoint(name: str, skill: SkillDefinition):
 @router.delete("/{name}")
 async def delete_skill_endpoint(name: str, force: bool = Query(False)):
     try:
-        await asyncio.to_thread(delete_skill, name, force)
+        await delete_skill(name, force)
     except ValueError as e:
         return JSONResponse(status_code=409, content={"error": {"message": str(e), "code": "skill_in_use"}})
     return {"message": f"Skill '{name}' deleted."}
@@ -128,7 +126,7 @@ async def delete_skill_endpoint(name: str, force: bool = Query(False)):
 @router.get("/tasks/search")
 async def search_tasks(q: str = Query(..., description="Search query for hybrid RAG over tasks across all skills")):
     """Hybrid search over tasks across all skills — find tasks by capability description."""
-    skills = await asyncio.to_thread(list_skills)
+    skills = await list_skills()
     query_lower = q.lower()
 
     query_emb = await get_embedding(q)
@@ -175,7 +173,7 @@ async def search_tasks(q: str = Query(..., description="Search query for hybrid 
 @router.get("/{name}/tasks")
 async def list_skill_tasks(name: str):
     try:
-        skill = await asyncio.to_thread(get_skill, name)
+        skill = await get_skill(name)
     except KeyError:
         return JSONResponse(
             status_code=404, content={"error": {"message": f"Skill '{name}' not found", "code": "skill_not_found"}}
@@ -198,7 +196,7 @@ async def list_skill_tasks(name: str):
 async def benchmark_task(name: str, task: str, agent: str = Query(..., description="Agent name to run benchmark with")):
     """Run eval dataset for a skill task against an agent. Returns 202 with benchmark run ID."""
     try:
-        skill = await asyncio.to_thread(get_skill, name)
+        skill = await get_skill(name)
     except KeyError:
         return JSONResponse(
             status_code=404, content={"error": {"message": f"Skill '{name}' not found", "code": "skill_not_found"}}

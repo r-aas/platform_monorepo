@@ -51,7 +51,7 @@ async def chat_completions(request: Request):
         resolved_skills = []
         for skill_name in agent.skills:
             try:
-                resolved_skills.append(get_skill(skill_name))
+                resolved_skills.append(await get_skill(skill_name))
             except (KeyError, Exception):
                 logger.warning("Skill '%s' not found for agent '%s' — skipping", skill_name, agent_name)
 

@@ -9,7 +9,6 @@ Exposes GET /factory/health summarising what the agent-gateway factory has built
 
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
 
 from fastapi import APIRouter
@@ -80,7 +79,7 @@ async def factory_health() -> JSONResponse:
 
     skills_loaded = 0
     try:
-        skills = await asyncio.to_thread(list_skills)
+        skills = await list_skills()
         skills_loaded = len(skills)
     except Exception:
         pass
@@ -173,7 +172,7 @@ async def factory_gaps() -> JSONResponse:
 
     skills: list = []
     try:
-        skills = await asyncio.to_thread(list_skills)
+        skills = await list_skills()
     except Exception:
         pass
 

@@ -1,67 +1,59 @@
 # Platform Monorepo — Session Resume
 
-## Session: 2026-03-27 — AgenticOps Reference System + Benchmark Matrix
+## Session: 2026-03-27 — Unified Agent Gateway (Plan Complete)
 
-### Built
+### What Was Built
 
-**Security Audit** — All hardcoded secrets removed, gitleaks clean (tree + 186 commits)
-- GitLab PATs, DataHub JWTs, MetaMCP default password, personal email
-- `.gitleaks.toml` allowlist for n8n encryption key name
-- Git remote URLs stripped of embedded PATs
+**Unified Agent Gateway** — Merged agent-registry into agent-gateway as single service.
+- PostgreSQL + pgvector replaces MLflow for agent/skill/environment CRUD
+- MCP proxy aggregates 87 tools from 3 k8s backends (kubernetes: 22, gitlab: 44, n8n: 21)
+- SSE response parsing, MCP session management, per-server auth tokens
+- Tool name prefixing: `{server}.{tool}` (e.g., `kubernetes.kubectl_get`)
+- Namespace-scoped MCP endpoints: `/mcp/proxy/ns/{namespace}`, `/mcp/proxy/server/{server}`
+- 12 MCP management tools via gateway-mcp JSON-RPC
+- Deleted `genai-agent-registry` chart + k8s deployment
+- Skills registry converted to async (fixed `RuntimeError: no event loop in thread`)
 
-**Benchmark Pipeline** — 3-model matrix complete (246 cases), MLflow logging fixed
-- qwen2.5:7b: 78% (86/109) — best performer
-- mistral:7b-instruct: 69% (67/97)
-- qwen2.5:14b: 55% (22/40) — fewer cases due to earlier process kill
-- Fixed json.loads AttributeError bug (non-dict JSON responses)
-- Fixed MLflow logging: GET for experiment lookup, timestamps on metrics
-- All logged to MLflow `__benchmarks` experiment (verified: 19 metrics + 4 params)
+**agent-platform v0.2.0** — Slimmed to models-only library (AgentSpec, SkillManifest, EnvironmentBinding). Deleted registry/, adapters/, sandbox/ subpackages. 30 deps removed.
 
-**Langfuse (LLM Observability)** — Deployed via ArgoCD
-- Chart: `genai-langfuse`, Langfuse v3.161.0
-- External pgvector (DB: langfuse) + External MinIO (bucket: langfuse)
-- ClickHouse + Valkey subcharts
-- LiteLLM wired: `success_callback: ["langfuse"]`
-- URL: http://langfuse.genai.127.0.0.1.nip.io
+**Migration script** — `scripts/migrate-mlflow-to-pg.py` (idempotent, reads MLflow → upserts via REST API)
 
-**kagent (K8s Agent Platform, CNCF Sandbox)** — Deployed via ArgoCD
-- Chart: `genai-kagent`, kagent v0.8.0
-- 5 agents: mlops, developer, platform-admin (custom) + k8s, helm (built-in)
-- ModelConfig: OpenAI → LiteLLM → qwen2.5:14b
-- 5 RemoteMCPServers registered
-- URL: http://kagent.genai.127.0.0.1.nip.io
+### Current State
 
-**Agent Registry + Environment Bindings**
-- Chart: `genai-agent-registry`, agent-platform FastAPI service
-- Environment binding: `agents/envs/k3d-mewtwo.yaml` (LLM, MCP, runtimes)
-- Seed script: `scripts/seed-registry.sh` → 3 agents + 1 env registered
-- Resolution verified: `/envs/k3d-mewtwo/resolve/mlops` returns fully-resolved spec
-- `task seed-registry` wired in Taskfile
-- URL: http://agent-registry.genai.127.0.0.1.nip.io
+| Component | Status | Details |
+|-----------|--------|---------|
+| agent-gateway | Healthy | 3 agents, 0 skills, 1 env, 4 MCP servers |
+| MCP proxy | 87 tools | platform: 66, orchestration: 21, data: 0 (datahub down) |
+| datahub MCP | CrashLoopBackOff | Pre-existing issue |
+| Langfuse | Deployed | Needs UI sign-up + API key wiring to LiteLLM |
+| MLflow → PG migration | Not run | Script ready, needs verification |
 
-**agent-platform** — Public GitHub repo: https://github.com/r-aas/agent-platform
-- README with quickstart, agent spec format, SKILL.md, environment bindings
+### Pushed
+
+- `platform_monorepo` → GitLab (`0a22832`)
+- `agent-platform` → GitHub (`6e76d00`, v0.2.0)
+- `genai-mlops` → GitLab (`2a1e608`, 5 commits)
 
 ### Known Issues
 
-1. **genai-agent-registry CrashLoopBackOff**: Needs image build from agent-platform source
-2. **genai-mcp-datahub CrashLoopBackOff**: DataHub MCP server issue (pre-existing)
-3. **kagent MCP tools**: RemoteMCPServer returns `None` for tools → Pydantic crash. Custom agents deployed WITHOUT tools
-4. **gemma3:12b benchmark**: Running now — check with `ps aux | grep benchmark`
-5. **Langfuse keys**: Need UI sign-up → create project → set LANGFUSE_PUBLIC_KEY/SECRET_KEY in LiteLLM
+1. **genai-mcp-datahub CrashLoopBackOff**: DataHub MCP server issue (pre-existing)
+2. **Langfuse keys**: Need UI sign-up → create project → set LANGFUSE_PUBLIC_KEY/SECRET_KEY in LiteLLM
+3. **kagent MCP tools**: RemoteMCPServer returns `None` for tools → Pydantic crash
 
 ### Next Commands
 
 ```bash
-# Build + deploy agent-registry [local]
-cd ~/work/repos/platform_monorepo && bash scripts/build-images.sh agent-registry
-k3d image import agent-registry:latest -c mewtwo
+# Run MLflow → PG migration
+AGW_URL=http://agent-gateway.genai.127.0.0.1.nip.io \
+MLFLOW_TRACKING_URI=http://mlflow.genai.127.0.0.1.nip.io \
+python scripts/migrate-mlflow-to-pg.py
 
 # Complete Langfuse setup
-open http://langfuse.genai.127.0.0.1.nip.io  # sign up, create project, get API keys
+open http://langfuse.genai.127.0.0.1.nip.io
 
-# Remaining work
-# - ConfigMap watcher for real-time agent sync
-# - Sandbox runtime (k8s Jobs for Claude Code SDK / OpenHands)
-# - Promotion workflow (shadow → canary → primary)
+# Verify n8n chat through new MCP proxy
+# chat-v1 workflow with mcp_tools: 'all' → agent-gateway proxy
+
+# Fix datahub MCP
+kubectl logs -n genai deployment/genai-mcp-datahub --tail=20
 ```

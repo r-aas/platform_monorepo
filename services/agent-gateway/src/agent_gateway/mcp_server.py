@@ -20,7 +20,6 @@ Tools exposed:
 
 from __future__ import annotations
 
-import asyncio
 import json
 
 from fastapi import APIRouter, Request
@@ -195,21 +194,21 @@ async def _dispatch(tool_name: str, arguments: dict) -> dict:
             return _ok(json.dumps({"name": agent.name, "description": agent.description, "runtime": agent.runtime, "skills": agent.skills}, indent=2))
 
         if tool_name == "list_skills":
-            skills = await asyncio.to_thread(list_skills)
+            skills = await list_skills()
             return _ok(json.dumps([{"name": s.name, "description": s.description, "version": s.version, "tags": s.tags} for s in skills], indent=2))
 
         if tool_name == "get_skill":
-            skill = await asyncio.to_thread(get_skill, arguments["name"])
+            skill = await get_skill(arguments["name"])
             return _ok(json.dumps({"name": skill.name, "description": skill.description, "version": skill.version, "tags": skill.tags, "task_count": len(skill.tasks)}, indent=2))
 
         if tool_name == "create_skill":
             skill = SkillDefinition(**arguments)
-            await asyncio.to_thread(create_skill, skill)
+            await create_skill(skill)
             return _ok(f"Skill '{skill.name}' created successfully.")
 
         if tool_name == "delete_skill":
             force = arguments.get("force", False)
-            await asyncio.to_thread(delete_skill, arguments["name"], force)
+            await delete_skill(arguments["name"], force)
             return _ok(f"Skill '{arguments['name']}' deleted.")
 
         # MCP management tools
