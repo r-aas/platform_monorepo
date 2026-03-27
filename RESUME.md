@@ -1,49 +1,65 @@
 # Platform Monorepo — Session Resume
 
-## Session: 2026-03-24 — Bootstrap Reliability + Benchmarkable Agents
+## Session: 2026-03-27 — AgenticOps Reference System + Benchmark Matrix
 
 ### Built
-- `task up` works zero-to-healthy in one command (19/19 smoke)
-- `task down` → `task up` verified end-to-end
-- `task stop` → `task start` verified (19/19 smoke)
-- Session continuity: multi-turn conversations with recall
-- Custom `mcp-kubernetes` Docker image (pre-installed npm package)
-- `sync-if-needed` skips helmfile when ArgoCD already deployed
-- Docker-compose GitLab fully removed — k8s only
 
-### Key Architecture Changes
-- `cluster-up` split into `cluster-create` (idempotent) + `cluster-configure` (always runs)
-- `cluster-configure`: fix-node-dns → CoreDNS restart → fix-local-path
-- CoreDNS restart after DNS fix (root cause of all DNS cascade failures)
-- `ensure-colima` adds FallbackDNS=8.8.8.8 to Colima VM systemd-resolved
-- `sync-if-needed` checks argocd-server deploy existence (not app sync status)
-- `wait-healthy` timeout is non-fatal (exit 0)
-- GitLab CE runs as StatefulSet in k3d (no docker-compose)
-- Session append uses native n8n HTTP Request nodes (Code node sandbox blocks ALL outbound HTTP)
+**Security Audit** — All hardcoded secrets removed, gitleaks clean (tree + 186 commits)
+- GitLab PATs, DataHub JWTs, MetaMCP default password, personal email
+- `.gitleaks.toml` allowlist for n8n encryption key name
+- Git remote URLs stripped of embedded PATs
 
-### Critical Gotchas
-- **n8n task runner sandbox blocks ALL outbound HTTP from Code nodes.** fetch, require('http'), axios, $helpers.httpRequest — all fail silently. Use native HTTP Request nodes.
-- **CoreDNS must be restarted after DNS fix.** Adding 8.8.8.8 to node resolv.conf is not enough — CoreDNS caches the old upstream config.
-- **ArgoCD app sync status is "Unknown" during startup.** Don't check app sync to decide whether to run helmfile — check if argocd-server deploy exists.
+**Benchmark Pipeline** — 3-model matrix complete (246 cases)
+- qwen2.5:7b: 78% (86/109) ← best performer
+- mistral:7b-instruct: 69% (67/97)
+- qwen2.5:14b: 55% (22/40) — fewer cases due to earlier process kill
+- Fixed json.loads AttributeError bug (non-dict JSON responses)
+- All logged to MLflow `__benchmarks` experiment
 
-### Benchmarkable Agents
-- 3 agents with real system prompts: mlops, developer, platform-admin
-- 42 prompts seeded into MLflow, 45 benchmark test cases (9 suites × 5 cases)
-- Native `/webhook/agent-eval` — supports agent mode + prompt mode + lite mode
-- LLM-as-judge scoring (relevance, helpfulness) with structured JSON output
-- **39/45 pass rate** (qwen2.5:7b, lite mode, 25 min)
-- **38/45 pass rate** (qwen2.5:14b, lite mode, higher quality scores: rel=0.88, hlp=0.77)
+**Langfuse (LLM Observability)** — Deployed via ArgoCD
+- Chart: `genai-langfuse`, Langfuse v3.161.0
+- External pgvector (DB: langfuse) + External MinIO (bucket: langfuse)
+- ClickHouse + Valkey subcharts
+- LiteLLM wired: `success_callback: ["langfuse"]`
+- URL: http://langfuse.genai.127.0.0.1.nip.io
 
-### Performance Optimizations
-- LiteLLM MLflow success_callback disabled — 30s → 1.8s per LLM call
-- Lite eval mode: skip agent-gateway, call LiteLLM directly (~10x faster)
-- n8n memory bumped to 2Gi (task runner OOMs at 1Gi under benchmark load)
-- n8n ingress proxy-read-timeout: 300s (eval calls take 30-120s)
-- Models registered in LiteLLM: qwen2.5:14b, qwen2.5:7b, mistral:7b-instruct
+**kagent (K8s Agent Platform, CNCF Sandbox)** — Deployed via ArgoCD
+- Chart: `genai-kagent`, kagent v0.8.0
+- 5 agents: mlops, developer, platform-admin (custom) + k8s, helm (built-in)
+- ModelConfig: OpenAI → LiteLLM → qwen2.5:14b
+- 5 RemoteMCPServers registered
+- URL: http://kagent.genai.127.0.0.1.nip.io
 
-### Next Steps
-- [local] Upload benchmark test cases as MLflow datasets (via /webhook/datasets)
-- [local] Tune prompts for platform-admin.plan failures (3/5 on both models)
-- [local] Run mistral:7b-instruct benchmark for 3-model matrix
-- [local] Langfuse trace logging (needs HTTP Request nodes in Trace Logger)
-- [local] Add template rendering to prompt-mode eval (fetch from MLflow, apply variables)
+**Agent Registry** — Chart + Dockerfile created
+- Chart: `genai-agent-registry`, agent-platform FastAPI service
+- URL: http://agent-registry.genai.127.0.0.1.nip.io (CrashLoopBackOff — needs image build)
+
+**agent-platform** — Public GitHub repo: https://github.com/r-aas/agent-platform
+- README with quickstart, agent spec format, SKILL.md, environment bindings
+
+### Known Issues
+
+1. **genai-agent-registry CrashLoopBackOff**: No image built yet — needs `agent-platform` code packaged
+2. **genai-mcp-datahub CrashLoopBackOff**: DataHub MCP server issue
+3. **kagent MCP tools**: RemoteMCPServer returns `None` for tools → Pydantic crash. Custom agents deployed WITHOUT tools
+4. **gemma3:12b benchmark**: Never completed (process killed). Model pulled and ready.
+5. **Langfuse keys**: Need UI sign-up → create project → set LANGFUSE_PUBLIC_KEY/SECRET_KEY in LiteLLM
+
+### Next Commands
+
+```bash
+# Run gemma3:12b benchmark [local]
+cd ~/work/repos/genai-mlops && uv run python scripts/benchmark.py --type agent --runtime direct --matrix --model gemma3:12b --log-mlflow
+
+# Build + deploy agent-registry [local]
+cd ~/work/repos/platform_monorepo && bash scripts/build-images.sh agent-registry
+k3d image import agent-registry:latest -c mewtwo
+
+# Complete Langfuse setup
+open http://langfuse.genai.127.0.0.1.nip.io  # sign up, create project, get API keys
+
+# Remaining work
+# - ConfigMap watcher for real-time agent sync
+# - Sandbox runtime (k8s Jobs for Claude Code SDK / OpenHands)
+# - Promotion workflow (shadow → canary → primary)
+```
