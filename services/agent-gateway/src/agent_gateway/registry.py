@@ -1,75 +1,52 @@
-"""Agent registry — reads agent definitions from MLflow prompt registry."""
+"""Agent registry — reads agent definitions from PostgreSQL."""
 
-import asyncio
-import json
-
-import mlflow
+from __future__ import annotations
 
 from agent_gateway.models import AgentDefinition, LlmConfig, MCPServerRef
+from agent_gateway.store.agents import get_agent as _db_get_agent
+from agent_gateway.store.agents import list_agents as _db_list_agents
 
 
-def _parse_agent_from_version(prompt_name: str, version) -> AgentDefinition:
-    """Parse an AgentDefinition from an MLflow PromptVersion."""
-    name = prompt_name.removeprefix("agent:")
-    tags = version.tags or {}
+def _row_to_agent(row) -> AgentDefinition:
+    """Convert an AgentRow to an AgentDefinition."""
+    spec = row.spec or {}
 
     mcp_servers = []
-    if mcp_json := tags.get("mcp_servers_json"):
-        for s in json.loads(mcp_json):
+    for s in spec.get("mcp_servers", []):
+        if isinstance(s, dict):
             mcp_servers.append(MCPServerRef(**s))
 
-    skills = []
-    if skills_json := tags.get("skills_json"):
-        skills = json.loads(skills_json)
-
-    inputs = []
-    if input_json := tags.get("input_schema"):
-        inputs = json.loads(input_json)
+    llm = spec.get("llm_config", {})
+    if isinstance(llm, dict):
+        llm_config = LlmConfig(
+            url=llm.get("url", llm.get("base_url", "")),
+            model_id=llm.get("model_id", llm.get("default_model", "")),
+            api_key=llm.get("api_key", llm.get("api_key_ref", "")),
+        )
+    else:
+        llm_config = LlmConfig()
 
     return AgentDefinition(
-        name=name,
-        description=tags.get("agent_description", ""),
-        system_prompt=version.template,
+        name=row.name,
+        description=spec.get("description", ""),
+        system_prompt=row.system_prompt or spec.get("system_prompt", ""),
         mcp_servers=mcp_servers,
-        skills=skills,
-        llm_config=LlmConfig(
-            url=tags.get("llm_url", ""),
-            model_id=tags.get("llm_model", ""),
-        ),
-        runtime=tags.get("runtime", "n8n"),
-        workflow=tags.get("workflow", ""),
-        inputs=inputs,
-        agentspec_version=tags.get("agentspec_version", "26.2.0"),
+        skills=row.skills or spec.get("skills", []),
+        llm_config=llm_config,
+        runtime=row.runtime or spec.get("runtime", "n8n"),
+        workflow=spec.get("workflow", spec.get("metadata", {}).get("workflow", "")),
+        inputs=spec.get("inputs", []),
+        agentspec_version=row.version or spec.get("agentspec_version", "26.2.0"),
     )
 
 
 async def get_agent(name: str) -> AgentDefinition:
-    """Look up an agent by name from MLflow."""
-
-    def _get():
-        client = mlflow.MlflowClient()
-        try:
-            version = client.get_prompt_version_by_alias(f"agent:{name}", "current")
-        except Exception as e:
-            raise KeyError(f"Agent '{name}' not found") from e
-        return _parse_agent_from_version(f"agent:{name}", version)
-
-    return await asyncio.to_thread(_get)
+    """Look up an agent by name from PostgreSQL."""
+    row = await _db_get_agent(name)
+    return _row_to_agent(row)
 
 
 async def list_agents() -> list[AgentDefinition]:
-    """List all agents from MLflow."""
-
-    def _list():
-        client = mlflow.MlflowClient()
-        prompts = client.search_prompts(filter_string="name LIKE 'agent:%'")
-        agents = []
-        for p in prompts:
-            try:
-                version = client.get_prompt_version_by_alias(p.name, "current")
-                agents.append(_parse_agent_from_version(p.name, version))
-            except Exception:
-                pass
-        return agents
-
-    return await asyncio.to_thread(_list)
+    """List all agents from PostgreSQL."""
+    rows = await _db_list_agents()
+    return [_row_to_agent(r) for r in rows]

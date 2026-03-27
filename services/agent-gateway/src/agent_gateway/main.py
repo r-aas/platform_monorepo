@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
+import logging
 
-import mlflow
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
@@ -11,18 +11,51 @@ from agent_gateway.routers.chat import router as chat_router
 from agent_gateway.routers.delegation import router as delegation_router
 from agent_gateway.routers.factory import router as factory_router
 from agent_gateway.routers.mcp import router as mcp_router
+from agent_gateway.routers.mcp_proxy import router as mcp_proxy_router
+from agent_gateway.routers.registry import router as registry_router
 from agent_gateway.routers.skills import router as skills_router
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
-    # Auto-discover and index all MCP tools from LiteLLM MCP gateway (non-fatal)
+    # Initialize PostgreSQL tables
+    from agent_gateway.store import init_db
+    await init_db()
+    logger.info("PostgreSQL store initialized")
+
+    # Seed default MCP servers on first boot
+    try:
+        from agent_gateway.store.seed import seed_default_servers
+        count = await seed_default_servers()
+        if count:
+            logger.info("Seeded %d default MCP servers", count)
+    except Exception as e:
+        logger.warning("MCP server seeding failed (non-fatal): %s", e)
+
+    # Refresh MCP proxy tool cache
+    try:
+        from agent_gateway.mcp_proxy import refresh_tools
+        tool_count = await refresh_tools(force=True)
+        logger.info("MCP proxy initialized with %d tools", tool_count)
+    except Exception as e:
+        logger.warning("MCP proxy refresh failed (non-fatal): %s", e)
+
+    # Auto-discover MCP tools from LiteLLM (legacy, non-fatal)
     try:
         from agent_gateway.mcp_discovery import index_all_tools
         await index_all_tools()
     except Exception:
         pass
+
+    # MLflow for factory/benchmark evals
+    try:
+        import mlflow
+        mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
+    except Exception:
+        pass
+
     yield
 
 
@@ -34,31 +67,13 @@ app.include_router(skills_router)
 app.include_router(mcp_router)
 app.include_router(gateway_mcp_router)
 app.include_router(factory_router)
+app.include_router(registry_router)
+app.include_router(mcp_proxy_router)
 
 
 @app.get("/health")
 async def health():
     return JSONResponse({"status": "healthy"})
-
-
-@app.get("/health/detail")
-async def health_detail():
-    import asyncio
-
-    def _check():
-        mlflow_status = "disconnected"
-        agents_loaded = 0
-        try:
-            client = mlflow.MlflowClient()
-            prompts = client.search_prompts(filter_string="name LIKE 'agent:%'")
-            agents_loaded = len(prompts)
-            mlflow_status = "connected"
-        except Exception:
-            pass
-        return {"status": "healthy", "mlflow": mlflow_status, "agents_loaded": agents_loaded}
-
-    result = await asyncio.to_thread(_check)
-    return JSONResponse(result)
 
 
 def cli():

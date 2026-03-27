@@ -100,7 +100,7 @@ async def recommend_mcp_tools(
     }
 
 
-@router.get("/namespaces")
+@router.get("/discovery/namespaces")
 async def list_namespaces():
     """List known MetaMCP namespaces and their tool counts."""
     idx = get_tool_index()

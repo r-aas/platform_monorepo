@@ -1,6 +1,0 @@
-apiVersion: v2
-name: agent-registry
-description: Agent Registry — portable agent/skill/environment registry with pgvector search
-type: application
-version: 0.1.0
-appVersion: "0.1.0"

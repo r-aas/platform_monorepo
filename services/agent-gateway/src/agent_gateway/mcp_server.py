@@ -4,12 +4,18 @@ Implements MCP Streamable HTTP transport (JSON-RPC 2.0 over HTTP POST).
 Endpoint: POST /gateway-mcp
 
 Tools exposed:
-- list_agents      — list all registered agents
-- get_agent        — get agent definition by name
-- list_skills      — list all registered skills
-- get_skill        — get skill definition by name
-- create_skill     — register a new skill
-- delete_skill     — delete a skill by name
+- list_agents            — list all registered agents
+- get_agent              — get agent definition by name
+- list_skills            — list all registered skills
+- get_skill              — get skill definition by name
+- create_skill           — register a new skill
+- delete_skill           — delete a skill by name
+- list_mcp_servers       — list registered MCP backend servers
+- register_mcp_server    — register a new MCP backend server
+- remove_mcp_server      — remove an MCP backend server
+- list_mcp_tools         — list all aggregated MCP tools
+- call_mcp_tool          — call a tool on a backend MCP server
+- health_check_mcp_server — check health of a specific MCP server
 """
 
 from __future__ import annotations
@@ -105,6 +111,70 @@ _TOOLS: list[dict] = [
             "required": ["name"],
         },
     },
+    # MCP management tools
+    {
+        "name": "list_mcp_servers",
+        "description": "List all registered MCP backend servers with their status and tool counts.",
+        "inputSchema": {"type": "object", "properties": {}, "required": []},
+    },
+    {
+        "name": "register_mcp_server",
+        "description": "Register a new MCP backend server endpoint.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Server name (unique identifier)"},
+                "url": {"type": "string", "description": "MCP server endpoint URL"},
+                "transport": {"type": "string", "description": "Transport type (streamable-http or sse)", "default": "streamable-http"},
+                "namespace": {"type": "string", "description": "Logical namespace for grouping"},
+                "description": {"type": "string", "description": "Human-readable description"},
+                "auth_token": {"type": "string", "description": "Bearer token for authentication"},
+            },
+            "required": ["name", "url"],
+        },
+    },
+    {
+        "name": "remove_mcp_server",
+        "description": "Remove a registered MCP backend server.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"name": {"type": "string", "description": "Server name to remove"}},
+            "required": ["name"],
+        },
+    },
+    {
+        "name": "list_mcp_tools",
+        "description": "List aggregated MCP tools. Optionally filter by namespace or server.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "namespace": {"type": "string", "description": "Filter by namespace (e.g., platform, orchestration, data)"},
+                "server": {"type": "string", "description": "Filter by server name (e.g., kubernetes, gitlab, n8n)"},
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "call_mcp_tool",
+        "description": "Call a specific tool on a backend MCP server by name.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "tool_name": {"type": "string", "description": "Name of the tool to call"},
+                "arguments": {"type": "object", "description": "Arguments to pass to the tool"},
+            },
+            "required": ["tool_name"],
+        },
+    },
+    {
+        "name": "health_check_mcp_server",
+        "description": "Check health of a specific MCP backend server by re-fetching its tools.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"name": {"type": "string", "description": "Server name to health-check"}},
+            "required": ["name"],
+        },
+    },
 ]
 
 
@@ -141,6 +211,71 @@ async def _dispatch(tool_name: str, arguments: dict) -> dict:
             force = arguments.get("force", False)
             await asyncio.to_thread(delete_skill, arguments["name"], force)
             return _ok(f"Skill '{arguments['name']}' deleted.")
+
+        # MCP management tools
+        if tool_name == "list_mcp_servers":
+            from agent_gateway.store.mcp_servers import list_mcp_servers as _list_servers
+            from agent_gateway.mcp_proxy import get_proxy_state
+            rows = await _list_servers()
+            state = get_proxy_state()
+            servers = [
+                {"name": r.name, "url": r.url, "transport": r.transport, "namespace": r.namespace,
+                 "description": r.description, "status": r.health_status,
+                 "tool_count": len([t for t in state.tools if t.server_name == r.name])}
+                for r in rows
+            ]
+            return _ok(json.dumps(servers, indent=2))
+
+        if tool_name == "register_mcp_server":
+            from agent_gateway.store.mcp_servers import upsert_mcp_server
+            from agent_gateway.mcp_proxy import refresh_single_server
+            row = await upsert_mcp_server(
+                name=arguments["name"],
+                url=arguments["url"],
+                transport=arguments.get("transport", "streamable-http"),
+                namespace=arguments.get("namespace", ""),
+                description=arguments.get("description", ""),
+                auth_token=arguments.get("auth_token", ""),
+            )
+            try:
+                count = await refresh_single_server(arguments["name"])
+            except Exception:
+                count = 0
+            return _ok(f"MCP server '{row.name}' registered. {count} tools discovered.")
+
+        if tool_name == "remove_mcp_server":
+            from agent_gateway.store.mcp_servers import delete_mcp_server as _del_server
+            from agent_gateway.mcp_proxy import get_proxy_state
+            await _del_server(arguments["name"])
+            state = get_proxy_state()
+            state.tools = [t for t in state.tools if t.server_name != arguments["name"]]
+            state.tool_map = {k: v for k, v in state.tool_map.items() if v.server_name != arguments["name"]}
+            return _ok(f"MCP server '{arguments['name']}' removed.")
+
+        if tool_name == "list_mcp_tools":
+            from agent_gateway.mcp_proxy import proxy_tools_list, get_namespaces
+            ns = arguments.get("namespace")
+            srv = arguments.get("server")
+            tools = await proxy_tools_list(namespace=ns, server=srv)
+            scope = ns or srv or "all"
+            summary = {
+                "scope": scope,
+                "count": len(tools),
+                "tools": [{"name": t["name"], "description": t["description"][:120]} for t in tools],
+            }
+            if not ns and not srv:
+                summary["namespaces"] = {k: len(v) for k, v in get_namespaces().items()}
+            return _ok(json.dumps(summary, indent=2))
+
+        if tool_name == "call_mcp_tool":
+            from agent_gateway.mcp_proxy import proxy_tools_call
+            result = await proxy_tools_call(arguments["tool_name"], arguments.get("arguments", {}))
+            return _ok(json.dumps(result, indent=2))
+
+        if tool_name == "health_check_mcp_server":
+            from agent_gateway.mcp_proxy import refresh_single_server
+            count = await refresh_single_server(arguments["name"])
+            return _ok(f"MCP server '{arguments['name']}' healthy. {count} tools available.")
 
         return _error(f"Unknown tool: {tool_name}")
 
