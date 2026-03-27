@@ -30,6 +30,15 @@ helmWorkloads:
     namespace: platform
     syncWave: "0"
 
+  - appName: genai-plane
+    project: genai
+    repoUrl: https://helm.plane.so/
+    chart: plane-ce
+    chartVersion: "1.4.1"
+    valuesPath: charts/genai-plane
+    namespace: genai
+    syncWave: "1"
+
 # ── Cross-repo workloads ──
 # Uncomment when these repos are pushed to in-cluster GitLab:
 # crossRepoWorkloads:

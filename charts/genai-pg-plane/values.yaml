@@ -1,0 +1,17 @@
+postgresql:
+  fullnameOverride: genai-pg-plane
+  auth:
+    username: plane
+    password: plane
+    database: plane
+  primary:
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 100m
+      limits:
+        memory: 512Mi
+        cpu: "1.0"
+    persistence:
+      enabled: true
+      size: 2Gi

@@ -1,0 +1,134 @@
+# Plane CE — Project Management for k3d
+# Chart: makeplane/plane-ce from https://helm.plane.so/
+# Docs: https://docs.plane.so/self-hosting/methods/kubernetes
+#
+# Uses shared infra: PostgreSQL (genai-pg-plane), Redis (langfuse-redis), MinIO (genai-minio)
+# RabbitMQ runs locally (no shared instance in stack yet)
+
+planeVersion: stable
+
+ingress:
+  enabled: true
+  appHost: "plane.genai.127.0.0.1.nip.io"
+  ingressClass: "nginx"
+  ingress_annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+
+# --- Disable bundled infra, use shared ---
+postgres:
+  local_setup: false
+
+redis:
+  local_setup: false
+
+minio:
+  local_setup: false
+
+# RabbitMQ — no shared instance, run locally
+rabbitmq:
+  local_setup: true
+  image: rabbitmq:3.13.6-management-alpine
+  volumeSize: 200Mi
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 50m
+    limits:
+      memory: 256Mi
+      cpu: "0.5"
+
+# --- Override images to Docker Hub for ARM64 ---
+web:
+  image: makeplane/plane-frontend:stable
+  pullPolicy: IfNotPresent
+  resources:
+    requests:
+      memory: 50Mi
+      cpu: 50m
+    limits:
+      memory: 256Mi
+      cpu: "0.5"
+
+space:
+  image: makeplane/plane-space:stable
+  pullPolicy: IfNotPresent
+  resources:
+    requests:
+      memory: 50Mi
+      cpu: 50m
+    limits:
+      memory: 256Mi
+      cpu: "0.5"
+
+admin:
+  image: makeplane/plane-admin:stable
+  pullPolicy: IfNotPresent
+  resources:
+    requests:
+      memory: 50Mi
+      cpu: 50m
+    limits:
+      memory: 256Mi
+      cpu: "0.5"
+
+live:
+  image: makeplane/plane-live:stable
+  pullPolicy: IfNotPresent
+  resources:
+    requests:
+      memory: 50Mi
+      cpu: 50m
+    limits:
+      memory: 256Mi
+      cpu: "0.5"
+
+api:
+  image: makeplane/plane-backend:stable
+  pullPolicy: IfNotPresent
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: "1.0"
+
+worker:
+  image: makeplane/plane-backend:stable
+  pullPolicy: IfNotPresent
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: "1.0"
+
+beatworker:
+  image: makeplane/plane-backend:stable
+  pullPolicy: IfNotPresent
+  resources:
+    requests:
+      memory: 64Mi
+      cpu: 50m
+    limits:
+      memory: 256Mi
+      cpu: "0.5"
+
+env:
+  # External PostgreSQL (genai-pg-plane in same namespace)
+  pgdb_remote_url: "postgresql://plane:plane@genai-pg-plane.genai.svc.cluster.local:5432/plane"
+
+  # External Redis (reuse langfuse redis — it's a general-purpose Valkey)
+  remote_redis_url: "redis://genai-langfuse-redis-primary.genai.svc.cluster.local:6379/"
+
+  # External MinIO (shared genai-minio)
+  docstore_bucket: "plane-uploads"
+  aws_access_key: "minio"
+  aws_secret_access_key: "minio123"
+  aws_region: ""
+  aws_s3_endpoint_url: "http://genai-minio.genai.svc.cluster.local:9000"
+
+  # Secrets (generate real ones for prod)
+  secret_key: "plane-k3d-dev-secret-key-change-in-prod"
+  live_server_secret_key: "plane-k3d-dev-live-secret-change-in-prod"

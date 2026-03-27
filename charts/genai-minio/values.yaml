@@ -19,6 +19,8 @@ minio:
       policy: none
     - name: langfuse
       policy: none
+    - name: plane-uploads
+      policy: none
   consoleIngress:
     enabled: false
   ingress:

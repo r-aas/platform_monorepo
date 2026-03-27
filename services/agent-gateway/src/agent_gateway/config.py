@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     sandbox_timeout: int = 3600
     sandbox_cpu_limit: str = "2"
     sandbox_memory_limit: str = "4Gi"
+    sandbox_warm_pool_size: int = 0  # 0 = disabled, N = keep N warm pods ready
+    sandbox_workspace_size: str = "1Gi"  # PVC size for workspace storage
 
     # A2A protocol
     a2a_protocol_version: str = "0.2.5"

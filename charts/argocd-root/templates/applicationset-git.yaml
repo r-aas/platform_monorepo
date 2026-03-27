@@ -37,6 +37,9 @@ spec:
             exclude: true
           - path: charts/namespace-init
             exclude: true
+          # Values-only dirs for helmWorkloads (external Helm repos)
+          - path: charts/genai-plane
+            exclude: true
   template:
     metadata:
       name: '{{`{{ .path.basename }}`}}'
