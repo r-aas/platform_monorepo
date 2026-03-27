@@ -31,6 +31,8 @@ class AgentRow(Base):
     skills = Column(ARRAY(String), default=[])
     runtime = Column(String, default="n8n")
     tags = Column(ARRAY(String), default=[])
+    promotion_stage = Column(String, default="primary")  # shadow, canary, primary
+    canary_weight = Column(Integer, default=0)  # % of traffic for canary (0-100)
     embedding = Column(Vector(EMBEDDING_DIM))
     git_sha = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -148,6 +150,8 @@ async def init_db():
     # Lightweight column migrations — add missing columns to existing tables
     _migrations = [
         ("mcp_servers", "auth_token", "VARCHAR DEFAULT ''"),
+        ("agents", "promotion_stage", "VARCHAR DEFAULT 'primary'"),
+        ("agents", "canary_weight", "INTEGER DEFAULT 0"),
     ]
     async with engine.begin() as conn:
         for table, col, col_type in _migrations:

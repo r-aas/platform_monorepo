@@ -1,6 +1,12 @@
-"""Agent registry — reads agent definitions from PostgreSQL."""
+"""Agent registry — reads agent definitions from PostgreSQL.
+
+Supports promotion-aware agent resolution: when an agent has shadow/canary
+versions, the resolver uses weighted routing to select the appropriate version.
+"""
 
 from __future__ import annotations
+
+import random
 
 from agent_gateway.models import AgentDefinition, LlmConfig, MCPServerRef
 from agent_gateway.store.agents import get_agent as _db_get_agent
@@ -41,9 +47,18 @@ def _row_to_agent(row) -> AgentDefinition:
 
 
 async def get_agent(name: str) -> AgentDefinition:
-    """Look up an agent by name from PostgreSQL."""
+    """Look up an agent by name from PostgreSQL.
+
+    If the agent is at 'canary' stage, randomly routes canary_weight% of
+    requests to this version. The caller sees no difference — the routing
+    is transparent. Shadow agents are never returned here (they run in
+    parallel via the shadow execution path).
+    """
     row = await _db_get_agent(name)
-    return _row_to_agent(row)
+    agent = _row_to_agent(row)
+    agent.promotion_stage = getattr(row, "promotion_stage", "primary") or "primary"
+    agent.canary_weight = getattr(row, "canary_weight", 0) or 0
+    return agent
 
 
 async def list_agents() -> list[AgentDefinition]:

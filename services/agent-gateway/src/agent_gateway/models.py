@@ -62,6 +62,8 @@ class AgentDefinition(BaseModel):
     workflow: str = ""
     inputs: list[dict[str, Any]] = []
     agentspec_version: str = "26.2.0"
+    promotion_stage: str = "primary"
+    canary_weight: int = 0
 
 
 class PipelineStage(BaseModel):
