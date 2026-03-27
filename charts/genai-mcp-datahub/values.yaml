@@ -12,8 +12,9 @@ service:
 
 env:
   DATAHUB_GMS_URL: "http://genai-datahub-datahub-gms.genai.svc.cluster.local:8080"
-  # DATAHUB_GMS_TOKEN injected from k8s secret "datahub-tokens"
-  DATAHUB_GMS_TOKEN: ""
+  # With GMS auth disabled in k3d, this can be any non-empty value.
+  # For prod, inject from k8s secret "datahub-tokens".
+  DATAHUB_GMS_TOKEN: "no-auth"
 
 resources:
   requests:
