@@ -14,6 +14,7 @@ includes:
   factory: ~/work/taskfiles/factory.yml
   agents: ~/work/repos/platform_monorepo/taskfiles/agents.yml
   arch: ~/work/repos/platform_monorepo/taskfiles/arch.yml
+  claude: ~/work/taskfiles/claude.yml
 
 tasks:
   default:
@@ -308,6 +309,13 @@ tasks:
     desc: "Seed agent registry with agents and environment bindings"
     cmds:
       - bash scripts/seed-registry.sh
+
+  # ── Observability ────────────────────────────────────────
+
+  langfuse-setup:
+    desc: "Bootstrap Langfuse: create account, project, API keys → k8s secret → restart LiteLLM"
+    cmds:
+      - bash scripts/langfuse-setup.sh
 
   # ── Utilities ───────────────────────────────────────────────
 

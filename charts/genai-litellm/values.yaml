@@ -25,6 +25,16 @@ masterkeySecretName: ""
 masterkeySecretKey: "master-key"
 
 # ---------------------------------------------------------------------------
+# Langfuse — observability keys from k8s secret
+# Create secret: kubectl create secret generic langfuse-api-keys -n genai \
+#   --from-literal=public-key=pk-lf-... --from-literal=secret-key=sk-lf-...
+# ---------------------------------------------------------------------------
+langfuse:
+  existingSecret: "langfuse-api-keys"
+  publicKeyKey: "public-key"
+  secretKeyKey: "secret-key"
+
+# ---------------------------------------------------------------------------
 # Database — required for MCP gateway registry, virtual keys, A2A agents
 # ---------------------------------------------------------------------------
 db:
@@ -156,10 +166,8 @@ config:
 env:
   MLFLOW_TRACKING_URI: "http://genai-mlflow.genai.svc.cluster.local"
   MLFLOW_EXPERIMENT_NAME: "litellm-traces"
-  # Langfuse observability — async trace collection
-  LANGFUSE_HOST: "http://genai-langfuse-langfuse-web.genai.svc.cluster.local:3000"
-  LANGFUSE_PUBLIC_KEY: ""   # Set after Langfuse first boot (create project → API keys)
-  LANGFUSE_SECRET_KEY: ""   # Set after Langfuse first boot
+  # Langfuse observability — host only; keys come from langfuse.existingSecret
+  LANGFUSE_HOST: "http://genai-langfuse-web.genai.svc.cluster.local:3000"
   # Database credentials — username is pgvector, password from secret
   DATABASE_USERNAME: "pgvector"
   DATABASE_HOST: "genai-pgvector"

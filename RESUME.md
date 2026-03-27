@@ -9,12 +9,13 @@
 - `.gitleaks.toml` allowlist for n8n encryption key name
 - Git remote URLs stripped of embedded PATs
 
-**Benchmark Pipeline** — 3-model matrix complete (246 cases)
-- qwen2.5:7b: 78% (86/109) ← best performer
+**Benchmark Pipeline** — 3-model matrix complete (246 cases), MLflow logging fixed
+- qwen2.5:7b: 78% (86/109) — best performer
 - mistral:7b-instruct: 69% (67/97)
 - qwen2.5:14b: 55% (22/40) — fewer cases due to earlier process kill
 - Fixed json.loads AttributeError bug (non-dict JSON responses)
-- All logged to MLflow `__benchmarks` experiment
+- Fixed MLflow logging: GET for experiment lookup, timestamps on metrics
+- All logged to MLflow `__benchmarks` experiment (verified: 19 metrics + 4 params)
 
 **Langfuse (LLM Observability)** — Deployed via ArgoCD
 - Chart: `genai-langfuse`, Langfuse v3.161.0
@@ -30,27 +31,28 @@
 - 5 RemoteMCPServers registered
 - URL: http://kagent.genai.127.0.0.1.nip.io
 
-**Agent Registry** — Chart + Dockerfile created
+**Agent Registry + Environment Bindings**
 - Chart: `genai-agent-registry`, agent-platform FastAPI service
-- URL: http://agent-registry.genai.127.0.0.1.nip.io (CrashLoopBackOff — needs image build)
+- Environment binding: `agents/envs/k3d-mewtwo.yaml` (LLM, MCP, runtimes)
+- Seed script: `scripts/seed-registry.sh` → 3 agents + 1 env registered
+- Resolution verified: `/envs/k3d-mewtwo/resolve/mlops` returns fully-resolved spec
+- `task seed-registry` wired in Taskfile
+- URL: http://agent-registry.genai.127.0.0.1.nip.io
 
 **agent-platform** — Public GitHub repo: https://github.com/r-aas/agent-platform
 - README with quickstart, agent spec format, SKILL.md, environment bindings
 
 ### Known Issues
 
-1. **genai-agent-registry CrashLoopBackOff**: No image built yet — needs `agent-platform` code packaged
-2. **genai-mcp-datahub CrashLoopBackOff**: DataHub MCP server issue
+1. **genai-agent-registry CrashLoopBackOff**: Needs image build from agent-platform source
+2. **genai-mcp-datahub CrashLoopBackOff**: DataHub MCP server issue (pre-existing)
 3. **kagent MCP tools**: RemoteMCPServer returns `None` for tools → Pydantic crash. Custom agents deployed WITHOUT tools
-4. **gemma3:12b benchmark**: Never completed (process killed). Model pulled and ready.
+4. **gemma3:12b benchmark**: Running now — check with `ps aux | grep benchmark`
 5. **Langfuse keys**: Need UI sign-up → create project → set LANGFUSE_PUBLIC_KEY/SECRET_KEY in LiteLLM
 
 ### Next Commands
 
 ```bash
-# Run gemma3:12b benchmark [local]
-cd ~/work/repos/genai-mlops && uv run python scripts/benchmark.py --type agent --runtime direct --matrix --model gemma3:12b --log-mlflow
-
 # Build + deploy agent-registry [local]
 cd ~/work/repos/platform_monorepo && bash scripts/build-images.sh agent-registry
 k3d image import agent-registry:latest -c mewtwo

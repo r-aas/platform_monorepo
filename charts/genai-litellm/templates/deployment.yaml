@@ -60,6 +60,19 @@ spec:
                   name: {{ .Release.Name }}-masterkey
                   key: masterkey
             {{- end }}
+            # Langfuse observability — keys from secret
+            {{- if .Values.langfuse.existingSecret }}
+            - name: LANGFUSE_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.langfuse.existingSecret }}
+                  key: {{ .Values.langfuse.publicKeyKey | default "public-key" }}
+            - name: LANGFUSE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.langfuse.existingSecret }}
+                  key: {{ .Values.langfuse.secretKeyKey | default "secret-key" }}
+            {{- end }}
             # Database URL — build from parts or take from env directly
             {{- if not (index .Values.env "DATABASE_URL") }}
             {{- if .Values.db.useExisting }}
