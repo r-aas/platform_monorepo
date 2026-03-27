@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: agent-registry
-  tag: latest
+  tag: v0.1.1
   pullPolicy: Never
 
 service:

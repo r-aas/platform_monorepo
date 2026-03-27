@@ -7,12 +7,11 @@ RUN pip install --no-cache-dir uv
 WORKDIR /build
 COPY pyproject.toml uv.lock ./
 COPY src/ src/
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev && uv pip install --no-deps .
 
 FROM python:3.12-slim
 
 COPY --from=builder /build/.venv /app/.venv
-COPY --from=builder /build/src /app/src
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1
