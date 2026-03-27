@@ -198,6 +198,14 @@ async def _fetch_tools_from_server(
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(url, json=payload, headers=headers)
+
+            # Session expired or invalid — re-initialize and retry
+            if resp.status_code in (400, 401, 404):
+                logger.info("Got %d from %s — re-initializing session", resp.status_code, name)
+                session = await _initialize_server(name, url, auth_token, timeout)
+                headers = _build_headers(auth_token=auth_token, session_id=session.session_id)
+                resp = await client.post(url, json=payload, headers=headers)
+
             resp.raise_for_status()
             data = _parse_response(resp)
 
@@ -237,6 +245,13 @@ async def _call_backend_tool(
 
     async with httpx.AsyncClient(timeout=60.0) as client:
         resp = await client.post(server_url, json=payload, headers=headers)
+
+        # Session expired — re-initialize and retry
+        if resp.status_code in (400, 401, 404):
+            session = await _initialize_server(server_name, server_url, auth_token)
+            headers = _build_headers(auth_token=auth_token, session_id=session.session_id)
+            resp = await client.post(server_url, json=payload, headers=headers)
+
         resp.raise_for_status()
         data = _parse_response(resp)
         if "error" in data:
