@@ -1,0 +1,39 @@
+environment: k3d-mewtwo
+cluster: mewtwo
+
+gateway:
+  url: "http://agent-gateway.genai.127.0.0.1.nip.io"
+  internal: "http://genai-agent-gateway:8000"
+
+llm:
+  base_url: "http://genai-litellm.genai.svc.cluster.local:4000/v1"
+  api_key_ref: "sk-litellm-mewtwo-local"
+  default_model: "qwen2.5:14b"
+  provider: "openai-compatible"
+
+mcp_registry: "http://genai-mcp-kubernetes:8080"
+
+capabilities:
+  kubernetes:
+    mcp_server: mcp-kubernetes
+    url: "http://genai-mcp-kubernetes:8080/sse"
+  git:
+    mcp_server: mcp-gitlab
+    url: "http://genai-mcp-gitlab:8080/sse"
+  workflows:
+    mcp_server: mcp-n8n
+    url: "http://genai-mcp-n8n:8080/sse"
+  experiment-tracking:
+    mcp_server: mlflow
+    url: "http://genai-mlflow:5000"
+  model-registry:
+    mcp_server: mlflow
+    url: "http://genai-mlflow:5000"
+
+runtimes:
+  direct:
+    url: "http://genai-litellm.genai.svc.cluster.local:4000/v1"
+    namespace: genai
+  gateway:
+    url: "http://genai-agent-gateway:8000"
+    namespace: genai
