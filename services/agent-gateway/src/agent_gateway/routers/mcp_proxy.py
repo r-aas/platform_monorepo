@@ -30,7 +30,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sse_starlette.sse import EventSourceResponse
 
 from agent_gateway.mcp_proxy import (
@@ -118,7 +118,21 @@ def _sse_generator(message_url: str):
 @router.post("/proxy")
 async def mcp_proxy_streamable(request: Request) -> JSONResponse:
     body = await request.json()
-    return JSONResponse(await _handle_jsonrpc(body))
+    method = body.get("method", "")
+
+    # Streamable HTTP: notifications don't need a response body
+    if method.startswith("notifications/"):
+        await _handle_jsonrpc(body)
+        return Response(status_code=202)
+
+    result = await _handle_jsonrpc(body)
+
+    # Include Mcp-Session-Id header (required by StreamableHTTPClientTransport)
+    session_id = request.headers.get("mcp-session-id") or str(uuid.uuid4())
+    return JSONResponse(
+        content=result,
+        headers={"Mcp-Session-Id": session_id},
+    )
 
 
 @router.get("/proxy/sse")
@@ -149,7 +163,15 @@ async def mcp_proxy_sse_post(request: Request) -> JSONResponse:
 @router.post("/proxy/ns/{namespace}")
 async def mcp_proxy_ns_streamable(namespace: str, request: Request) -> JSONResponse:
     body = await request.json()
-    return JSONResponse(await _handle_jsonrpc(body, namespace=namespace))
+    method = body.get("method", "")
+    if method.startswith("notifications/"):
+        await _handle_jsonrpc(body, namespace=namespace)
+        return JSONResponse(content=None, status_code=202)
+    session_id = request.headers.get("mcp-session-id") or str(uuid.uuid4())
+    return JSONResponse(
+        content=await _handle_jsonrpc(body, namespace=namespace),
+        headers={"Mcp-Session-Id": session_id},
+    )
 
 
 @router.get("/proxy/ns/{namespace}/sse")
@@ -180,7 +202,15 @@ async def mcp_proxy_ns_sse_post(namespace: str, request: Request) -> JSONRespons
 @router.post("/proxy/server/{server}")
 async def mcp_proxy_server_streamable(server: str, request: Request) -> JSONResponse:
     body = await request.json()
-    return JSONResponse(await _handle_jsonrpc(body, server=server))
+    method = body.get("method", "")
+    if method.startswith("notifications/"):
+        await _handle_jsonrpc(body, server=server)
+        return JSONResponse(content=None, status_code=202)
+    session_id = request.headers.get("mcp-session-id") or str(uuid.uuid4())
+    return JSONResponse(
+        content=await _handle_jsonrpc(body, server=server),
+        headers={"Mcp-Session-Id": session_id},
+    )
 
 
 @router.get("/proxy/server/{server}/sse")

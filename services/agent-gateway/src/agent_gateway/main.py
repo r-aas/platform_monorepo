@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import asyncio
 import logging
 
 from fastapi import FastAPI
@@ -25,7 +26,7 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("PostgreSQL store initialized")
 
-    # Seed default MCP servers on first boot
+    # Seed default MCP servers on first boot (must complete before tool refresh)
     try:
         from agent_gateway.store.seed import seed_default_servers
         count = await seed_default_servers()
@@ -34,29 +35,34 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("MCP server seeding failed (non-fatal): %s", e)
 
-    # Refresh MCP proxy tool cache
-    try:
+    # Parallel startup: refresh MCP tools + legacy discovery + MLflow init
+    async def _refresh_mcp():
         from agent_gateway.mcp_proxy import refresh_tools
         tool_count = await refresh_tools(force=True)
         logger.info("MCP proxy initialized with %d tools", tool_count)
-    except Exception as e:
-        logger.warning("MCP proxy refresh failed (non-fatal): %s", e)
 
-    # Auto-discover MCP tools from LiteLLM (legacy, non-fatal)
-    try:
+    async def _legacy_discovery():
         from agent_gateway.mcp_discovery import index_all_tools
         await index_all_tools()
-    except Exception:
-        pass
 
-    # MLflow for factory/benchmark evals
-    try:
+    async def _mlflow_init():
         import mlflow
         mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
-    except Exception:
-        pass
+
+    startup_tasks = [_refresh_mcp(), _legacy_discovery(), _mlflow_init()]
+    results = await asyncio.gather(*startup_tasks, return_exceptions=True)
+    for i, result in enumerate(results):
+        if isinstance(result, Exception):
+            logger.warning("Startup task %d failed (non-fatal): %s", i, result)
 
     yield
+
+    # Shutdown: close persistent HTTP client
+    try:
+        from agent_gateway.mcp_proxy import close_http_client
+        await close_http_client()
+    except Exception:
+        pass
 
 
 app = FastAPI(title="Agent Gateway", lifespan=lifespan)

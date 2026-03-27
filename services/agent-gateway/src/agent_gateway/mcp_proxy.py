@@ -81,6 +81,28 @@ class ProxyState:
 
 _state = ProxyState()
 
+# Persistent HTTP client — reuses connections across requests
+_http_client: httpx.AsyncClient | None = None
+
+
+def _get_http_client() -> httpx.AsyncClient:
+    """Return a persistent httpx.AsyncClient, creating it on first use."""
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = httpx.AsyncClient(
+            timeout=30.0,
+            limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
+        )
+    return _http_client
+
+
+async def close_http_client() -> None:
+    """Close the persistent HTTP client (call on shutdown)."""
+    global _http_client
+    if _http_client and not _http_client.is_closed:
+        await _http_client.aclose()
+        _http_client = None
+
 
 def get_proxy_state() -> ProxyState:
     return _state
@@ -169,14 +191,14 @@ async def _initialize_server(
     session = ServerSession()
 
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.post(url, json=payload, headers=headers)
-            resp.raise_for_status()
-            sid = resp.headers.get("mcp-session-id", "")
-            if sid:
-                session.session_id = sid
-            session.initialized = True
-            logger.info("Initialized MCP session with %s (session_id=%s)", name, sid or "none")
+        client = _get_http_client()
+        resp = await client.post(url, json=payload, headers=headers, timeout=timeout)
+        resp.raise_for_status()
+        sid = resp.headers.get("mcp-session-id", "")
+        if sid:
+            session.session_id = sid
+        session.initialized = True
+        logger.info("Initialized MCP session with %s (session_id=%s)", name, sid or "none")
     except Exception as e:
         logger.warning("Failed to initialize session with %s: %s", name, e)
 
@@ -196,30 +218,30 @@ async def _fetch_tools_from_server(
     headers = _build_headers(auth_token=auth_token, session_id=session.session_id)
 
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.post(url, json=payload, headers=headers)
+        client = _get_http_client()
+        resp = await client.post(url, json=payload, headers=headers, timeout=timeout)
 
-            # Session expired or invalid — re-initialize and retry
-            if resp.status_code in (400, 401, 404):
-                logger.info("Got %d from %s — re-initializing session", resp.status_code, name)
-                session = await _initialize_server(name, url, auth_token, timeout)
-                headers = _build_headers(auth_token=auth_token, session_id=session.session_id)
-                resp = await client.post(url, json=payload, headers=headers)
+        # Session expired or invalid — re-initialize and retry
+        if resp.status_code in (400, 401, 404):
+            logger.info("Got %d from %s — re-initializing session", resp.status_code, name)
+            session = await _initialize_server(name, url, auth_token, timeout)
+            headers = _build_headers(auth_token=auth_token, session_id=session.session_id)
+            resp = await client.post(url, json=payload, headers=headers, timeout=timeout)
 
+        resp.raise_for_status()
+        data = _parse_response(resp)
+
+        if "error" in data and "session" in str(data.get("error", {}).get("message", "")).lower():
+            session = await _initialize_server(name, url, auth_token, timeout)
+            headers = _build_headers(auth_token=auth_token, session_id=session.session_id)
+            resp = await client.post(url, json=payload, headers=headers, timeout=timeout)
             resp.raise_for_status()
             data = _parse_response(resp)
 
-            if "error" in data and "session" in str(data.get("error", {}).get("message", "")).lower():
-                session = await _initialize_server(name, url, auth_token, timeout)
-                headers = _build_headers(auth_token=auth_token, session_id=session.session_id)
-                resp = await client.post(url, json=payload, headers=headers)
-                resp.raise_for_status()
-                data = _parse_response(resp)
-
-            result = data.get("result", {})
-            tools = result.get("tools", [])
-            await update_server_health(name, "healthy", [t.get("name", "") for t in tools])
-            return tools
+        result = data.get("result", {})
+        tools = result.get("tools", [])
+        await update_server_health(name, "healthy", [t.get("name", "") for t in tools])
+        return tools
     except Exception as e:
         logger.warning("Failed to fetch tools from %s (%s): %s", name, url, e)
         try:
@@ -243,20 +265,20 @@ async def _call_backend_tool(
     }
     headers = _build_headers(auth_token=auth_token, session_id=session.session_id)
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.post(server_url, json=payload, headers=headers)
+    client = _get_http_client()
+    resp = await client.post(server_url, json=payload, headers=headers, timeout=60.0)
 
-        # Session expired — re-initialize and retry
-        if resp.status_code in (400, 401, 404):
-            session = await _initialize_server(server_name, server_url, auth_token)
-            headers = _build_headers(auth_token=auth_token, session_id=session.session_id)
-            resp = await client.post(server_url, json=payload, headers=headers)
+    # Session expired — re-initialize and retry
+    if resp.status_code in (400, 401, 404):
+        session = await _initialize_server(server_name, server_url, auth_token)
+        headers = _build_headers(auth_token=auth_token, session_id=session.session_id)
+        resp = await client.post(server_url, json=payload, headers=headers, timeout=60.0)
 
-        resp.raise_for_status()
-        data = _parse_response(resp)
-        if "error" in data:
-            return {"content": [{"type": "text", "text": data["error"].get("message", "Backend error")}], "isError": True}
-        return data.get("result", {})
+    resp.raise_for_status()
+    data = _parse_response(resp)
+    if "error" in data:
+        return {"content": [{"type": "text", "text": data["error"].get("message", "Backend error")}], "isError": True}
+    return data.get("result", {})
 
 
 # ---------------------------------------------------------------------------
