@@ -77,10 +77,17 @@ async def chat_completions(request: Request):
                 },
             )
 
+        # Track which variant handled the request (canary observability)
+        variant_headers = {
+            "X-Agent-Variant": agent.name,
+            "X-Agent-Stage": agent.promotion_stage or "primary",
+        }
+
         if stream:
             return StreamingResponse(
                 runtime.invoke(run_config),
                 media_type="text/event-stream",
+                headers=variant_headers,
             )
         else:
             content = await runtime.invoke_sync(run_config)
@@ -99,7 +106,8 @@ async def chat_completions(request: Request):
                         }
                     ],
                     "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
-                }
+                },
+                headers=variant_headers,
             )
 
     # LiteLLM fallback (backward compat FR-006)

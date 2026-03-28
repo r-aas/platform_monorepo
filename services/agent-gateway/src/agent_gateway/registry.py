@@ -1,16 +1,21 @@
 """Agent registry — reads agent definitions from PostgreSQL.
 
-Supports promotion-aware agent resolution: when an agent has shadow/canary
-versions, the resolver uses weighted routing to select the appropriate version.
+Supports promotion-aware agent resolution: when an agent has a canary variant
+(named '{agent}-canary'), the resolver uses weighted random routing to direct
+canary_weight% of traffic to the canary version.
 """
 
 from __future__ import annotations
 
+import logging
 import random
 
 from agent_gateway.models import AgentDefinition, LlmConfig, MCPServerRef
 from agent_gateway.store.agents import get_agent as _db_get_agent
+from agent_gateway.store.agents import get_canary_variant as _db_get_canary
 from agent_gateway.store.agents import list_agents as _db_list_agents
+
+logger = logging.getLogger(__name__)
 
 
 def _row_to_agent(row) -> AgentDefinition:
@@ -47,14 +52,31 @@ def _row_to_agent(row) -> AgentDefinition:
 
 
 async def get_agent(name: str) -> AgentDefinition:
-    """Look up an agent by name from PostgreSQL.
+    """Look up an agent by name with canary-aware weighted routing.
 
-    If the agent is at 'canary' stage, randomly routes canary_weight% of
-    requests to this version. The caller sees no difference — the routing
-    is transparent. Shadow agents are never returned here (they run in
-    parallel via the shadow execution path).
+    When a canary variant exists ('{name}-canary' with promotion_stage='canary'),
+    routes canary_weight% of requests to the canary version. The caller sees
+    no difference — routing is transparent.
+
+    Shadow agents are never returned here — they run in parallel via the
+    shadow execution path in the chat router.
     """
     row = await _db_get_agent(name)
+
+    # Check for canary variant
+    canary_row = await _db_get_canary(name)
+    if canary_row:
+        weight = canary_row.canary_weight or 0
+        if random.randint(1, 100) <= weight:
+            logger.info(
+                "Canary routing: %s → %s (weight=%d%%)",
+                name, canary_row.name, weight,
+            )
+            agent = _row_to_agent(canary_row)
+            agent.promotion_stage = "canary"
+            agent.canary_weight = weight
+            return agent
+
     agent = _row_to_agent(row)
     agent.promotion_stage = getattr(row, "promotion_stage", "primary") or "primary"
     agent.canary_weight = getattr(row, "canary_weight", 0) or 0

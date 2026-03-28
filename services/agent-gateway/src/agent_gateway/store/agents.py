@@ -23,6 +23,25 @@ async def get_agent(name: str) -> AgentRow:
     return row
 
 
+async def get_canary_variant(base_name: str) -> AgentRow | None:
+    """Find a canary variant for a base agent name.
+
+    Convention: canary variants are named '{base_name}-canary' and have
+    promotion_stage='canary' with canary_weight > 0.
+    """
+    canary_name = f"{base_name}-canary"
+    async with async_session() as session:
+        row = (await session.execute(
+            select(AgentRow).where(
+                AgentRow.name == canary_name,
+                AgentRow.promotion_stage == "canary",
+            )
+        )).scalar_one_or_none()
+    if row and (row.canary_weight or 0) > 0:
+        return row
+    return None
+
+
 async def upsert_agent(*, name: str, version: str, spec: dict, system_prompt: str = "",
                        capabilities: list[str] | None = None, skills: list[str] | None = None,
                        runtime: str = "n8n", tags: list[str] | None = None) -> AgentRow:
