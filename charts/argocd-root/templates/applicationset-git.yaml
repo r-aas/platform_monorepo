@@ -68,7 +68,7 @@ spec:
         - group: apps
           kind: StatefulSet
           jqPathExpressions:
-            - .spec.volumeClaimTemplates[]?.spec
+            - .spec.volumeClaimTemplates
         - group: batch
           kind: Job
           jqPathExpressions:
