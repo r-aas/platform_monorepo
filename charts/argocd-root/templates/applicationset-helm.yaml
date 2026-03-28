@@ -46,6 +46,20 @@ spec:
       destination:
         server: https://kubernetes.default.svc
         namespace: "{{`{{ .namespace }}`}}"
+      ignoreDifferences:
+        - group: apps
+          kind: StatefulSet
+          jqPathExpressions:
+            - .spec.volumeClaimTemplates[]?.spec
+        - group: apps
+          kind: Deployment
+          jqPathExpressions:
+            - .spec.template.metadata.annotations
+        - group: batch
+          kind: Job
+          jqPathExpressions:
+            - .spec.selector
+            - .spec.template.metadata
       syncPolicy:
         automated:
           prune: true
@@ -53,4 +67,5 @@ spec:
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
+          - RespectIgnoreDifferences=true
 {{- end }}

@@ -64,6 +64,16 @@ spec:
         server: https://kubernetes.default.svc
         namespace: |-
           {{`{{ if hasPrefix "genai-" .path.basename }}genai{{ else if or (hasPrefix "gitlab-" .path.basename) (eq .path.basename "argocd") }}platform{{ else }}genai{{ end }}`}}
+      ignoreDifferences:
+        - group: apps
+          kind: StatefulSet
+          jqPathExpressions:
+            - .spec.volumeClaimTemplates[]?.spec
+        - group: batch
+          kind: Job
+          jqPathExpressions:
+            - .spec.selector
+            - .spec.template.metadata
       syncPolicy:
         automated:
           prune: true
@@ -71,3 +81,4 @@ spec:
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
+          - RespectIgnoreDifferences=true
