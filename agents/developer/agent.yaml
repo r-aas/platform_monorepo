@@ -34,6 +34,7 @@ skills:
   - code-generation
   - documentation
   - security-audit
+  - dev-sandbox
 
 metadata:
   runtime: n8n

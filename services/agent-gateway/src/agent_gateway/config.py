@@ -47,6 +47,8 @@ class Settings(BaseSettings):
     sandbox_memory_limit: str = "4Gi"
     sandbox_warm_pool_size: int = 0  # 0 = disabled, N = keep N warm pods ready
     sandbox_workspace_size: str = "1Gi"  # PVC size for workspace storage
+    sandbox_git_secret: str = "gitlab-pat"  # k8s secret with .git-credentials for cloning
+    sandbox_default_git_host: str = "gitlab.mewtwo.127.0.0.1.nip.io"  # default git host for short refs
 
     # Claude Code runtime
     claude_code_image: str = "agent-claude:latest"

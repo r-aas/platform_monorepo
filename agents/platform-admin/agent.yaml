@@ -36,6 +36,7 @@ skills:
   - kubernetes-ops
   - n8n-workflow-ops
   - gitlab-pipeline-ops
+  - dev-sandbox
 
 metadata:
   runtime: n8n

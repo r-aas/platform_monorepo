@@ -8,7 +8,9 @@ from fastapi import APIRouter, HTTPException
 
 from agent_gateway.models import AgentRunConfig
 from agent_gateway.runtimes.sandbox import (
+    DevSandboxRequest,
     cleanup_completed_jobs,
+    create_dev_sandbox,
     create_sandbox_job,
     delete_sandbox_job,
     ensure_warm_pool,
@@ -30,11 +32,14 @@ async def launch_sandbox(data: dict[str, Any]):
     if not message:
         raise HTTPException(400, "message or task is required")
 
-    system_prompt = data.get("system_prompt", (
-        "You are a software engineer working in an isolated sandbox environment. "
-        "You have full filesystem access to /home/agent/workspace. "
-        "Complete the assigned task and print the result as JSON on the last line of stdout."
-    ))
+    system_prompt = data.get(
+        "system_prompt",
+        (
+            "You are a software engineer working in an isolated sandbox environment. "
+            "You have full filesystem access to /home/agent/workspace. "
+            "Complete the assigned task and print the result as JSON on the last line of stdout."
+        ),
+    )
 
     config = AgentRunConfig(
         system_prompt=system_prompt,
@@ -45,6 +50,35 @@ async def launch_sandbox(data: dict[str, Any]):
     workspace_pvc = data.get("workspace_pvc", False)
     job_name = await create_sandbox_job(config, workspace_pvc=workspace_pvc)
     return {"job_name": job_name, "status": "created"}
+
+
+@router.post("/dev")
+async def launch_dev_sandbox(data: dict[str, Any]):
+    """Launch a development sandbox initialized from a git repo + branch.
+
+    Required: repo (full URL or short name like "genai-mlops")
+    Optional: branch (default "main"), setup_command (e.g. "uv sync"),
+              message (task for the agent), system_prompt
+    """
+    repo = data.get("repo")
+    if not repo:
+        raise HTTPException(400, "repo is required (URL or short name)")
+
+    req = DevSandboxRequest(
+        repo=repo,
+        branch=data.get("branch", "main"),
+        setup_command=data.get("setup_command", ""),
+        message=data.get("message", ""),
+        system_prompt=data.get("system_prompt", ""),
+    )
+
+    job_name = await create_dev_sandbox(req)
+    return {
+        "job_name": job_name,
+        "status": "created",
+        "repo": repo,
+        "branch": req.branch,
+    }
 
 
 @router.get("/jobs")

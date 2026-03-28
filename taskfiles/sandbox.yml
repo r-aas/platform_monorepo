@@ -1,0 +1,90 @@
+# sandbox.yml — Dev sandbox lifecycle via agent-gateway API
+# Usage: task sandbox:init -- genai-mlops main "uv sync"
+#        task sandbox:list
+#        task sandbox:status -- sandbox-a1b2c3d4
+#        task sandbox:logs -- sandbox-a1b2c3d4
+#        task sandbox:files -- sandbox-a1b2c3d4
+#        task sandbox:teardown -- sandbox-a1b2c3d4
+
+version: "3"
+
+vars:
+  GATEWAY_URL: '{{.GATEWAY_URL | default "http://agent-gateway.genai.127.0.0.1.nip.io"}}'
+
+tasks:
+  init:
+    desc: Create a dev sandbox from a git repo + branch
+    summary: |
+      Usage: task sandbox:init -- <repo> [branch] [setup_command] [message]
+
+      Examples:
+        task sandbox:init -- genai-mlops
+        task sandbox:init -- genai-mlops feature/new-api "uv sync" "Add tests for the chat endpoint"
+        task sandbox:init -- https://github.com/org/repo.git main "npm install"
+    cmds:
+      - |
+        REPO="${1:?repo is required}"
+        BRANCH="${2:-main}"
+        SETUP="${3:-}"
+        MESSAGE="${4:-}"
+        curl -sf "{{.GATEWAY_URL}}/sandbox/dev" \
+          -H "Content-Type: application/json" \
+          -d "$(jq -n \
+            --arg repo "$REPO" \
+            --arg branch "$BRANCH" \
+            --arg setup "$SETUP" \
+            --arg msg "$MESSAGE" \
+            '{repo: $repo, branch: $branch, setup_command: $setup, message: $msg}')" \
+          | jq .
+
+  list:
+    desc: List all sandbox jobs
+    cmds:
+      - curl -sf "{{.GATEWAY_URL}}/sandbox/jobs" | jq .
+
+  status:
+    desc: Get sandbox job status
+    cmds:
+      - curl -sf "{{.GATEWAY_URL}}/sandbox/jobs/${1:?job_name required}" | jq .
+
+  logs:
+    desc: Get sandbox job logs
+    cmds:
+      - curl -sf "{{.GATEWAY_URL}}/sandbox/jobs/${1:?job_name required}/logs" | jq -r .logs
+
+  result:
+    desc: Get sandbox job result (must be completed)
+    cmds:
+      - curl -sf "{{.GATEWAY_URL}}/sandbox/jobs/${1:?job_name required}/result" | jq .
+
+  files:
+    desc: List files in sandbox workspace
+    cmds:
+      - curl -sf "{{.GATEWAY_URL}}/sandbox/jobs/${1:?job_name required}/artifacts" | jq .
+
+  read:
+    desc: Read a file from sandbox workspace
+    cmds:
+      - curl -sf "{{.GATEWAY_URL}}/sandbox/jobs/${1:?job_name required}/artifacts/${2:?path required}" | jq -r .content
+
+  teardown:
+    desc: Delete a sandbox job and its resources
+    cmds:
+      - curl -sf -X DELETE "{{.GATEWAY_URL}}/sandbox/jobs/${1:?job_name required}" | jq .
+
+  cleanup:
+    desc: Clean up completed sandbox jobs older than 1 hour
+    cmds:
+      - |
+        curl -sf "{{.GATEWAY_URL}}/sandbox/cleanup" \
+          -H "Content-Type: application/json" \
+          -d '{"max_age_seconds": 3600}' | jq .
+
+  pool:
+    desc: Manage warm pod pool (set size)
+    cmds:
+      - |
+        SIZE="${1:-2}"
+        curl -sf "{{.GATEWAY_URL}}/sandbox/pool" \
+          -H "Content-Type: application/json" \
+          -d "{\"size\": $SIZE}" | jq .

@@ -91,6 +91,7 @@ async def ensure_warm_pool(pool_size: int | None = None) -> int:
         return 0
 
     from kubernetes import client
+
     apps_v1 = client.AppsV1Api()
     loop = asyncio.get_event_loop()
 
@@ -98,13 +99,20 @@ async def ensure_warm_pool(pool_size: int | None = None) -> int:
 
     try:
         existing = await loop.run_in_executor(
-            None, apps_v1.read_namespaced_deployment, WARM_POOL_DEPLOYMENT, ns,
+            None,
+            apps_v1.read_namespaced_deployment,
+            WARM_POOL_DEPLOYMENT,
+            ns,
         )
         # Update replica count if changed
         if existing.spec.replicas != size:
             existing.spec.replicas = size
             await loop.run_in_executor(
-                None, apps_v1.replace_namespaced_deployment, WARM_POOL_DEPLOYMENT, ns, existing,
+                None,
+                apps_v1.replace_namespaced_deployment,
+                WARM_POOL_DEPLOYMENT,
+                ns,
+                existing,
             )
         ready = existing.status.ready_replicas or 0
         return ready
@@ -112,7 +120,10 @@ async def ensure_warm_pool(pool_size: int | None = None) -> int:
         # Create new deployment
         try:
             await loop.run_in_executor(
-                None, apps_v1.create_namespaced_deployment, ns, deployment,
+                None,
+                apps_v1.create_namespaced_deployment,
+                ns,
+                deployment,
             )
             logger.info("Created warm pool deployment with %d replicas", size)
             return 0
@@ -143,7 +154,8 @@ async def _claim_warm_pod() -> str | None:
             await loop.run_in_executor(
                 None,
                 lambda pn=pod_name: _core_v1.patch_namespaced_pod(
-                    pn, ns,
+                    pn,
+                    ns,
                     {"metadata": {"labels": {WARM_POOL_LABEL: "claimed"}}},
                 ),
             )
@@ -225,13 +237,41 @@ def _build_warm_pool_deployment(replicas: int) -> dict:
 # Job manifest builders
 # ---------------------------------------------------------------------------
 
+
+@dataclass
+class DevSandboxRequest:
+    """Request to create a development sandbox from a git repo."""
+
+    repo: str  # full git URL or short ref like "genai-mlops"
+    branch: str = "main"
+    setup_command: str = ""  # e.g. "uv sync" or "npm install"
+    message: str = ""  # task for the agent to perform in the repo
+    system_prompt: str = ""
+
+
+def _resolve_repo_url(repo: str) -> str:
+    """Resolve short repo names to full git URLs."""
+    if repo.startswith("http://") or repo.startswith("https://") or repo.startswith("git@"):
+        return repo
+    # Short ref: resolve against default GitLab host
+    host = settings.sandbox_default_git_host
+    return f"http://{host}/root/{repo}.git"
+
+
 def _build_job_manifest(
     job_name: str,
     config_map_name: str,
     namespace: str,
     pvc_name: str | None = None,
+    git_repo: str | None = None,
+    git_branch: str = "main",
+    setup_command: str = "",
 ) -> dict:
-    """Build the k8s Job manifest."""
+    """Build the k8s Job manifest.
+
+    If git_repo is provided, adds an init container that clones the repo
+    into /home/agent/workspace before the main container starts.
+    """
     volumes = [
         {"name": "task", "configMap": {"name": config_map_name}},
     ]
@@ -239,9 +279,91 @@ def _build_job_manifest(
         {"name": "task", "mountPath": "/task", "readOnly": True},
     ]
 
+    # Always create a workspace volume (emptyDir if no PVC)
     if pvc_name:
         volumes.append({"name": "workspace", "persistentVolumeClaim": {"claimName": pvc_name}})
-        volume_mounts.append({"name": "workspace", "mountPath": "/home/agent/workspace"})
+    else:
+        volumes.append({"name": "workspace", "emptyDir": {}})
+    volume_mounts.append({"name": "workspace", "mountPath": "/home/agent/workspace"})
+
+    init_containers = []
+    if git_repo:
+        # Add git-credentials volume from k8s secret (optional)
+        volumes.append(
+            {
+                "name": "git-credentials",
+                "secret": {"secretName": settings.sandbox_git_secret, "optional": True},
+            }
+        )
+
+        # Build clone + setup script
+        clone_script = (
+            "set -e; "
+            "if [ -f /git-creds/.git-credentials ]; then "
+            "  cp /git-creds/.git-credentials /tmp/.git-credentials && "
+            "  git config --global credential.helper 'store --file=/tmp/.git-credentials'; "
+            "fi; "
+            f"git clone --depth 1 --branch {git_branch} {git_repo} /home/agent/workspace; "
+            "cd /home/agent/workspace; "
+            "echo '=== repo cloned ===';"
+        )
+        if setup_command:
+            clone_script += f" {setup_command}; echo '=== setup done ===';"
+
+        init_containers.append(
+            {
+                "name": "git-init",
+                "image": "alpine/git:latest",
+                "imagePullPolicy": "IfNotPresent",
+                "command": ["sh", "-c", clone_script],
+                "volumeMounts": [
+                    {"name": "workspace", "mountPath": "/home/agent/workspace"},
+                    {"name": "git-credentials", "mountPath": "/git-creds", "readOnly": True},
+                ],
+            }
+        )
+
+    spec = {
+        "restartPolicy": "Never",
+        "serviceAccountName": settings.sandbox_service_account,
+        "containers": [
+            {
+                "name": "agent",
+                "image": settings.sandbox_image,
+                "imagePullPolicy": "IfNotPresent",
+                "env": [
+                    {
+                        "name": "OPENAI_BASE_URL",
+                        "value": f"{settings.litellm_base_url}/v1",
+                    },
+                    {
+                        "name": "OPENAI_API_KEY",
+                        "value": settings.litellm_api_key or "sk-litellm-mewtwo-local",
+                    },
+                    {
+                        "name": "OPENAI_MODEL",
+                        "value": "qwen2.5:14b",
+                    },
+                    {
+                        "name": "MCP_PROXY_URL",
+                        "value": "http://genai-agent-gateway.genai.svc.cluster.local:8000/mcp/proxy",
+                    },
+                ],
+                "volumeMounts": volume_mounts,
+                "resources": {
+                    "requests": {"cpu": "500m", "memory": "1Gi"},
+                    "limits": {
+                        "cpu": settings.sandbox_cpu_limit,
+                        "memory": settings.sandbox_memory_limit,
+                    },
+                },
+            },
+        ],
+        "volumes": volumes,
+    }
+
+    if init_containers:
+        spec["initContainers"] = init_containers
 
     return {
         "apiVersion": "batch/v1",
@@ -252,6 +374,10 @@ def _build_job_manifest(
             "labels": {
                 "app.kubernetes.io/managed-by": "agent-gateway",
                 "app.kubernetes.io/component": "sandbox",
+            },
+            "annotations": {
+                **({"sandbox.agent-gateway/repo": git_repo} if git_repo else {}),
+                **({"sandbox.agent-gateway/branch": git_branch} if git_repo else {}),
             },
         },
         "spec": {
@@ -265,44 +391,7 @@ def _build_job_manifest(
                         "sandbox-job": job_name,
                     },
                 },
-                "spec": {
-                    "restartPolicy": "Never",
-                    "serviceAccountName": settings.sandbox_service_account,
-                    "containers": [
-                        {
-                            "name": "agent",
-                            "image": settings.sandbox_image,
-                            "imagePullPolicy": "IfNotPresent",
-                            "env": [
-                                {
-                                    "name": "OPENAI_BASE_URL",
-                                    "value": f"{settings.litellm_base_url}/v1",
-                                },
-                                {
-                                    "name": "OPENAI_API_KEY",
-                                    "value": settings.litellm_api_key or "sk-litellm-mewtwo-local",
-                                },
-                                {
-                                    "name": "OPENAI_MODEL",
-                                    "value": "qwen2.5:14b",
-                                },
-                                {
-                                    "name": "MCP_PROXY_URL",
-                                    "value": "http://genai-agent-gateway.genai.svc.cluster.local:8000/mcp/proxy",
-                                },
-                            ],
-                            "volumeMounts": volume_mounts,
-                            "resources": {
-                                "requests": {"cpu": "500m", "memory": "1Gi"},
-                                "limits": {
-                                    "cpu": settings.sandbox_cpu_limit,
-                                    "memory": settings.sandbox_memory_limit,
-                                },
-                            },
-                        },
-                    ],
-                    "volumes": volumes,
-                },
+                "spec": spec,
             },
         },
     }
@@ -327,8 +416,61 @@ def _build_config_map(name: str, namespace: str, task_config: dict) -> dict:
     }
 
 
-def _build_network_policy(job_name: str, namespace: str) -> dict:
-    """Build a NetworkPolicy that restricts sandbox egress."""
+def _build_network_policy(job_name: str, namespace: str, allow_git: bool = False) -> dict:
+    """Build a NetworkPolicy that restricts sandbox egress.
+
+    If allow_git=True, adds egress rules for git clone (HTTP/HTTPS to GitLab
+    in the platform namespace + HTTPS to external hosts).
+    """
+    egress_rules = [
+        {
+            "to": [
+                {
+                    "namespaceSelector": {
+                        "matchLabels": {"kubernetes.io/metadata.name": namespace},
+                    },
+                },
+            ],
+            "ports": [
+                {"protocol": "TCP", "port": 4000},  # LiteLLM
+                {"protocol": "TCP", "port": 8000},  # Agent Gateway / MCP
+                {"protocol": "TCP", "port": 3000},  # MCP servers
+            ],
+        },
+        {
+            "to": [{}],
+            "ports": [
+                {"protocol": "UDP", "port": 53},  # DNS
+            ],
+        },
+    ]
+
+    if allow_git:
+        egress_rules.append(
+            {
+                "to": [
+                    {
+                        "namespaceSelector": {
+                            "matchLabels": {"kubernetes.io/metadata.name": "platform"},
+                        },
+                    },
+                ],
+                "ports": [
+                    {"protocol": "TCP", "port": 80},  # GitLab HTTP
+                    {"protocol": "TCP", "port": 8181},  # GitLab workhorse
+                ],
+            }
+        )
+        # Also allow HTTPS to any (for external repos like GitHub)
+        egress_rules.append(
+            {
+                "to": [{}],
+                "ports": [
+                    {"protocol": "TCP", "port": 443},  # HTTPS (git clone)
+                ],
+            }
+        )
+
     return {
         "apiVersion": "networking.k8s.io/v1",
         "kind": "NetworkPolicy",
@@ -345,28 +487,7 @@ def _build_network_policy(job_name: str, namespace: str) -> dict:
                 "matchLabels": {"sandbox-job": job_name},
             },
             "policyTypes": ["Egress"],
-            "egress": [
-                {
-                    "to": [
-                        {
-                            "namespaceSelector": {
-                                "matchLabels": {"kubernetes.io/metadata.name": namespace},
-                            },
-                        },
-                    ],
-                    "ports": [
-                        {"protocol": "TCP", "port": 4000},   # LiteLLM
-                        {"protocol": "TCP", "port": 8000},   # Agent Gateway / MCP
-                        {"protocol": "TCP", "port": 3000},   # MCP servers
-                    ],
-                },
-                {
-                    "to": [{}],
-                    "ports": [
-                        {"protocol": "UDP", "port": 53},     # DNS
-                    ],
-                },
-            ],
+            "egress": egress_rules,
         },
     }
 
@@ -397,10 +518,18 @@ def _build_workspace_pvc(name: str, namespace: str) -> dict:
 # Job lifecycle
 # ---------------------------------------------------------------------------
 
-async def create_sandbox_job(run_config: AgentRunConfig, workspace_pvc: bool = False) -> str:
+
+async def create_sandbox_job(
+    run_config: AgentRunConfig,
+    workspace_pvc: bool = False,
+    git_repo: str | None = None,
+    git_branch: str = "main",
+    setup_command: str = "",
+) -> str:
     """Create a sandbox k8s Job and return its name.
 
     If workspace_pvc=True, creates a PVC for persistent workspace storage.
+    If git_repo is provided, clones the repo into workspace via init container.
     If warm pool is enabled and a warm pod is available, uses exec-based
     fast path instead of creating a new Job.
     """
@@ -415,51 +544,86 @@ async def create_sandbox_job(run_config: AgentRunConfig, workspace_pvc: bool = F
     task_config = {
         "system_prompt": run_config.system_prompt,
         "message": run_config.message,
-        "mcp_servers": [
-            {"name": getattr(s, "name", ""), "url": s.url} for s in run_config.mcp_servers
-        ],
+        "mcp_servers": [{"name": getattr(s, "name", ""), "url": s.url} for s in run_config.mcp_servers],
         "allowed_tools": run_config.allowed_tools,
         "agent_params": run_config.agent_params,
     }
+    if git_repo:
+        task_config["repo"] = git_repo
+        task_config["branch"] = git_branch
 
     loop = asyncio.get_event_loop()
 
-    # Try warm pool fast path
-    if settings.sandbox_warm_pool_size > 0:
+    # Try warm pool fast path (only for non-git jobs — git needs init container)
+    if settings.sandbox_warm_pool_size > 0 and not git_repo:
         warm_pod = await _claim_warm_pod()
         if warm_pod:
             return await _exec_on_warm_pod(warm_pod, job_name, task_config, ns)
 
     # Cold path: create ConfigMap + optional PVC + NetworkPolicy + Job
     cm = _build_config_map(cm_name, ns, task_config)
-    await loop.run_in_executor(
-        None, _core_v1.create_namespaced_config_map, ns, cm
-    )
+    await loop.run_in_executor(None, _core_v1.create_namespaced_config_map, ns, cm)
 
     if pvc_name:
         pvc = _build_workspace_pvc(pvc_name, ns)
-        await loop.run_in_executor(
-            None, _core_v1.create_namespaced_persistent_volume_claim, ns, pvc
-        )
+        await loop.run_in_executor(None, _core_v1.create_namespaced_persistent_volume_claim, ns, pvc)
 
-    netpol = _build_network_policy(job_name, ns)
+    needs_git = git_repo is not None
+    netpol = _build_network_policy(job_name, ns, allow_git=needs_git)
     try:
-        await loop.run_in_executor(
-            None, _net_v1.create_namespaced_network_policy, ns, netpol
-        )
+        await loop.run_in_executor(None, _net_v1.create_namespaced_network_policy, ns, netpol)
     except Exception as e:
         logger.warning("Failed to create NetworkPolicy (non-fatal): %s", e)
 
-    job = _build_job_manifest(job_name, cm_name, ns, pvc_name)
-    await loop.run_in_executor(
-        None, _batch_v1.create_namespaced_job, ns, job
+    job = _build_job_manifest(
+        job_name,
+        cm_name,
+        ns,
+        pvc_name,
+        git_repo=git_repo,
+        git_branch=git_branch,
+        setup_command=setup_command,
     )
+    await loop.run_in_executor(None, _batch_v1.create_namespaced_job, ns, job)
 
     _active_jobs[job_name] = SandboxJob(
-        job_name=job_name, namespace=ns, config_map_name=cm_name, pvc_name=pvc_name,
+        job_name=job_name,
+        namespace=ns,
+        config_map_name=cm_name,
+        pvc_name=pvc_name,
     )
-    logger.info("Created sandbox job %s in %s", job_name, ns)
+    logger.info("Created sandbox job %s in %s (repo=%s)", job_name, ns, git_repo or "none")
     return job_name
+
+
+async def create_dev_sandbox(req: DevSandboxRequest) -> str:
+    """Create a development sandbox pre-loaded with a git repo.
+
+    Convenience wrapper around create_sandbox_job that resolves short repo
+    names and sets up a dev-friendly system prompt.
+    """
+    repo_url = _resolve_repo_url(req.repo)
+
+    system_prompt = req.system_prompt or (
+        "You are a software engineer working in an isolated sandbox. "
+        f"The repository '{req.repo}' (branch: {req.branch}) has been cloned to /home/agent/workspace. "
+        "You have full filesystem access. Explore the repo structure, understand the codebase, "
+        "and complete the assigned task. Print results as JSON on the last line of stdout."
+    )
+
+    config = AgentRunConfig(
+        system_prompt=system_prompt,
+        message=req.message or f"Explore the {req.repo} repository and summarize its structure.",
+        agent_params={"repo": req.repo, "branch": req.branch},
+    )
+
+    return await create_sandbox_job(
+        config,
+        workspace_pvc=True,
+        git_repo=repo_url,
+        git_branch=req.branch,
+        setup_command=req.setup_command,
+    )
 
 
 async def _exec_on_warm_pod(pod_name: str, job_name: str, task_config: dict, ns: str) -> str:
@@ -478,9 +642,17 @@ async def _exec_on_warm_pod(pod_name: str, job_name: str, task_config: dict, ns:
             None,
             lambda: k8s_stream(
                 _core_v1.connect_get_namespaced_pod_exec,
-                pod_name, ns,
-                command=["sh", "-c", f"mkdir -p /task && cat > /task/config.json << 'ENDCONFIG'\n{config_json}\nENDCONFIG"],
-                stderr=True, stdout=True, stdin=False, tty=False,
+                pod_name,
+                ns,
+                command=[
+                    "sh",
+                    "-c",
+                    f"mkdir -p /task && cat > /task/config.json << 'ENDCONFIG'\n{config_json}\nENDCONFIG",
+                ],
+                stderr=True,
+                stdout=True,
+                stdin=False,
+                tty=False,
             ),
         )
     except Exception as e:
@@ -494,9 +666,13 @@ async def _exec_on_warm_pod(pod_name: str, job_name: str, task_config: dict, ns:
             None,
             lambda: k8s_stream(
                 _core_v1.connect_get_namespaced_pod_exec,
-                pod_name, ns,
+                pod_name,
+                ns,
                 command=["sh", "-c", "nohup python /usr/local/bin/entrypoint.py > /tmp/output.log 2>&1 &"],
-                stderr=True, stdout=True, stdin=False, tty=False,
+                stderr=True,
+                stdout=True,
+                stdin=False,
+                tty=False,
             ),
         )
     except Exception as e:
@@ -504,7 +680,9 @@ async def _exec_on_warm_pod(pod_name: str, job_name: str, task_config: dict, ns:
         return await _cold_create_job(job_name, task_config, ns)
 
     _active_jobs[job_name] = SandboxJob(
-        job_name=job_name, namespace=ns, config_map_name=f"warm:{pod_name}",
+        job_name=job_name,
+        namespace=ns,
+        config_map_name=f"warm:{pod_name}",
     )
     logger.info("Launched task on warm pod %s as %s", pod_name, job_name)
     return job_name
@@ -517,25 +695,21 @@ async def _cold_create_job(job_name: str, task_config: dict, ns: str) -> str:
     loop = asyncio.get_event_loop()
 
     cm = _build_config_map(cm_name, ns, task_config)
-    await loop.run_in_executor(
-        None, _core_v1.create_namespaced_config_map, ns, cm
-    )
+    await loop.run_in_executor(None, _core_v1.create_namespaced_config_map, ns, cm)
 
     netpol = _build_network_policy(job_name, ns)
     try:
-        await loop.run_in_executor(
-            None, _net_v1.create_namespaced_network_policy, ns, netpol
-        )
+        await loop.run_in_executor(None, _net_v1.create_namespaced_network_policy, ns, netpol)
     except Exception:
         pass
 
     job = _build_job_manifest(job_name, cm_name, ns)
-    await loop.run_in_executor(
-        None, _batch_v1.create_namespaced_job, ns, job
-    )
+    await loop.run_in_executor(None, _batch_v1.create_namespaced_job, ns, job)
 
     _active_jobs[job_name] = SandboxJob(
-        job_name=job_name, namespace=ns, config_map_name=cm_name,
+        job_name=job_name,
+        namespace=ns,
+        config_map_name=cm_name,
     )
     logger.info("Cold-created sandbox job %s", job_name)
     return job_name
@@ -554,7 +728,10 @@ async def get_sandbox_status(job_name: str) -> dict:
         return await _get_warm_pod_status(pod_name, job_name)
 
     job = await loop.run_in_executor(
-        None, _batch_v1.read_namespaced_job_status, job_name, ns,
+        None,
+        _batch_v1.read_namespaced_job_status,
+        job_name,
+        ns,
     )
 
     status = "running"
@@ -584,9 +761,13 @@ async def _get_warm_pod_status(pod_name: str, job_name: str) -> dict:
             None,
             lambda: k8s_stream(
                 _core_v1.connect_get_namespaced_pod_exec,
-                pod_name, ns,
+                pod_name,
+                ns,
                 command=["sh", "-c", "test -f /tmp/output.log && tail -1 /tmp/output.log || echo ''"],
-                stderr=False, stdout=True, stdin=False, tty=False,
+                stderr=False,
+                stdout=True,
+                stdin=False,
+                tty=False,
             ),
         )
         # Check if the last line is valid JSON (entrypoint finished)
@@ -603,9 +784,13 @@ async def _get_warm_pod_status(pod_name: str, job_name: str) -> dict:
             None,
             lambda: k8s_stream(
                 _core_v1.connect_get_namespaced_pod_exec,
-                pod_name, ns,
+                pod_name,
+                ns,
                 command=["sh", "-c", "pgrep -f entrypoint.py || echo 'done'"],
-                stderr=False, stdout=True, stdin=False, tty=False,
+                stderr=False,
+                stdout=True,
+                stdin=False,
+                tty=False,
             ),
         )
         if "done" in (ps_out or ""):
@@ -627,14 +812,19 @@ async def get_sandbox_logs(job_name: str, follow: bool = False) -> str:
     if sandbox and sandbox.config_map_name.startswith("warm:"):
         pod_name = sandbox.config_map_name.replace("warm:", "")
         from kubernetes.stream import stream as k8s_stream
+
         try:
             output = await loop.run_in_executor(
                 None,
                 lambda: k8s_stream(
                     _core_v1.connect_get_namespaced_pod_exec,
-                    pod_name, ns,
+                    pod_name,
+                    ns,
                     command=["cat", "/tmp/output.log"],
-                    stderr=False, stdout=True, stdin=False, tty=False,
+                    stderr=False,
+                    stdout=True,
+                    stdin=False,
+                    tty=False,
                 ),
             )
             return output or ""
@@ -645,7 +835,8 @@ async def get_sandbox_logs(job_name: str, follow: bool = False) -> str:
     pods = await loop.run_in_executor(
         None,
         lambda: _core_v1.list_namespaced_pod(
-            ns, label_selector=f"job-name={job_name}",
+            ns,
+            label_selector=f"job-name={job_name}",
         ),
     )
     if not pods.items:
@@ -688,7 +879,8 @@ async def list_sandbox_jobs() -> list[dict]:
     jobs = await loop.run_in_executor(
         None,
         lambda: _batch_v1.list_namespaced_job(
-            ns, label_selector="app.kubernetes.io/component=sandbox",
+            ns,
+            label_selector="app.kubernetes.io/component=sandbox",
         ),
     )
 
@@ -701,22 +893,26 @@ async def list_sandbox_jobs() -> list[dict]:
         elif job.status.failed and job.status.failed > 0:
             status = "failed"
 
-        results.append({
-            "job_name": name,
-            "status": status,
-            "start_time": job.status.start_time.isoformat() if job.status.start_time else None,
-            "completion_time": job.status.completion_time.isoformat() if job.status.completion_time else None,
-        })
+        results.append(
+            {
+                "job_name": name,
+                "status": status,
+                "start_time": job.status.start_time.isoformat() if job.status.start_time else None,
+                "completion_time": job.status.completion_time.isoformat() if job.status.completion_time else None,
+            }
+        )
 
     # Add warm-pod jobs from in-memory registry
     for name, sandbox in _active_jobs.items():
         if sandbox.config_map_name.startswith("warm:") and not any(r["job_name"] == name for r in results):
-            results.append({
-                "job_name": name,
-                "status": "running",
-                "start_time": None,
-                "completion_time": None,
-            })
+            results.append(
+                {
+                    "job_name": name,
+                    "status": "running",
+                    "start_time": None,
+                    "completion_time": None,
+                }
+            )
 
     return results
 
@@ -740,7 +936,8 @@ async def get_sandbox_artifacts(job_name: str, path: str = ".") -> list[dict]:
         pods = await loop.run_in_executor(
             None,
             lambda: _core_v1.list_namespaced_pod(
-                ns, label_selector=f"job-name={job_name}",
+                ns,
+                label_selector=f"job-name={job_name}",
             ),
         )
         if pods.items:
@@ -759,9 +956,13 @@ async def get_sandbox_artifacts(job_name: str, path: str = ".") -> list[dict]:
             None,
             lambda: k8s_stream(
                 _core_v1.connect_get_namespaced_pod_exec,
-                pod_name, ns,
+                pod_name,
+                ns,
                 command=["find", target, "-maxdepth", "2", "-printf", "%y %s %P\\n"],
-                stderr=False, stdout=True, stdin=False, tty=False,
+                stderr=False,
+                stdout=True,
+                stdin=False,
+                tty=False,
             ),
         )
     except Exception:
@@ -798,7 +999,8 @@ async def read_sandbox_artifact(job_name: str, path: str) -> str:
         pods = await loop.run_in_executor(
             None,
             lambda: _core_v1.list_namespaced_pod(
-                ns, label_selector=f"job-name={job_name}",
+                ns,
+                label_selector=f"job-name={job_name}",
             ),
         )
         if pods.items:
@@ -808,6 +1010,7 @@ async def read_sandbox_artifact(job_name: str, path: str) -> str:
         return ""
 
     from kubernetes.stream import stream as k8s_stream
+
     full_path = f"/home/agent/workspace/{path}"
 
     try:
@@ -815,9 +1018,13 @@ async def read_sandbox_artifact(job_name: str, path: str) -> str:
             None,
             lambda: k8s_stream(
                 _core_v1.connect_get_namespaced_pod_exec,
-                pod_name, ns,
+                pod_name,
+                ns,
                 command=["cat", full_path],
-                stderr=False, stdout=True, stdin=False, tty=False,
+                stderr=False,
+                stdout=True,
+                stdin=False,
+                tty=False,
             ),
         )
         return output or ""
@@ -838,7 +1045,10 @@ async def delete_sandbox_job(job_name: str) -> None:
         pod_name = sandbox.config_map_name.replace("warm:", "")
         try:
             await loop.run_in_executor(
-                None, _core_v1.delete_namespaced_pod, pod_name, ns,
+                None,
+                _core_v1.delete_namespaced_pod,
+                pod_name,
+                ns,
             )
         except Exception:
             pass
@@ -850,7 +1060,9 @@ async def delete_sandbox_job(job_name: str) -> None:
         await loop.run_in_executor(
             None,
             lambda: _batch_v1.delete_namespaced_job(
-                job_name, ns, propagation_policy="Foreground",
+                job_name,
+                ns,
+                propagation_policy="Foreground",
             ),
         )
     except Exception as e:
@@ -860,7 +1072,10 @@ async def delete_sandbox_job(job_name: str) -> None:
     if sandbox:
         try:
             await loop.run_in_executor(
-                None, _core_v1.delete_namespaced_config_map, sandbox.config_map_name, ns,
+                None,
+                _core_v1.delete_namespaced_config_map,
+                sandbox.config_map_name,
+                ns,
             )
         except Exception:
             pass
@@ -869,7 +1084,10 @@ async def delete_sandbox_job(job_name: str) -> None:
         if sandbox.pvc_name:
             try:
                 await loop.run_in_executor(
-                    None, _core_v1.delete_namespaced_persistent_volume_claim, sandbox.pvc_name, ns,
+                    None,
+                    _core_v1.delete_namespaced_persistent_volume_claim,
+                    sandbox.pvc_name,
+                    ns,
                 )
             except Exception:
                 pass
@@ -877,7 +1095,10 @@ async def delete_sandbox_job(job_name: str) -> None:
     # Delete NetworkPolicy
     try:
         await loop.run_in_executor(
-            None, _net_v1.delete_namespaced_network_policy, f"sandbox-{job_name}", ns,
+            None,
+            _net_v1.delete_namespaced_network_policy,
+            f"sandbox-{job_name}",
+            ns,
         )
     except Exception:
         pass
@@ -898,7 +1119,8 @@ async def cleanup_completed_jobs(max_age_seconds: int = 3600) -> int:
     jobs = await loop.run_in_executor(
         None,
         lambda: _batch_v1.list_namespaced_job(
-            ns, label_selector="app.kubernetes.io/component=sandbox",
+            ns,
+            label_selector="app.kubernetes.io/component=sandbox",
         ),
     )
 
@@ -908,6 +1130,7 @@ async def cleanup_completed_jobs(max_age_seconds: int = 3600) -> int:
             continue
 
         from datetime import datetime, timezone
+
         age = (datetime.now(timezone.utc) - job.status.completion_time).total_seconds()
         if age > max_age_seconds:
             try:
@@ -922,6 +1145,7 @@ async def cleanup_completed_jobs(max_age_seconds: int = 3600) -> int:
 # ---------------------------------------------------------------------------
 # Runtime class
 # ---------------------------------------------------------------------------
+
 
 class SandboxRuntime(Runtime):
     """Runtime that executes agents in isolated k8s Jobs."""

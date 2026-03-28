@@ -15,6 +15,7 @@ includes:
   agents: ~/work/repos/platform_monorepo/taskfiles/agents.yml
   arch: ~/work/repos/platform_monorepo/taskfiles/arch.yml
   claude: ~/work/taskfiles/claude.yml
+  sandbox: ~/work/repos/platform_monorepo/taskfiles/sandbox.yml
 
 tasks:
   default:

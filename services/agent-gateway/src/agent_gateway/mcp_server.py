@@ -124,7 +124,11 @@ _TOOLS: list[dict] = [
             "properties": {
                 "name": {"type": "string", "description": "Server name (unique identifier)"},
                 "url": {"type": "string", "description": "MCP server endpoint URL"},
-                "transport": {"type": "string", "description": "Transport type (streamable-http or sse)", "default": "streamable-http"},
+                "transport": {
+                    "type": "string",
+                    "description": "Transport type (streamable-http or sse)",
+                    "default": "streamable-http",
+                },
                 "namespace": {"type": "string", "description": "Logical namespace for grouping"},
                 "description": {"type": "string", "description": "Human-readable description"},
                 "auth_token": {"type": "string", "description": "Bearer token for authentication"},
@@ -147,7 +151,10 @@ _TOOLS: list[dict] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "namespace": {"type": "string", "description": "Filter by namespace (e.g., platform, orchestration, data)"},
+                "namespace": {
+                    "type": "string",
+                    "description": "Filter by namespace (e.g., platform, orchestration, data)",
+                },
                 "server": {"type": "string", "description": "Filter by server name (e.g., kubernetes, gitlab, n8n)"},
             },
             "required": [],
@@ -174,6 +181,80 @@ _TOOLS: list[dict] = [
             "required": ["name"],
         },
     },
+    # Dev sandbox tools
+    {
+        "name": "init_dev_sandbox",
+        "description": "Create an isolated development sandbox from a git repo and branch. Clones the repo, optionally runs setup (e.g. 'uv sync'), and assigns a task to the agent.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "repo": {
+                    "type": "string",
+                    "description": "Git repo URL or short name (e.g. 'genai-mlops', 'platform_monorepo')",
+                },
+                "branch": {"type": "string", "description": "Git branch to clone (default: main)", "default": "main"},
+                "setup_command": {
+                    "type": "string",
+                    "description": "Setup command to run after clone (e.g. 'uv sync', 'npm install')",
+                    "default": "",
+                },
+                "message": {
+                    "type": "string",
+                    "description": "Task description for the agent to perform in the sandbox",
+                    "default": "",
+                },
+            },
+            "required": ["repo"],
+        },
+    },
+    {
+        "name": "sandbox_status",
+        "description": "Get the status and logs of a sandbox job by name.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "job_name": {"type": "string", "description": "Sandbox job name (e.g. sandbox-a1b2c3d4)"},
+            },
+            "required": ["job_name"],
+        },
+    },
+    {
+        "name": "list_sandboxes",
+        "description": "List all active and recent sandbox jobs.",
+        "inputSchema": {"type": "object", "properties": {}, "required": []},
+    },
+    {
+        "name": "sandbox_files",
+        "description": "List or read files in a sandbox's workspace. Use path='.' to list root, or provide a file path to read its content.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "job_name": {"type": "string", "description": "Sandbox job name"},
+                "path": {
+                    "type": "string",
+                    "description": "Path relative to workspace root (default: '.' for listing)",
+                    "default": ".",
+                },
+                "read": {
+                    "type": "boolean",
+                    "description": "If true, read file content instead of listing",
+                    "default": False,
+                },
+            },
+            "required": ["job_name"],
+        },
+    },
+    {
+        "name": "sandbox_teardown",
+        "description": "Delete a sandbox job and clean up all its resources (Job, PVC, ConfigMap, NetworkPolicy).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "job_name": {"type": "string", "description": "Sandbox job name to delete"},
+            },
+            "required": ["job_name"],
+        },
+    },
 ]
 
 
@@ -187,19 +268,52 @@ async def _dispatch(tool_name: str, arguments: dict) -> dict:
     try:
         if tool_name == "list_agents":
             agents = await list_agents()
-            return _ok(json.dumps([{"name": a.name, "description": a.description, "runtime": a.runtime} for a in agents], indent=2))
+            return _ok(
+                json.dumps(
+                    [{"name": a.name, "description": a.description, "runtime": a.runtime} for a in agents], indent=2
+                )
+            )
 
         if tool_name == "get_agent":
             agent = await get_agent(arguments["name"])
-            return _ok(json.dumps({"name": agent.name, "description": agent.description, "runtime": agent.runtime, "skills": agent.skills}, indent=2))
+            return _ok(
+                json.dumps(
+                    {
+                        "name": agent.name,
+                        "description": agent.description,
+                        "runtime": agent.runtime,
+                        "skills": agent.skills,
+                    },
+                    indent=2,
+                )
+            )
 
         if tool_name == "list_skills":
             skills = await list_skills()
-            return _ok(json.dumps([{"name": s.name, "description": s.description, "version": s.version, "tags": s.tags} for s in skills], indent=2))
+            return _ok(
+                json.dumps(
+                    [
+                        {"name": s.name, "description": s.description, "version": s.version, "tags": s.tags}
+                        for s in skills
+                    ],
+                    indent=2,
+                )
+            )
 
         if tool_name == "get_skill":
             skill = await get_skill(arguments["name"])
-            return _ok(json.dumps({"name": skill.name, "description": skill.description, "version": skill.version, "tags": skill.tags, "task_count": len(skill.tasks)}, indent=2))
+            return _ok(
+                json.dumps(
+                    {
+                        "name": skill.name,
+                        "description": skill.description,
+                        "version": skill.version,
+                        "tags": skill.tags,
+                        "task_count": len(skill.tasks),
+                    },
+                    indent=2,
+                )
+            )
 
         if tool_name == "create_skill":
             skill = SkillDefinition(**arguments)
@@ -215,12 +329,19 @@ async def _dispatch(tool_name: str, arguments: dict) -> dict:
         if tool_name == "list_mcp_servers":
             from agent_gateway.store.mcp_servers import list_mcp_servers as _list_servers
             from agent_gateway.mcp_proxy import get_proxy_state
+
             rows = await _list_servers()
             state = get_proxy_state()
             servers = [
-                {"name": r.name, "url": r.url, "transport": r.transport, "namespace": r.namespace,
-                 "description": r.description, "status": r.health_status,
-                 "tool_count": len([t for t in state.tools if t.server_name == r.name])}
+                {
+                    "name": r.name,
+                    "url": r.url,
+                    "transport": r.transport,
+                    "namespace": r.namespace,
+                    "description": r.description,
+                    "status": r.health_status,
+                    "tool_count": len([t for t in state.tools if t.server_name == r.name]),
+                }
                 for r in rows
             ]
             return _ok(json.dumps(servers, indent=2))
@@ -228,6 +349,7 @@ async def _dispatch(tool_name: str, arguments: dict) -> dict:
         if tool_name == "register_mcp_server":
             from agent_gateway.store.mcp_servers import upsert_mcp_server
             from agent_gateway.mcp_proxy import refresh_single_server
+
             row = await upsert_mcp_server(
                 name=arguments["name"],
                 url=arguments["url"],
@@ -245,6 +367,7 @@ async def _dispatch(tool_name: str, arguments: dict) -> dict:
         if tool_name == "remove_mcp_server":
             from agent_gateway.store.mcp_servers import delete_mcp_server as _del_server
             from agent_gateway.mcp_proxy import get_proxy_state
+
             await _del_server(arguments["name"])
             state = get_proxy_state()
             state.tools = [t for t in state.tools if t.server_name != arguments["name"]]
@@ -253,6 +376,7 @@ async def _dispatch(tool_name: str, arguments: dict) -> dict:
 
         if tool_name == "list_mcp_tools":
             from agent_gateway.mcp_proxy import proxy_tools_list, get_namespaces
+
             ns = arguments.get("namespace")
             srv = arguments.get("server")
             tools = await proxy_tools_list(namespace=ns, server=srv)
@@ -268,13 +392,64 @@ async def _dispatch(tool_name: str, arguments: dict) -> dict:
 
         if tool_name == "call_mcp_tool":
             from agent_gateway.mcp_proxy import proxy_tools_call
+
             result = await proxy_tools_call(arguments["tool_name"], arguments.get("arguments", {}))
             return _ok(json.dumps(result, indent=2))
 
         if tool_name == "health_check_mcp_server":
             from agent_gateway.mcp_proxy import refresh_single_server
+
             count = await refresh_single_server(arguments["name"])
             return _ok(f"MCP server '{arguments['name']}' healthy. {count} tools available.")
+
+        # Dev sandbox tools
+        if tool_name == "init_dev_sandbox":
+            from agent_gateway.runtimes.sandbox import DevSandboxRequest, create_dev_sandbox
+
+            req = DevSandboxRequest(
+                repo=arguments["repo"],
+                branch=arguments.get("branch", "main"),
+                setup_command=arguments.get("setup_command", ""),
+                message=arguments.get("message", ""),
+            )
+            job_name = await create_dev_sandbox(req)
+            return _ok(
+                json.dumps(
+                    {"job_name": job_name, "repo": req.repo, "branch": req.branch, "status": "created"}, indent=2
+                )
+            )
+
+        if tool_name == "sandbox_status":
+            from agent_gateway.runtimes.sandbox import get_sandbox_status, get_sandbox_logs
+
+            status = await get_sandbox_status(arguments["job_name"])
+            logs = await get_sandbox_logs(arguments["job_name"])
+            # Truncate logs for MCP response
+            log_tail = logs[-3000:] if len(logs) > 3000 else logs
+            return _ok(json.dumps({**status, "logs_tail": log_tail}, indent=2))
+
+        if tool_name == "list_sandboxes":
+            from agent_gateway.runtimes.sandbox import list_sandbox_jobs
+
+            jobs = await list_sandbox_jobs()
+            return _ok(json.dumps({"sandboxes": jobs, "count": len(jobs)}, indent=2))
+
+        if tool_name == "sandbox_files":
+            from agent_gateway.runtimes.sandbox import get_sandbox_artifacts, read_sandbox_artifact
+
+            job = arguments["job_name"]
+            path = arguments.get("path", ".")
+            if arguments.get("read"):
+                content = await read_sandbox_artifact(job, path)
+                return _ok(content or f"File not found: {path}")
+            artifacts = await get_sandbox_artifacts(job, path)
+            return _ok(json.dumps({"job_name": job, "path": path, "files": artifacts}, indent=2))
+
+        if tool_name == "sandbox_teardown":
+            from agent_gateway.runtimes.sandbox import delete_sandbox_job
+
+            await delete_sandbox_job(arguments["job_name"])
+            return _ok(f"Sandbox '{arguments['job_name']}' deleted.")
 
         return _error(f"Unknown tool: {tool_name}")
 
@@ -306,15 +481,17 @@ async def handle_mcp(request: Request) -> JSONResponse:
     method = body.get("method", "")
 
     if method == "initialize":
-        return JSONResponse({
-            "jsonrpc": "2.0",
-            "id": req_id,
-            "result": {
-                "protocolVersion": _PROTOCOL_VERSION,
-                "capabilities": {"tools": {"listChanged": False}},
-                "serverInfo": {"name": "agent-gateway", "version": "0.1.0"},
-            },
-        })
+        return JSONResponse(
+            {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "protocolVersion": _PROTOCOL_VERSION,
+                    "capabilities": {"tools": {"listChanged": False}},
+                    "serverInfo": {"name": "agent-gateway", "version": "0.1.0"},
+                },
+            }
+        )
 
     if method == "tools/list":
         return JSONResponse({"jsonrpc": "2.0", "id": req_id, "result": {"tools": _TOOLS}})
@@ -327,8 +504,10 @@ async def handle_mcp(request: Request) -> JSONResponse:
         return JSONResponse({"jsonrpc": "2.0", "id": req_id, "result": result})
 
     # Method not found
-    return JSONResponse({
-        "jsonrpc": "2.0",
-        "id": req_id,
-        "error": {"code": -32601, "message": f"Method not found: {method}"},
-    })
+    return JSONResponse(
+        {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "error": {"code": -32601, "message": f"Method not found: {method}"},
+        }
+    )
