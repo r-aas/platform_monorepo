@@ -38,6 +38,13 @@ DEFAULT_SERVERS = [
         "namespace": "data",
         "description": "DataHub metadata catalog — datasets, pipelines, lineage",
     },
+    {
+        "name": "plane",
+        "url": "http://genai-mcp-plane.genai.svc.cluster.local:3000/mcp",
+        "transport": "streamable-http",
+        "namespace": "project-management",
+        "description": "Plane CE project management — issues, labels, cycles, sprints",
+    },
 ]
 
 

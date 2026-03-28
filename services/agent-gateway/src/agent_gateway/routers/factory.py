@@ -95,11 +95,15 @@ async def factory_health() -> JSONResponse:
 
     mcp_tools_indexed = 0
     try:
-        index = get_tool_index()
-        if index:
-            mcp_tools_indexed = len(index.tools)
+        from agent_gateway.mcp_proxy import get_proxy_state
+        mcp_tools_indexed = len(get_proxy_state().tools)
     except Exception:
-        pass
+        try:
+            index = get_tool_index()
+            if index:
+                mcp_tools_indexed = len(index.tools)
+        except Exception:
+            pass
 
     skills_eval_dir = Path(settings.skills_dir) / "eval"
     eval_datasets = _scan_eval_datasets(skills_eval_dir)
