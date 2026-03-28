@@ -61,3 +61,35 @@ async def list_eval_runs(agent_name: str, limit: int = 20) -> list[EvalRunRow]:
             .limit(limit)
         )
         return list(result.scalars().all())
+
+
+async def insert_eval_run(
+    *,
+    agent_name: str,
+    agent_version: str,
+    environment: str,
+    model: str,
+    skill: str = "",
+    task: str = "",
+    pass_rate: float = 0.0,
+    avg_latency_ms: float = 0.0,
+    results: dict | None = None,
+) -> EvalRunRow:
+    """Persist a benchmark eval run to the database."""
+    row = EvalRunRow(
+        id=str(uuid.uuid4()),
+        agent_name=agent_name,
+        agent_version=agent_version,
+        environment=environment,
+        model=model,
+        skill=skill,
+        task=task,
+        pass_rate=pass_rate,
+        avg_latency_ms=avg_latency_ms,
+        results=results or {},
+    )
+    async with async_session() as session:
+        session.add(row)
+        await session.commit()
+        await session.refresh(row)
+    return row

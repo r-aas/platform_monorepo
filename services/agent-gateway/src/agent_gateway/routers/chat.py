@@ -1,5 +1,6 @@
-"""OpenAI-compatible chat completions router."""
+"""OpenAI-compatible chat completions router with canary + shadow support."""
 
+import asyncio
 import time
 import uuid
 
@@ -18,6 +19,56 @@ from agent_gateway.skills_registry import get_skill
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+async def _run_shadow(agent_name: str, body: dict) -> None:
+    """Fire-and-forget: invoke shadow agent variant, log result, discard.
+
+    Shadow agents ('{name}-shadow' with promotion_stage='shadow') run in parallel
+    with the primary. Their output is logged for comparison but never returned.
+    """
+    from agent_gateway.store.agents import get_agent as _db_get_agent
+    from agent_gateway.registry import _row_to_agent
+    from agent_gateway.store.deployments import insert_eval_run
+
+    shadow_name = f"{agent_name}-shadow"
+    try:
+        row = await _db_get_agent(shadow_name)
+    except KeyError:
+        return  # No shadow variant — nothing to do
+
+    if (getattr(row, "promotion_stage", "") or "") != "shadow":
+        return
+
+    shadow_agent = _row_to_agent(row)
+    t0 = time.monotonic()
+    try:
+        runtime = get_runtime(shadow_agent.runtime)
+        run_config = compose(
+            agent=shadow_agent,
+            skills=[],
+            message=body.get("messages", [{}])[-1].get("content", ""),
+            params=body.get("agent_params", {}),
+            session_id=body.get("session_id", ""),
+        )
+        content = await runtime.invoke_sync(run_config)
+        latency = time.monotonic() - t0
+        logger.info("Shadow %s completed in %.1fs", shadow_name, latency)
+
+        # Record shadow result for later comparison
+        await insert_eval_run(
+            agent_name=shadow_name,
+            agent_version=row.version or "latest",
+            environment="k3d-mewtwo",
+            model=f"agent:{shadow_name}",
+            skill="shadow-compare",
+            task="chat",
+            pass_rate=1.0,  # Shadow always "passes" — we're collecting data
+            avg_latency_ms=latency * 1000,
+            results={"output": content[:2000], "primary_agent": agent_name},
+        )
+    except Exception:
+        logger.warning("Shadow execution failed for %s", shadow_name, exc_info=True)
 
 
 @router.post("/v1/chat/completions")
@@ -42,6 +93,9 @@ async def chat_completions(request: Request):
                     }
                 },
             )
+
+        # Fire shadow execution in background (non-blocking)
+        asyncio.create_task(_run_shadow(agent_name, body))
 
         messages = body.get("messages", [])
         user_message = messages[-1]["content"] if messages else ""

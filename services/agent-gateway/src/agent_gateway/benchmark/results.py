@@ -1,16 +1,20 @@
-"""Benchmark result recorder — log eval runs to MLflow experiments."""
+"""Benchmark result recorder — log eval runs to MLflow and PostgreSQL."""
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 
 from mlflow import MlflowClient
 
 from agent_gateway.benchmark.runner import BenchmarkResult
 
+logger = logging.getLogger(__name__)
+
 
 def record_results(results: BenchmarkResult, tracking_uri: str) -> str:
-    """Create/update MLflow experiment and log a benchmark run. Returns run_id."""
+    """Create/update MLflow experiment, log a benchmark run, persist to DB. Returns run_id."""
     client = MlflowClient(tracking_uri=tracking_uri)
     experiment_name = f"eval:{results.agent}:{results.skill}:{results.task}"
 
@@ -48,4 +52,50 @@ def record_results(results: BenchmarkResult, tracking_uri: str) -> str:
     client.log_text(run_id, json.dumps(case_data, indent=2), "cases.json")
 
     client.set_terminated(run_id, status="FINISHED")
+
+    # Persist to PostgreSQL (fire-and-forget in running event loop, or sync)
+    _persist_eval_run(results, run_id)
+
     return run_id
+
+
+def _persist_eval_run(results: BenchmarkResult, mlflow_run_id: str) -> None:
+    """Write eval results to EvalRunRow in PostgreSQL."""
+    try:
+        from agent_gateway.store.deployments import insert_eval_run
+
+        case_summary = [
+            {"id": c.id, "passed": c.passed, "failures": c.failures, "latency": c.latency}
+            for c in results.cases
+        ]
+
+        # This runs in a thread (from asyncio.to_thread), so use asyncio.run for the DB call
+        try:
+            loop = asyncio.get_running_loop()
+            # Already in an async context — schedule as a task
+            loop.create_task(insert_eval_run(
+                agent_name=results.agent,
+                agent_version="latest",
+                environment="k3d-mewtwo",
+                model=f"agent:{results.agent}",
+                skill=results.skill,
+                task=results.task,
+                pass_rate=results.pass_rate,
+                avg_latency_ms=results.avg_latency * 1000,
+                results={"mlflow_run_id": mlflow_run_id, "cases": case_summary},
+            ))
+        except RuntimeError:
+            # No event loop — run synchronously (e.g., from CLI or test)
+            asyncio.run(insert_eval_run(
+                agent_name=results.agent,
+                agent_version="latest",
+                environment="k3d-mewtoo",
+                model=f"agent:{results.agent}",
+                skill=results.skill,
+                task=results.task,
+                pass_rate=results.pass_rate,
+                avg_latency_ms=results.avg_latency * 1000,
+                results={"mlflow_run_id": mlflow_run_id, "cases": case_summary},
+            ))
+    except Exception:
+        logger.warning("Failed to persist eval run to DB", exc_info=True)

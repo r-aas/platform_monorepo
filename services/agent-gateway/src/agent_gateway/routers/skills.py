@@ -215,6 +215,9 @@ async def benchmark_task(name: str, task: str, agent: str = Query(..., descripti
             content={"error": {"message": f"Task '{task}' has no evaluation dataset", "code": "no_evaluation"}},
         )
 
+    # Use gateway_external_url for live mode if available
+    gateway_url = getattr(_settings, "gateway_external_url", "") or ""
+
     run_id = await asyncio.to_thread(
         run_benchmark_task,
         name,
@@ -222,6 +225,7 @@ async def benchmark_task(name: str, task: str, agent: str = Query(..., descripti
         agent,
         task_def.evaluation.dataset,
         _settings.mlflow_tracking_uri,
+        gateway_url,
     )
     return {
         "benchmark_id": run_id,
@@ -229,4 +233,5 @@ async def benchmark_task(name: str, task: str, agent: str = Query(..., descripti
         "task": task,
         "agent": agent,
         "status": "completed",
+        "mode": "live" if gateway_url else "stub",
     }
