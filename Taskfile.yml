@@ -349,6 +349,11 @@ tasks:
     cmds:
       - bash {{.PLATFORM_DIR}}/scripts/datahub-ingest.sh
 
+  seed-secrets:
+    desc: "Create all platform k8s secrets from ~/work/envs/secrets.env"
+    cmds:
+      - bash {{.PLATFORM_DIR}}/scripts/seed-secrets.sh {{.CLI_ARGS}}
+
   # ── Utilities ───────────────────────────────────────────────
 
   resume:

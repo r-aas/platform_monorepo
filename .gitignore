@@ -26,3 +26,4 @@ dist/
 
 # OS junk
 .DS_Store
+secrets.env
