@@ -344,6 +344,11 @@ tasks:
     cmds:
       - bash scripts/langfuse-setup.sh
 
+  datahub-ingest:
+    desc: "Register DataHub ingestion sources (PostgreSQL for n8n, MLflow, Langfuse)"
+    cmds:
+      - bash {{.PLATFORM_DIR}}/scripts/datahub-ingest.sh
+
   # ── Utilities ───────────────────────────────────────────────
 
   resume:
