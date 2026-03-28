@@ -297,13 +297,16 @@ def _build_job_manifest(
         )
 
         # Build clone + setup script
+        # Read PAT from secret and inject into clone URL for auth
         clone_script = (
             "set -e; "
-            "if [ -f /git-creds/.git-credentials ]; then "
-            "  cp /git-creds/.git-credentials /tmp/.git-credentials && "
-            "  git config --global credential.helper 'store --file=/tmp/.git-credentials'; "
+            "if [ -f /git-creds/token ]; then "
+            "  TOKEN=$(cat /git-creds/token); "
+            f"  CLONE_URL=$(echo '{git_repo}' | sed \"s|http://|http://root:${{TOKEN}}@|\"); "
+            "else "
+            f"  CLONE_URL='{git_repo}'; "
             "fi; "
-            f"git clone --depth 1 --branch {git_branch} {git_repo} /home/agent/workspace; "
+            f"git clone --depth 1 --branch {git_branch} $CLONE_URL /home/agent/workspace; "
             "cd /home/agent/workspace; "
             "echo '=== repo cloned ===';"
         )

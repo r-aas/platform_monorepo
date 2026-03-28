@@ -312,6 +312,8 @@ tasks:
       MLFLOW_TRACKING_URI: "http://mlflow.genai.127.0.0.1.nip.io"
       LANGFUSE_HOST: "http://langfuse.genai.127.0.0.1.nip.io"
       AGENT_GATEWAY_URL: "http://agent-gateway.genai.127.0.0.1.nip.io"
+      LITELLM_URL: "http://litellm.genai.127.0.0.1.nip.io"
+      LITELLM_API_KEY: "sk-litellm-mewtwo-local"
     preconditions:
       - sh: curl -sf http://agent-gateway.genai.127.0.0.1.nip.io/health/detail >/dev/null
         msg: "agent-gateway not reachable"
@@ -327,6 +329,8 @@ tasks:
       N8N_BASE_URL: "http://n8n.mewtwo.127.0.0.1.nip.io/webhook"
       MLFLOW_TRACKING_URI: "http://mlflow.genai.127.0.0.1.nip.io"
       AGENT_GATEWAY_URL: "http://agent-gateway.genai.127.0.0.1.nip.io"
+      LITELLM_URL: "http://litellm.genai.127.0.0.1.nip.io"
+      LITELLM_API_KEY: "sk-litellm-mewtwo-local"
     cmds:
       - uv run python scripts/agent-benchmark.py --agent mlops --limit 3
 
@@ -348,6 +352,16 @@ tasks:
     desc: "Register DataHub ingestion sources (PostgreSQL for n8n, MLflow, Langfuse)"
     cmds:
       - bash {{.PLATFORM_DIR}}/scripts/datahub-ingest.sh
+
+  datahub-lineage:
+    desc: "Emit cross-service lineage edges to DataHub"
+    cmds:
+      - python3 {{.PLATFORM_DIR}}/scripts/datahub-lineage.py
+
+  datahub-quality:
+    desc: "Run data quality checks against platform databases"
+    cmds:
+      - python3 {{.PLATFORM_DIR}}/scripts/datahub-quality.py
 
   seed-secrets:
     desc: "Create all platform k8s secrets from ~/work/envs/secrets.env"

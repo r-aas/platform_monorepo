@@ -1,180 +1,131 @@
 #!/usr/bin/env python3
-"""Emit cross-system lineage assertions to DataHub.
+"""Emit cross-service lineage edges to DataHub.
 
-Creates lineage edges:
-  agent → prompt → model (MLflow entities)
-  workflow → service → database (n8n/k8s entities)
+Creates dataset-level lineage between n8n, MLflow, and Langfuse databases
+using DataHub's REST API (no datahub Python package needed).
 
-Usage: python3 scripts/datahub-lineage.py [--dry-run]
+Lineage edges:
+  n8n.workflow_entity → mlflow.experiments     (workflows call MLflow for prompts/eval)
+  n8n.execution_entity → langfuse.traces       (chat workflow logs traces)
+  mlflow.runs → langfuse.traces                (eval runs produce traces)
+  mlflow.registered_models → n8n.workflow_entity (prompts used by workflows)
+
+Usage:
+  python3 scripts/datahub-lineage.py
+  python3 scripts/datahub-lineage.py --dry-run
 """
 
 from __future__ import annotations
 
+import argparse
 import json
-import os
 import sys
+import time
 import urllib.request
 
-GMS_URL = os.environ.get(
-    "DATAHUB_GMS_URL",
-    "http://datahub-gms.genai.127.0.0.1.nip.io",
-)
-TOKEN = os.environ.get("DATAHUB_TOKEN", "")
-DRY_RUN = "--dry-run" in sys.argv
-
-# Platform URN helpers
-def dataset_urn(platform: str, name: str, env: str = "PROD") -> str:
-    return f"urn:li:dataset:(urn:li:dataPlatform:{platform},{name},{env})"
-
-def dataflow_urn(platform: str, name: str, cluster: str = "PROD") -> str:
-    return f"urn:li:dataFlow:({platform},{name},{cluster})"
-
-def datajob_urn(flow: str, job_id: str) -> str:
-    return f"urn:li:dataJob:({flow},{job_id})"
+GMS_URL = "http://datahub-gms.genai.127.0.0.1.nip.io"
+PLATFORM_INSTANCE = "k3d-mewtwo"
 
 
-# === Lineage Definitions ===
+def _urn(db: str, table: str) -> str:
+    """Dataset URN for a postgres table."""
+    return f"urn:li:dataset:(urn:li:dataPlatform:postgres,{PLATFORM_INSTANCE}.{db}.public.{table},PROD)"
 
-# Agent → Prompt → Model lineage
-AGENT_LINEAGE = [
-    # agent:mlops uses mlops.SYSTEM prompt, which uses qwen2.5:14b model
-    {
-        "upstream": dataset_urn("mlflow", "prompts/mlops.SYSTEM"),
-        "downstream": dataset_urn("mlflow", "agents/mlops"),
-        "label": "agent:mlops → mlops.SYSTEM prompt",
-    },
-    {
-        "upstream": dataset_urn("mlflow", "models/qwen2.5:14b"),
-        "downstream": dataset_urn("mlflow", "prompts/mlops.SYSTEM"),
-        "label": "mlops.SYSTEM prompt → qwen2.5:14b model",
-    },
-    # agent:developer
-    {
-        "upstream": dataset_urn("mlflow", "prompts/developer.SYSTEM"),
-        "downstream": dataset_urn("mlflow", "agents/developer"),
-        "label": "agent:developer → developer.SYSTEM prompt",
-    },
-    {
-        "upstream": dataset_urn("mlflow", "models/qwen2.5:14b"),
-        "downstream": dataset_urn("mlflow", "prompts/developer.SYSTEM"),
-        "label": "developer.SYSTEM → qwen2.5:14b model",
-    },
-    # agent:platform-admin
-    {
-        "upstream": dataset_urn("mlflow", "prompts/platform-admin.SYSTEM"),
-        "downstream": dataset_urn("mlflow", "agents/platform-admin"),
-        "label": "agent:platform-admin → platform-admin.SYSTEM prompt",
-    },
-]
 
-# Workflow → Service → Database lineage
-WORKFLOW_LINEAGE = [
-    # chat-v1 workflow → LiteLLM → Ollama
-    {
-        "upstream": dataset_urn("k8s", "genai/genai-litellm"),
-        "downstream": dataflow_urn("n8n", "chat-v1"),
-        "label": "chat-v1 → LiteLLM",
-    },
-    {
-        "upstream": dataset_urn("k8s", "host/ollama"),
-        "downstream": dataset_urn("k8s", "genai/genai-litellm"),
-        "label": "LiteLLM → Ollama",
-    },
-    # eval workflow → MLflow
-    {
-        "upstream": dataset_urn("k8s", "genai/genai-mlflow"),
-        "downstream": dataflow_urn("n8n", "eval-v1"),
-        "label": "eval-v1 → MLflow",
-    },
-    # sessions workflow → PostgreSQL
-    {
-        "upstream": dataset_urn("k8s", "genai/genai-pg-n8n"),
-        "downstream": dataflow_urn("n8n", "sessions-v1"),
-        "label": "sessions-v1 → PostgreSQL",
-    },
+# (upstream, downstream, description)
+LINEAGE_EDGES = [
+    (_urn("n8n", "workflow_entity"), _urn("mlflow", "experiments"), "Workflows use MLflow prompts and create eval experiments"),
+    (_urn("n8n", "execution_entity"), _urn("langfuse", "traces"), "Chat executions log traces to Langfuse"),
+    (_urn("mlflow", "runs"), _urn("langfuse", "traces"), "Eval runs write observation traces"),
+    (_urn("mlflow", "registered_models"), _urn("n8n", "workflow_entity"), "Prompt registry feeds workflow templates"),
+    (_urn("n8n", "execution_entity"), _urn("mlflow", "runs"), "Session data stored as MLflow run tags"),
 ]
 
 
-def emit_lineage(upstream: str, downstream: str, label: str) -> bool:
-    """Post an upstream lineage MCP to DataHub GMS."""
-    mcp = {
-        "proposal": {
-            "entityType": downstream.split(":")[2] if "dataFlow" in downstream or "dataJob" in downstream else "dataset",
-            "entityUrn": downstream,
-            "aspectName": "upstreamLineage",
-            "aspect": {
-                "contentType": "application/json",
-                "value": json.dumps({
-                    "upstreams": [
-                        {
-                            "auditStamp": {
-                                "time": 0,
-                                "actor": "urn:li:corpuser:datahub",
-                            },
-                            "dataset": upstream,
-                            "type": "TRANSFORMED",
-                        }
-                    ]
-                }),
-            },
-            "changeType": "UPSERT",
-        }
+def emit_lineage(upstream: str, downstream: str, gms_url: str, dry_run: bool = False) -> bool:
+    """Emit a single lineage edge via DataHub REST ingestProposal API."""
+    aspect = {
+        "upstreams": [
+            {
+                "auditStamp": {
+                    "time": int(time.time() * 1000),
+                    "actor": "urn:li:corpuser:datahub",
+                },
+                "dataset": upstream,
+                "type": "TRANSFORMED",
+            }
+        ]
     }
 
-    if DRY_RUN:
-        print(f"  [DRY-RUN] {label}")
+    proposal = {
+        "entityType": "dataset",
+        "entityUrn": downstream,
+        "aspectName": "upstreamLineage",
+        "aspect": {
+            "value": json.dumps(aspect),
+            "contentType": "application/json",
+        },
+        "changeType": "UPSERT",
+    }
+
+    if dry_run:
+        print(f"  [dry-run] {upstream.split(',')[1]} → {downstream.split(',')[1]}")
         return True
 
+    url = f"{gms_url}/aspects?action=ingestProposal"
+    data = json.dumps({"proposal": proposal}).encode()
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
     try:
-        data = json.dumps(mcp).encode()
-        headers = {"Content-Type": "application/json"}
-        if TOKEN:
-            headers["Authorization"] = f"Bearer {TOKEN}"
-
-        req = urllib.request.Request(
-            f"{GMS_URL}/aspects?action=ingestProposal",
-            data=data,
-            headers=headers,
-        )
-        resp = urllib.request.urlopen(req, timeout=10)
-        if resp.status == 200:
-            print(f"  [OK] {label}")
-            return True
-        else:
-            print(f"  [FAIL:{resp.status}] {label}")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status == 200:
+                return True
+            print(f"  ! HTTP {resp.status}", file=sys.stderr)
             return False
     except Exception as e:
-        print(f"  [ERROR] {label}: {e}")
+        print(f"  ! {e}", file=sys.stderr)
         return False
 
 
-def main() -> None:
-    print("=== Emitting Cross-System Lineage ===")
-    print(f"    GMS: {GMS_URL}")
-    print(f"    Mode: {'DRY-RUN' if DRY_RUN else 'LIVE'}")
+def main():
+    parser = argparse.ArgumentParser(description="Emit DataHub lineage edges")
+    parser.add_argument("--dry-run", action="store_true", help="Print edges without emitting")
+    parser.add_argument("--gms-url", default=GMS_URL, help="DataHub GMS URL")
+    args = parser.parse_args()
+
+    gms_url = args.gms_url
+
+    print("DataHub Lineage Emitter")
+    print(f"  GMS: {gms_url}")
+    print(f"  Edges: {len(LINEAGE_EDGES)}")
     print()
+
+    if not args.dry_run:
+        try:
+            req = urllib.request.Request(f"{gms_url}/config", method="GET")
+            with urllib.request.urlopen(req, timeout=5):
+                pass
+        except Exception as e:
+            print(f"ERROR: GMS not reachable: {e}", file=sys.stderr)
+            sys.exit(1)
 
     ok = 0
     fail = 0
-
-    print("--- Agent → Prompt → Model ---")
-    for edge in AGENT_LINEAGE:
-        if emit_lineage(edge["upstream"], edge["downstream"], edge["label"]):
+    for upstream, downstream, desc in LINEAGE_EDGES:
+        up_short = upstream.split(",")[1]
+        down_short = downstream.split(",")[1]
+        success = emit_lineage(upstream, downstream, gms_url=gms_url, dry_run=args.dry_run)
+        if success:
+            print(f"  ✓ {up_short} → {down_short}")
+            print(f"    {desc}")
             ok += 1
         else:
+            print(f"  ✗ {up_short} → {down_short}")
             fail += 1
 
     print()
-    print("--- Workflow → Service → Database ---")
-    for edge in WORKFLOW_LINEAGE:
-        if emit_lineage(edge["upstream"], edge["downstream"], edge["label"]):
-            ok += 1
-        else:
-            fail += 1
-
-    print()
-    print(f"=== Done: {ok} OK, {fail} FAIL ===")
-    sys.exit(1 if fail > 0 else 0)
+    print(f"Done. {ok} emitted, {fail} failed.")
+    if fail > 0:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -1,114 +1,131 @@
 # Platform Monorepo — Session Resume
 
-## Session: 2026-03-28 — Full Roadmap Sweep: Plane + Canary + Eval + Benchmarks
+## Session: 2026-03-28 (continued) — Infrastructure Hardening & DataOps
 
-### What Was Built
+### What Was Built / Fixed
 
-**Canary Traffic Routing**
-- `registry.get_agent()` checks for `{name}-canary` variant at canary stage
-- Routes `canary_weight%` of traffic to canary version transparently
-- `X-Agent-Variant` and `X-Agent-Stage` response headers for observability
-- `store/agents.py`: `get_canary_variant()` DB query
-- Promotion workflow: `shadow → canary → primary` with weight control
+**DataHub Ingestion (Fixed)**
+- Recreated 3 PostgreSQL ingestion sources with JSON recipes (YAML recipes caused "Invalid recipe json" on execution)
+- Sources: postgres-n8n, postgres-mlflow, postgres-langfuse — all triggered and RUNNING
+- Updated `scripts/datahub-ingest.sh` to use `python3 -c json.dumps()` for proper JSON recipe generation
+- Sources run every 6 hours via DataHub managed ingestion
 
-**Agent Eval Framework — Shadow + Live Benchmarks**
-- Shadow execution dispatch: chat router fires `{agent}-shadow` variant in parallel (fire-and-forget)
-- Shadow results persisted to `eval_runs` table for later comparison
-- `benchmark/runner.py`: live gateway mode — sends eval cases via HTTP, measures real latency
-- `benchmark/results.py`: persists `EvalRunRow` to PostgreSQL alongside MLflow
-- `store/deployments.py`: `insert_eval_run()` for DB persistence
-- Skills benchmark endpoint now uses `gateway_url` for live mode (vs stub)
+**Consolidated Secrets Management**
+- `scripts/seed-secrets.sh` — single script creates all k8s secrets from `~/work/envs/secrets.env`
+- Auto-generates secrets.env with defaults if missing
+- Idempotent (skips existing, `--force` to recreate)
+- Covers: PostgreSQL (n8n, mlflow, plane), n8n encryption, MLflow flask, MinIO, LiteLLM, GitLab PAT, Plane API, Langfuse, DataHub MySQL, n8n API
 
-**Runtime Benchmarking — POST /factory/benchmark/compare**
-- Same task + same spec + different runtime = comparable metrics
-- Creates ephemeral agent variants (`{agent}-bench-{runtime}`) per runtime
-- Runs eval cases concurrently across runtimes
-- Returns comparison table sorted by pass_rate/latency
-- 5 eval datasets across 3 skills: kubernetes-ops, mlflow-tracking, n8n-workflow-ops
+**Dashboard k3d Mode Fixes**
+- Created `_n8n_origin()` helper — replaced 10+ hardcoded `localhost:5678` references
+- Rewrote `_fetch_agents_from_registry()` — queries agent-gateway `/agents` endpoint (not MLflow)
+- Langfuse traces now use real API keys from k8s secret
 
-**Plane MCP Server — Helm Chart (ArgoCD-managed)**
-- FastMCP server at `images/mcp-plane/` wrapping Plane CE REST API
-- 13 tools: list_projects, get_project, list_states, list_labels, create_label, list_issues, get_issue, create_issue, update_issue, list_comments, add_comment, list_cycles, add_issue_to_cycle
-- Helm chart at `charts/genai-mcp-plane/` — auto-discovered by ArgoCD ApplicationSet
-- Uses `existingSecret: plane-api-token` (never secrets in values.yaml)
-- Internal API URL: `http://genai-plane-api.genai.svc.cluster.local:8000`
+**Plane↔GitLab Bidirectional Sync**
+- `n8n-data/workflows/plane-to-gitlab.json` — cron-based polling every 5 min
+- Anti-loop: filters out GitLab-originated issues, tracks `external_source=gitlab`
+- State mapping: Plane state IDs → GitLab labels + open/close
 
-**Claude Code Credential Refresh Hook**
-- SessionStart hook wired in `~/.claude/settings.json` → runs `scripts/refresh-claude-credentials.sh`
-- Syncs OAuth token from current session to k8s `claude-credentials` secret at every session start
-- launchd plist runs every 30min for background refresh
+**Benchmark Framework**
+- `task benchmark-smoke` — quick 1-agent, 3-case smoke test
+- `task benchmark-agents` — full agent benchmarks with k3d env vars
+- `--limit` flag on `agent-benchmark.py` for limiting test cases
+- Benchmark runs and logs to MLflow (run f784668a). Judge eval fails due to LLM timeout on qwen2.5:14b — model quality issue, not infra.
 
-**Claude Code Plugin Taskfile**
-- `taskfiles/claude.yml`: install, list, sync, uninstall, catalog, diff
-- Workaround for `claude plugin install` CLI resolver bug (copies from marketplace → cache)
+**Agent Gateway Image Rebuild**
+- Rebuilt and imported into k3d — picks up all store/ and registry code changes
+- Health: 4 agents, 10 skills, 1 environment, 5 MCP servers
 
-**Plane CE — Fully Operational with File Uploads** (earlier this session)
-- Project "Platform Monorepo" (PLAT) created in workspace `r-aas`
-- MinIO fix: `USE_MINIO=1`, browser-reachable endpoint, ingress path
-- Admin: `r@appliedaisystems.com` / `Plane-k3d-Dev!2026`
+**A2A Agent Cards**
+- `/.well-known/agent-card.json` returns 4 agent cards with skills
+- Per-agent cards work: `/.well-known/agent-card/{name}.json`
+- Protocol version 0.2.5
 
-**Previous Sessions** (still deployed):
-- Unified Agent Gateway: all 4 phases complete (PG+pgvector, MCP proxy, Helm, cleanup)
-- n8n: 13 workflows imported, 10 active
-- Claude Code Agent Runtime: Docker image, OAuth flow, CronJob scheduler
-- Sandbox: pre-warmed pool, PVC, artifacts
+**Spec 015: DataOps**
+- Spec drafted at `specs/015-dataops/spec.md`
+- Phase 1 (ingestion) complete, Phases 2-4 planned (lineage, quality, domain tags)
+
+**n8n Credentials**
+- Only 2 credentials exist (Ollama Local, LiteLLM) — no duplicates to clean
 
 ### Verified Working
 
-- Canary routing: `X-Agent-Variant`/`X-Agent-Stage` headers on chat responses ✓
-- Shadow dispatch: `asyncio.create_task(_run_shadow(...))` fires without blocking ✓
-- Factory health shows 5 eval datasets across 3 skills ✓
-- Helm chart `genai-mcp-plane` deployed, pod Running ✓
-- Credential refresh hook syncs token to k8s on session start ✓
-- Gateway health: 3 agents, 1 environment, 5 MCP servers ✓
-- All chat/schedule/sandbox/factory endpoints working ✓
-- GitLab→Plane webhook: push event creates issue in Plane ✓
-- Both GitLab repos (platform_monorepo, genai-mlops) have active webhooks ✓
+- DataHub: 3 ingestion sources created, all RUNNING ✓
+- DataHub: system-update Job completed, app Synced+Healthy ✓
+- Agent gateway: rebuilt, deployed, healthy (4 agents, 10 skills, 5 MCP servers) ✓
+- A2A cards: 4 agents with skills at /.well-known/agent-card.json ✓
+- Benchmark: framework executes end-to-end, logs to MLflow ✓
+- n8n: 15 workflows (12 active), 2 credentials (no dupes) ✓
+- ArgoCD: 24/24 apps Synced and Healthy ✓
+
+**Autonomous Continuity System**
+- `/continue` command reads RESUME.md + BACKLOG.md, health-checks cluster, picks next task, executes
+- `BACKLOG.md` — persistent prioritized task queue (P0-P3)
+- Session-start hook detects RESUME.md, suggests `/continue`
+- Memory entry saved for cross-session awareness
+
+**Sandbox Fix — Git Clone Auth**
+- `sandbox_default_git_host` changed from nip.io to `gitlab-ce.platform.svc.cluster.local`
+- Clone script reads PAT from `/git-creds/token` and injects into URL
+- `gitlab-pat` secret updated with both `token` and `.git-credentials` keys (internal URL)
+- `seed-secrets.sh` updated to create secret with both keys
+- Verified: sandbox clone + complete works end-to-end
 
 ### Known Issues
 
-1. **Plane cover image upload** — chart deploys unused local MinIO pod (harmless)
-2. **ArgoCD OutOfSync** — `genai-plane` app needs resync after Helm values push
-3. **Token refresh rate limiting** — Anthropic OAuth endpoint rate limits launchd job
+1. **Benchmark judge fails** — eval webhook returns empty body for judge calls. LLM (qwen2.5:14b) times out or returns non-JSON. Need faster model or simpler judge prompt.
+2. **n8n credentials API** — v1.123.21 returns 405 on GET /api/v1/credentials (not supported in public API)
+3. **Plane CE no webhooks** — stable image lacks webhook management API; using polling-based sync
 4. **qwen2.5:14b responds in Thai/Chinese** — LLM hallucination with many tools
-5. **openAiApi credential broken in n8n** — LangChain sub-nodes can't use openAiApi
 
-### Key Technical Details
+### Commits This Session (platform_monorepo)
 
-**Canary routing convention:**
-- Primary agent: `mlops` (promotion_stage=primary)
-- Canary variant: `mlops-canary` (promotion_stage=canary, canary_weight=10)
-- Shadow variant: `mlops-shadow` (promotion_stage=shadow, runs in parallel)
-- `get_agent("mlops")` checks for canary, routes randomly by weight
+- `aaebbc9` feat: add benchmark-agents and benchmark-smoke tasks to Taskfile
+- `c8f4b7c` feat: add Plane and GitLab env vars to n8n chart
+- `ca6d9f5` feat: DataHub ingestion sources for n8n, MLflow, Langfuse PostgreSQL
+- `3e9d2cc` feat: consolidated secrets management with seed-secrets.sh
 
-**Runtime comparison flow:**
-```
-POST /factory/benchmark/compare
-  → loads eval dataset from skills/eval/{skill}/{task}.json
-  → creates ephemeral agents: {agent}-bench-n8n, {agent}-bench-http, etc.
-  → runs cases concurrently via gateway
-  → returns comparison table: pass_rate, avg_latency per runtime
-```
+### Commits This Session (genai-mlops)
 
-**Plane-GitLab Webhook Integration**
-- Enabled `allow_local_requests_from_web_hooks_and_services` in GitLab CE admin settings
-- Created webhooks on both GitLab repos (platform_monorepo ID=2, genai-mlops ID=1)
-- n8n workflow `gitlab-to-plane-v1` receives push/issue/MR/comment events
-- Routes events to Plane CE REST API — creates issues with mapped states and priorities
-- `PLANE_API_TOKEN` env var set on n8n deployment
-- Webhook token: `gitlab-plane-webhook-secret`
+- `095895a` feat: add --limit flag to agent-benchmark.py for smoke tests
+- `6bb8b74` feat: add Plane→GitLab bidirectional sync workflow
+- `7bd39b5` fix: dashboard k3d mode — use ingress URLs and agent-gateway for data
+- `04c8acd` feat: eval CI stage, dashboard k3d config, import script cleanup
 
-**Commits this session:**
-- `932cab2` feat: Helm chart for mcp-plane + credential refresh hook + plugin taskfile
-- `1ef256a` feat: canary traffic routing with weighted random selection
-- `ce5c25d` feat: agent eval framework — live benchmarks, shadow execution, DB persistence
-- `2f5c2bb` feat: runtime benchmarking — POST /factory/benchmark/compare
-- `de3b34d` docs: update RESUME.md — full roadmap sweep complete
-- `d42b301` fix: add Plane to MCP seed, factory health reports real tool count (107)
-- `391a048` feat: gitlab-to-plane webhook workflow (genai-mlops repo)
+### Platform State
+
+| Component | Count | Status |
+|-----------|-------|--------|
+| ArgoCD apps | 24 | All Synced/Healthy |
+| Agents | 4 | mlops, developer, platform-admin, mlops-shadow |
+| Skills | 10 | Across all agents |
+| MCP servers | 5 | kubernetes, gitlab, n8n, datahub, plane |
+| n8n workflows | 15 | 12 active, 3 inactive |
+| n8n credentials | 2 | Ollama Local, LiteLLM |
+| DataHub sources | 4 | 3 postgres + GC (all running) |
+
+**/continue session (same day)**
+
+**Benchmark Judge Fixed**
+- Replaced n8n eval webhook judge with direct LiteLLM call (qwen2.5:7b)
+- 66.7% pass rate (2/3 cases), up from 0%. Judge returns clean JSON scores.
+- Added `LITELLM_URL` and `LITELLM_API_KEY` to Taskfile benchmark tasks
+
+**DataOps Phase 2: Lineage**
+- `scripts/datahub-lineage.py` — emits 5 cross-service lineage edges via GMS REST API
+- n8n→MLflow, n8n→Langfuse, MLflow→Langfuse, MLflow→n8n
+- `task datahub-lineage` added to Taskfile
+
+**DataOps Phase 3: Quality Checks**
+- `scripts/datahub-quality.py` — validates data directly against PostgreSQL pods
+- 5/5 checks pass: 15 workflows, 2814 executions, 5 experiments, 464 runs, 48 models
+- DataHub assertion upsert works; result reporting has eventual consistency issue (non-blocking)
+- `task datahub-quality` added to Taskfile
 
 ### Next
 
-1. **Dashboard rework** — observatory should query k8s API directly (predates k3d-only architecture)
-2. **Plane-GitLab bidirectional sync** — currently one-way (GitLab→Plane); add Plane→GitLab for issue close/update
-3. **n8n credential cleanup** — 22+ duplicate Ollama credentials from repeated imports
+1. **DataOps Phase 4** — domain tags on datasets (agent, eval, trace, workflow)
+2. **Dashboard topology** — wire DataHub lineage into ReactFlow graph
+3. **n8n credential rotation** — move hardcoded tokens from values.yaml to existingSecret
+4. **Benchmark tuning** — tune prompts or test cases for >70% baseline
+5. **Spec 015 ship** — all phases done, mark shipped

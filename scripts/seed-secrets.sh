@@ -139,7 +139,8 @@ create_secret genai kagent-litellm \
 
 # GitLab PAT (for sandbox git clone, MCP server, etc.)
 create_secret genai gitlab-pat \
-  --from-literal=token="${GITLAB_PAT}"
+  --from-literal=token="${GITLAB_PAT}" \
+  --from-literal=.git-credentials="http://root:${GITLAB_PAT}@gitlab-ce.platform.svc.cluster.local"
 
 create_secret genai genai-mcp-gitlab-secret \
   --from-literal=GITLAB_PERSONAL_ACCESS_TOKEN="${GITLAB_PAT}"

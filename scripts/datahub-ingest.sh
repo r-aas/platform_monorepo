@@ -6,7 +6,8 @@
 #   2. MLflow — experiment tracking metadata
 #   3. Langfuse — observability metadata
 #
-# Uses DataHub GMS GraphQL API. Safe to re-run (creates new sources).
+# Uses DataHub GMS GraphQL API. Safe to re-run (skips existing sources).
+# Recipes must be JSON strings (not YAML) for execution to work.
 
 set -euo pipefail
 
@@ -50,14 +51,59 @@ create_source() {
     return
   fi
 
-  local recipe="source:\\n  type: postgres\\n  config:\\n    host_port: ${host_port}\\n    database: ${database}\\n    username: ${username}\\n    password: ${password}\\n    database_alias: ${database}\\n    platform_instance: k3d-mewtwo\\nsink:\\n  type: datahub-rest\\n  config:\\n    server: ${GMS_INTERNAL}"
+  # Build recipe as proper JSON (DataHub requires JSON, not YAML)
+  local recipe
+  recipe=$(python3 -c "
+import json
+r = {
+    'source': {
+        'type': 'postgres',
+        'config': {
+            'host_port': '${host_port}',
+            'database': '${database}',
+            'username': '${username}',
+            'password': '${password}',
+            'database_alias': '${database}',
+            'platform_instance': 'k3d-mewtwo'
+        }
+    },
+    'sink': {
+        'type': 'datahub-rest',
+        'config': {'server': '${GMS_INTERNAL}'}
+    }
+}
+print(json.dumps(r))
+")
+
+  # Build full GraphQL payload
+  local payload
+  payload=$(python3 -c "
+import json
+recipe_str = '''${recipe}'''
+variables = {
+    'input': {
+        'name': '${name}',
+        'type': 'postgres',
+        'config': {
+            'recipe': recipe_str,
+            'executorId': 'default'
+        },
+        'schedule': {
+            'interval': '0 */6 * * *',
+            'timezone': 'UTC'
+        }
+    }
+}
+query = 'mutation createIngestionSource(\$input: UpdateIngestionSourceInput!) { createIngestionSource(input: \$input) }'
+print(json.dumps({'query': query, 'variables': variables}))
+")
 
   local resp
   resp=$(curl -sf -X POST "${GMS_URL}/api/graphql" \
     -H "Content-Type: application/json" \
-    -d "{\"query\": \"mutation createIngestionSource(\$input: UpdateIngestionSourceInput!) { createIngestionSource(input: \$input) }\", \"variables\": {\"input\": {\"name\": \"${name}\", \"type\": \"postgres\", \"config\": {\"recipe\": \"${recipe}\", \"executorId\": \"default\"}, \"schedule\": {\"interval\": \"0 */6 * * *\", \"timezone\": \"UTC\"}}}}" 2>&1) || true
+    -d "${payload}" 2>&1) || true
 
-  if echo "${resp}" | grep -q 'createIngestionSource'; then
+  if echo "${resp}" | grep -q '"createIngestionSource":"urn:'; then
     echo "  ✓ ${name}"
   else
     echo "  ✗ ${name} — ${resp:0:200}"
@@ -65,8 +111,8 @@ create_source() {
 }
 
 echo "Registering ingestion sources..."
-create_source "postgres-n8n"      "genai-pg-n8n.genai.svc.cluster.local:5432"            "n8n"      "n8n"      "n8n"
-create_source "postgres-mlflow"   "genai-pg-mlflow.genai.svc.cluster.local:5432"         "mlflow"   "mlflow"   "mlflow"
+create_source "postgres-n8n"      "genai-pg-n8n.genai.svc.cluster.local:5432"              "n8n"      "n8n"      "n8n"
+create_source "postgres-mlflow"   "genai-pg-mlflow.genai.svc.cluster.local:5432"           "mlflow"   "mlflow"   "mlflow"
 create_source "postgres-langfuse" "genai-langfuse-postgresql.genai.svc.cluster.local:5432" "langfuse" "langfuse" "langfuse"
 echo ""
 echo "Done. View at: http://datahub.genai.127.0.0.1.nip.io/ingestion"
