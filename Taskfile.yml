@@ -304,6 +304,32 @@ tasks:
     cmds:
       - uv run python scripts/benchmark.py --type agent --runtime all --log-mlflow -v
 
+  benchmark-agents:
+    desc: "End-to-end agent benchmarks with LLM-as-judge (k3d mode)"
+    dir: "${HOME}/work/repos/genai-mlops"
+    env:
+      N8N_BASE_URL: "http://n8n.mewtwo.127.0.0.1.nip.io/webhook"
+      MLFLOW_TRACKING_URI: "http://mlflow.genai.127.0.0.1.nip.io"
+      LANGFUSE_HOST: "http://langfuse.genai.127.0.0.1.nip.io"
+      AGENT_GATEWAY_URL: "http://agent-gateway.genai.127.0.0.1.nip.io"
+    preconditions:
+      - sh: curl -sf http://agent-gateway.genai.127.0.0.1.nip.io/health/detail >/dev/null
+        msg: "agent-gateway not reachable"
+      - sh: curl -sf http://mlflow.genai.127.0.0.1.nip.io/health >/dev/null
+        msg: "MLflow not reachable"
+    cmds:
+      - uv run python scripts/agent-benchmark.py {{.CLI_ARGS}}
+
+  benchmark-smoke:
+    desc: "Quick benchmark smoke test — 1 agent, 3 cases"
+    dir: "${HOME}/work/repos/genai-mlops"
+    env:
+      N8N_BASE_URL: "http://n8n.mewtwo.127.0.0.1.nip.io/webhook"
+      MLFLOW_TRACKING_URI: "http://mlflow.genai.127.0.0.1.nip.io"
+      AGENT_GATEWAY_URL: "http://agent-gateway.genai.127.0.0.1.nip.io"
+    cmds:
+      - uv run python scripts/agent-benchmark.py --agent mlops --limit 3
+
   # ── Registry ──────────────────────────────────────────────
 
   seed-registry:
