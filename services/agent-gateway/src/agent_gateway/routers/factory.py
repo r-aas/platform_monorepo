@@ -5,14 +5,23 @@ Exposes GET /factory/health summarising what the agent-gateway factory has built
   - skills registered (MLflow model registry)
   - MCP tools indexed (in-process ToolIndex)
   - eval datasets present on disk
+
+Also exposes POST /factory/benchmark/compare for runtime comparison.
 """
 
 from __future__ import annotations
 
+import asyncio
+import logging
+import time
 from pathlib import Path
+from typing import Any
 
+import httpx
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
+
+logger = logging.getLogger(__name__)
 
 from agent_gateway.benchmark.gap_analysis import (
     analyze_skill_gaps,
@@ -215,3 +224,167 @@ async def factory_evolve() -> JSONResponse:
             "results": results,
         }
     )
+
+
+# ---------------------------------------------------------------------------
+# Runtime Benchmarking — same task, different runtimes
+# ---------------------------------------------------------------------------
+
+
+async def _benchmark_one_runtime(
+    agent_name: str,
+    runtime_name: str,
+    cases: list[dict],
+    gateway_url: str,
+) -> dict[str, Any]:
+    """Run all eval cases against a specific agent/runtime combination.
+
+    Creates a temporary agent variant '{agent}-bench-{runtime}' with the
+    specified runtime, runs cases, then returns aggregate results.
+    """
+    from agent_gateway.store.agents import get_agent as _db_get_agent, upsert_agent
+
+    # Get the base agent spec
+    try:
+        base_row = await _db_get_agent(agent_name)
+    except KeyError:
+        return {"runtime": runtime_name, "error": f"Agent '{agent_name}' not found"}
+
+    # Create temporary benchmark variant with different runtime
+    bench_name = f"{agent_name}-bench-{runtime_name}"
+    await upsert_agent(
+        name=bench_name,
+        version=base_row.version or "0.1.0",
+        spec=base_row.spec or {},
+        system_prompt=base_row.system_prompt or "",
+        capabilities=base_row.capabilities or [],
+        skills=base_row.skills or [],
+        runtime=runtime_name,
+        tags=["benchmark", "ephemeral"],
+    )
+
+    results: list[dict] = []
+    total_latency = 0.0
+    passed = 0
+
+    for case in cases:
+        t0 = time.monotonic()
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                resp = await client.post(
+                    f"{gateway_url}/v1/chat/completions",
+                    json={
+                        "model": f"agent:{bench_name}",
+                        "messages": [{"role": "user", "content": case["input"]}],
+                        "stream": False,
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                output = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        except Exception as exc:
+            output = f"ERROR: {exc}"
+
+        latency = time.monotonic() - t0
+        total_latency += latency
+
+        # Check expected strings
+        output_lower = output.lower()
+        case_passed = all(
+            exp.lower() in output_lower
+            for exp in case.get("expected_output_contains", [])
+        )
+        if case_passed:
+            passed += 1
+
+        results.append({
+            "id": case["id"],
+            "passed": case_passed,
+            "latency": round(latency, 2),
+        })
+
+    total = len(cases) or 1
+    return {
+        "runtime": runtime_name,
+        "agent_variant": bench_name,
+        "total_cases": len(cases),
+        "passed": passed,
+        "pass_rate": round(passed / total, 3),
+        "avg_latency_s": round(total_latency / total, 2),
+        "total_latency_s": round(total_latency, 2),
+        "cases": results,
+    }
+
+
+@router.post("/benchmark/compare")
+async def benchmark_compare(data: dict[str, Any]) -> JSONResponse:
+    """Compare agent performance across runtimes using the same eval dataset.
+
+    Request body:
+        agent: str — base agent name
+        skill: str — skill name (for dataset lookup)
+        task: str — task name (for dataset lookup)
+        runtimes: list[str] — runtimes to compare (e.g. ["n8n", "http", "claude-code"])
+
+    Returns a comparison table with pass_rate and latency per runtime.
+    """
+    from agent_gateway.config import settings
+
+    agent_name = data.get("agent", "")
+    skill_name = data.get("skill", "")
+    task_name = data.get("task", "")
+    runtimes = data.get("runtimes", [])
+
+    if not agent_name or not skill_name or not task_name:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "agent, skill, and task are required"},
+        )
+    if not runtimes:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "runtimes list is required (e.g. ['n8n', 'http'])"},
+        )
+
+    # Load eval dataset
+    dataset_path = Path(settings.skills_dir) / "eval" / skill_name / f"{task_name}.json"
+    if not dataset_path.exists():
+        return JSONResponse(
+            status_code=404,
+            content={"error": f"No eval dataset at {skill_name}/{task_name}.json"},
+        )
+
+    import json
+    cases = json.loads(dataset_path.read_text()).get("cases", [])
+    if not cases:
+        return JSONResponse(
+            status_code=422,
+            content={"error": "Dataset has no test cases"},
+        )
+
+    gateway_url = getattr(settings, "gateway_external_url", "") or f"http://localhost:8000"
+
+    # Run benchmarks concurrently across runtimes
+    tasks = [
+        _benchmark_one_runtime(agent_name, rt, cases, gateway_url)
+        for rt in runtimes
+    ]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    comparison = []
+    for r in results:
+        if isinstance(r, Exception):
+            comparison.append({"runtime": "unknown", "error": str(r)})
+        else:
+            comparison.append(r)
+
+    # Sort by pass_rate desc, then latency asc
+    comparison.sort(key=lambda x: (-x.get("pass_rate", 0), x.get("avg_latency_s", 999)))
+
+    return JSONResponse({
+        "agent": agent_name,
+        "skill": skill_name,
+        "task": task_name,
+        "runtimes_compared": len(runtimes),
+        "comparison": comparison,
+    })
