@@ -1,0 +1,42 @@
+replicaCount: 1
+
+image:
+  repository: mcp-plane
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+server:
+  port: 3000
+
+plane:
+  apiUrl: "http://genai-plane-api.genai.svc.cluster.local:8000"
+  workspaceSlug: "r-aas"
+  # Token from existing k8s secret — never store in values.yaml
+  existingSecret: "plane-api-token"
+  existingSecretKey: "token"
+
+service:
+  type: ClusterIP
+  port: 3000
+
+resources:
+  requests:
+    memory: 64Mi
+    cpu: 50m
+  limits:
+    memory: 256Mi
+    cpu: "0.5"
+
+readinessProbe:
+  tcpSocket:
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  failureThreshold: 3
+
+livenessProbe:
+  tcpSocket:
+    port: http
+  initialDelaySeconds: 20
+  periodSeconds: 30
+  failureThreshold: 5

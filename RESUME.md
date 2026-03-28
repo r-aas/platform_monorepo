@@ -1,8 +1,23 @@
 # Platform Monorepo — Session Resume
 
-## Session: 2026-03-28 — Plane CE Project Setup + MinIO Fix
+## Session: 2026-03-28 — Plane CE + MCP Server + Helm Chart + Credential Hook
 
 ### What Was Built
+
+**Plane MCP Server — Helm Chart (ArgoCD-managed)**
+- FastMCP server at `images/mcp-plane/` wrapping Plane CE REST API
+- 13 tools: list_projects, get_project, list_states, list_labels, create_label, list_issues, get_issue, create_issue, update_issue, list_comments, add_comment, list_cycles, add_issue_to_cycle
+- Helm chart at `charts/genai-mcp-plane/` — auto-discovered by ArgoCD ApplicationSet
+- Uses `existingSecret: plane-api-token` (never secrets in values.yaml)
+- Internal API URL: `http://genai-plane-api.genai.svc.cluster.local:8000`
+- Registered in gateway MCP proxy as "plane" — discoverable by all agents
+- Tested end-to-end: listed projects, created issue via gateway MCP proxy
+
+**Claude Code Credential Refresh Hook**
+- SessionStart hook wired in `~/.claude/settings.json` → runs `scripts/refresh-claude-credentials.sh`
+- Syncs OAuth token from current session to k8s `claude-credentials` secret at every session start
+- launchd plist runs every 30min for background refresh (already existed)
+- Script handles 3 sources: env var (session), keychain, OAuth refresh
 
 **Plane CE — Fully Operational with File Uploads**
 - Project "Platform Monorepo" (PLAT) created in workspace `r-aas`
@@ -13,6 +28,13 @@
 - Set `minio.local_setup: true` in Helm values to ensure `USE_MINIO=1` persists through ArgoCD syncs
 - Admin: `r@appliedaisystems.com` / `Plane-k3d-Dev!2026`
 - Workspace: `r-aas` at `http://plane.genai.127.0.0.1.nip.io/r-aas/`
+
+**Unified Agent Gateway Plan — Confirmed Complete**
+- Phase 1 (DB store layer): ✓ — PostgreSQL + pgvector, agents/skills/envs/deployments CRUD
+- Phase 2 (MCP proxy): ✓ — Streamable HTTP + SSE proxy with namespace scoping
+- Phase 3 (Helm + workflows): ✓ — Single chart, n8n endpoint updated
+- Phase 4 (Cleanup): ✓ — agent-platform slimmed to models-only v0.2.0
+- Gateway health: 3 agents, 1 environment, 5 MCP servers (kubernetes, n8n, datahub, gitlab, plane)
 
 **Claude Code Agent Runtime — End-to-End Working** (previous session)
 - `agent-claude` Docker image: Node 22 + Claude Code CLI, non-root agent user
@@ -41,14 +63,19 @@
 - All Plane pods Running ✓
 - All previous endpoints still working (health, chat, sandbox, schedule) ✓
 
+### Verified Working (this session)
+
+- Helm chart `genai-mcp-plane` lints clean, deploys, pod Running ✓
+- Credential refresh hook fires on SessionStart, syncs to k8s ✓
+- Raw kubectl mcp-plane resources cleaned up (chart replaces them) ✓
+
 ### Known Issues
 
-1. **Plane cover image upload** — presigned URL flow works now but the chart deploys an unused local MinIO pod (harmless, `minio.local_setup: true` was needed to get `USE_MINIO=1`)
+1. **Plane cover image upload** — presigned URL flow works but chart deploys unused local MinIO pod (harmless, `minio.local_setup: true` needed for `USE_MINIO=1`)
 2. **ArgoCD OutOfSync** — `genai-plane` app shows OutOfSync due to manual secret patches + ingress patch. Will resync once Helm values are committed and pushed.
-3. **OAuth token refresh from launchd** — `CLAUDE_CODE_OAUTH_TOKEN` only available inside Claude Desktop sessions. Best approach: call refresh script from Claude Code hook or at session start.
-4. **Token refresh rate limiting** — Anthropic's OAuth endpoint has aggressive rate limits.
-5. **qwen2.5:14b responds in Thai/Chinese** — LLM hallucination with many tools.
-6. **openAiApi credential broken in n8n** — LangChain sub-nodes can't use openAiApi.
+3. **Token refresh rate limiting** — Anthropic's OAuth endpoint has aggressive rate limits. launchd job logs show repeated rate-limit errors.
+4. **qwen2.5:14b responds in Thai/Chinese** — LLM hallucination with many tools.
+5. **openAiApi credential broken in n8n** — LangChain sub-nodes can't use openAiApi.
 
 ### Key Technical Details
 
@@ -70,10 +97,7 @@ macOS Keychain "Claude Code-credentials"
 
 ### Next
 
-1. **Unified Agent Gateway** — merge agent-registry into agent-gateway (see plan: polymorphic-watching-tarjan.md)
-2. **Plane GitLab integration** — configure GitLab CE integration in Plane settings
-3. **Plane API as MCP server** — make Plane REST API accessible to agents
-4. **Claude Code hook for credential refresh** — run refresh script at session start
-5. **Canary traffic routing** — integrate canary_weight into chat endpoint routing logic
-6. **Agent eval framework** — automated shadow vs primary comparison scoring
-7. **Runtime benchmarking** — same task + same spec + different runtime = comparable metrics
+1. **Canary traffic routing** — integrate canary_weight into chat endpoint routing logic
+2. **Agent eval framework** — automated shadow vs primary comparison scoring
+3. **Runtime benchmarking** — same task + same spec + different runtime = comparable metrics
+4. **Plane GitLab integration** — CE lacks built-in integration; need webhook-based approach

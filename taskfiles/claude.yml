@@ -1,0 +1,278 @@
+# ~/work/taskfiles/claude.yml — Claude Code plugin management
+# Include in root Taskfile.yml:
+#   includes:
+#     claude: ~/work/taskfiles/claude.yml
+#
+# NOTE: `claude plugin install` CLI has a resolver bug as of v2.1.x — it can't
+# find plugins by name even when the marketplace is updated. The install-all and
+# install tasks use a Python script that replicates what the CLI should do:
+# copy from marketplaces/ → cache/ and add to settings.json enabledPlugins.
+version: "3"
+
+vars:
+  MARKETPLACE: claude-plugins-official
+  MARKETPLACE_DIR: "${HOME}/.claude/plugins/marketplaces/claude-plugins-official/plugins"
+  CACHE_DIR: "${HOME}/.claude/plugins/cache/claude-plugins-official"
+  SETTINGS_FILE: "${HOME}/.claude/settings.json"
+  # Anthropic-published plugins to install (curated for R's workflow).
+  # LSPs only for languages you actively use; skip the rest.
+  PLUGINS: >-
+    agent-sdk-dev
+    chrome-devtools-mcp
+    claude-code-setup
+    claude-md-management
+    code-review
+    code-simplifier
+    commit-commands
+    explanatory-output-style
+    feature-dev
+    hookify
+    mcp-server-dev
+    plugin-dev
+    pr-review-toolkit
+    pyright-lsp
+    ralph-loop
+    security-guidance
+    skill-creator
+
+tasks:
+  default:
+    desc: List Claude Code plugin tasks
+    cmds:
+      - task claude --list
+
+  list:
+    desc: "List installed Claude Code plugins from settings.json"
+    cmds:
+      - |
+        python3 -c "
+        import json, os
+        with open(os.path.expanduser('{{.SETTINGS_FILE}}')) as f:
+            d = json.load(f)
+        plugins = d.get('enabledPlugins', {})
+        print(f'Installed plugins ({len(plugins)}):')
+        for k, v in sorted(plugins.items()):
+            s = '✓' if v else '✗'
+            print(f'  {s} {k}')
+        "
+
+  install-all:
+    desc: "Install all curated Anthropic plugins (idempotent — skips already-installed)"
+    deps: [update]
+    cmds:
+      - |
+        python3 << 'PYEOF'
+        import json, shutil, os
+
+        MARKETPLACE_DIR = os.path.expanduser("{{.MARKETPLACE_DIR}}")
+        CACHE_DIR = os.path.expanduser("{{.CACHE_DIR}}")
+        SETTINGS_FILE = os.path.expanduser("{{.SETTINGS_FILE}}")
+        MARKETPLACE = "{{.MARKETPLACE}}"
+        PLUGINS = "{{.PLUGINS}}".split()
+
+        with open(SETTINGS_FILE) as f:
+            settings = json.load(f)
+        enabled = settings.setdefault("enabledPlugins", {})
+
+        # Load marketplace.json for LSP plugin metadata
+        mkt_json_path = os.path.join(os.path.dirname(MARKETPLACE_DIR), ".claude-plugin", "marketplace.json")
+        mkt_plugins = {}
+        if os.path.exists(mkt_json_path):
+            with open(mkt_json_path) as f:
+                for p in json.load(f).get("plugins", []):
+                    mkt_plugins[p.get("name")] = p
+
+        installed, skipped, failed = [], [], []
+        for name in PLUGINS:
+            key = f"{name}@{MARKETPLACE}"
+            if key in enabled and enabled[key]:
+                skipped.append(name)
+                continue
+            src = os.path.join(MARKETPLACE_DIR, name)
+            if not os.path.isdir(src):
+                failed.append(name)
+                continue
+            pjson = os.path.join(src, ".claude-plugin", "plugin.json")
+            version = "latest"
+            if os.path.exists(pjson):
+                with open(pjson) as f:
+                    version = json.load(f).get("version", "latest")
+            dest = os.path.join(CACHE_DIR, name, version)
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            if os.path.exists(dest):
+                shutil.rmtree(dest)
+            shutil.copytree(src, dest)
+
+            # LSP plugins: marketplace.json has lspServers config that the
+            # directory itself lacks. Synthesize plugin.json + .lsp.json.
+            mkt_entry = mkt_plugins.get(name, {})
+            if "lspServers" in mkt_entry:
+                pdir = os.path.join(dest, ".claude-plugin")
+                os.makedirs(pdir, exist_ok=True)
+                with open(os.path.join(pdir, "plugin.json"), "w") as f:
+                    json.dump({
+                        "name": name,
+                        "description": mkt_entry.get("description", ""),
+                        "version": mkt_entry.get("version", "1.0.0"),
+                        "author": mkt_entry.get("author", {})
+                    }, f, indent=2)
+                with open(os.path.join(dest, ".lsp.json"), "w") as f:
+                    json.dump(mkt_entry["lspServers"], f, indent=2)
+
+            enabled[key] = True
+            installed.append(f"{name} (v{version})")
+
+        with open(SETTINGS_FILE, "w") as f:
+            json.dump(settings, f, indent=2)
+
+        if installed:
+            print(f"Installed {len(installed)} plugin(s):")
+            for p in installed: print(f"  ✓ {p}")
+        if skipped:
+            print(f"Skipped {len(skipped)} (already installed):")
+            for p in skipped: print(f"  • {p}")
+        if failed:
+            print(f"Failed {len(failed)} (not in marketplace):")
+            for p in failed: print(f"  ✗ {p}")
+        if not installed:
+            print("All curated plugins already installed.")
+        else:
+            print("\nRun /reload-plugins inside Claude Code to activate.")
+        PYEOF
+
+  install:
+    desc: "Install a single plugin (usage: task claude:install -- <name>)"
+    preconditions:
+      - sh: '[ -n "{{.CLI_ARGS}}" ]'
+        msg: "Usage: task claude:install -- <plugin-name>"
+    cmds:
+      - |
+        python3 << PYEOF
+        import json, shutil, os
+
+        name = "{{.CLI_ARGS}}"
+        MARKETPLACE_DIR = os.path.expanduser("{{.MARKETPLACE_DIR}}")
+        CACHE_DIR = os.path.expanduser("{{.CACHE_DIR}}")
+        SETTINGS_FILE = os.path.expanduser("{{.SETTINGS_FILE}}")
+        MARKETPLACE = "{{.MARKETPLACE}}"
+
+        src = os.path.join(MARKETPLACE_DIR, name)
+        if not os.path.isdir(src):
+            # Try external_plugins too
+            alt = os.path.join(os.path.dirname(MARKETPLACE_DIR), "external_plugins", name)
+            if os.path.isdir(alt):
+                src = alt
+            else:
+                print(f"✗ Plugin '{name}' not found in marketplace")
+                exit(1)
+
+        pjson = os.path.join(src, ".claude-plugin", "plugin.json")
+        version = "latest"
+        if os.path.exists(pjson):
+            with open(pjson) as f:
+                version = json.load(f).get("version", "latest")
+
+        dest = os.path.join(CACHE_DIR, name, version)
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        if os.path.exists(dest):
+            shutil.rmtree(dest)
+        shutil.copytree(src, dest)
+
+        with open(SETTINGS_FILE) as f:
+            settings = json.load(f)
+        settings.setdefault("enabledPlugins", {})[f"{name}@{MARKETPLACE}"] = True
+        with open(SETTINGS_FILE, "w") as f:
+            json.dump(settings, f, indent=2)
+
+        print(f"✓ Installed {name} (v{version})")
+        print("Run /reload-plugins inside Claude Code to activate.")
+        PYEOF
+
+  uninstall:
+    desc: "Uninstall a single plugin (usage: task claude:uninstall -- <name>)"
+    preconditions:
+      - sh: '[ -n "{{.CLI_ARGS}}" ]'
+        msg: "Usage: task claude:uninstall -- <plugin-name>"
+    cmds:
+      - |
+        python3 << PYEOF
+        import json, shutil, os
+
+        name = "{{.CLI_ARGS}}"
+        CACHE_DIR = os.path.expanduser("{{.CACHE_DIR}}")
+        SETTINGS_FILE = os.path.expanduser("{{.SETTINGS_FILE}}")
+        MARKETPLACE = "{{.MARKETPLACE}}"
+        key = f"{name}@{MARKETPLACE}"
+
+        with open(SETTINGS_FILE) as f:
+            settings = json.load(f)
+        plugins = settings.get("enabledPlugins", {})
+        if key in plugins:
+            del plugins[key]
+            with open(SETTINGS_FILE, "w") as f:
+                json.dump(settings, f, indent=2)
+
+        cache_path = os.path.join(CACHE_DIR, name)
+        if os.path.exists(cache_path):
+            shutil.rmtree(cache_path)
+            print(f"✓ Uninstalled {name}")
+        else:
+            print(f"• {name} was not cached")
+        PYEOF
+
+  update:
+    desc: "Update the official marketplace catalog"
+    cmds:
+      - claude plugin marketplace update {{.MARKETPLACE}}
+
+  sync:
+    desc: "Full sync: update marketplace → install all curated plugins"
+    cmds:
+      - task: install-all
+
+  diff:
+    desc: "Show which curated plugins are NOT yet installed"
+    cmds:
+      - |
+        python3 << 'PYEOF'
+        import json, os
+
+        SETTINGS_FILE = os.path.expanduser("{{.SETTINGS_FILE}}")
+        MARKETPLACE = "{{.MARKETPLACE}}"
+        PLUGINS = "{{.PLUGINS}}".split()
+
+        with open(SETTINGS_FILE) as f:
+            enabled = json.load(f).get("enabledPlugins", {})
+
+        missing = []
+        for name in PLUGINS:
+            key = f"{name}@{MARKETPLACE}"
+            if key not in enabled or not enabled[key]:
+                missing.append(name)
+
+        if missing:
+            print(f"{len(missing)} plugin(s) not installed:")
+            for p in missing: print(f"  ✗ {p}")
+            print(f"\nRun: task claude:install-all")
+        else:
+            print("✓ All curated plugins are installed.")
+        PYEOF
+
+  catalog:
+    desc: "Show all available plugins in the official marketplace"
+    cmds:
+      - |
+        python3 << 'PYEOF'
+        import json, os
+
+        mkt = os.path.expanduser("{{.MARKETPLACE_DIR}}/../.claude-plugin/marketplace.json")
+        with open(mkt) as f:
+            plugins = json.load(f).get("plugins", [])
+
+        print(f"Available plugins ({len(plugins)}):")
+        for p in sorted(plugins, key=lambda x: x.get("name", "")):
+            name = p.get("name", "?")
+            desc = p.get("description", "")[:70]
+            cat = p.get("category", "")
+            print(f"  {name:30s} [{cat:12s}] {desc}")
+        PYEOF
