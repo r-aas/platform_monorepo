@@ -22,7 +22,12 @@ redis:
   local_setup: false
 
 minio:
-  local_setup: false
+  # local_setup must be true to get USE_MINIO=1 (required for S3-compatible storage).
+  # This also deploys a Plane-local MinIO pod we don't use — harmless.
+  # The actual endpoint is overridden via env.aws_s3_endpoint_url below.
+  local_setup: true
+  root_user: minio
+  root_password: minio123
 
 # RabbitMQ — no shared instance, run locally
 rabbitmq:
@@ -125,11 +130,13 @@ env:
   remote_redis_url: "redis://:valkey-langfuse@genai-langfuse-redis-primary.genai.svc.cluster.local:6379/"
 
   # External MinIO (shared genai-minio)
+  # Endpoint must be browser-reachable for presigned upload URLs.
+  # Plane ingress routes /plane-uploads → genai-minio:9000.
   docstore_bucket: "plane-uploads"
   aws_access_key: "minio"
   aws_secret_access_key: "minio123"
   aws_region: ""
-  aws_s3_endpoint_url: "http://genai-minio.genai.svc.cluster.local:9000"
+  aws_s3_endpoint_url: "http://plane.genai.127.0.0.1.nip.io"
 
   # Secrets (generate real ones for prod)
   secret_key: "plane-k3d-dev-secret-key-change-in-prod"
