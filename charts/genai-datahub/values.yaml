@@ -36,6 +36,8 @@ datahub:
   # GMS
   datahub-gms:
     enabled: true
+    service:
+      type: ClusterIP
     resources:
       requests:
         memory: 1Gi
@@ -47,6 +49,8 @@ datahub:
   # Frontend
   datahub-frontend:
     enabled: true
+    service:
+      type: ClusterIP
     resources:
       requests:
         memory: 512Mi
