@@ -62,6 +62,8 @@
 - Credential refresh hook syncs token to k8s on session start ✓
 - Gateway health: 3 agents, 1 environment, 5 MCP servers ✓
 - All chat/schedule/sandbox/factory endpoints working ✓
+- GitLab→Plane webhook: push event creates issue in Plane ✓
+- Both GitLab repos (platform_monorepo, genai-mlops) have active webhooks ✓
 
 ### Known Issues
 
@@ -88,16 +90,25 @@ POST /factory/benchmark/compare
   → returns comparison table: pass_rate, avg_latency per runtime
 ```
 
+**Plane-GitLab Webhook Integration**
+- Enabled `allow_local_requests_from_web_hooks_and_services` in GitLab CE admin settings
+- Created webhooks on both GitLab repos (platform_monorepo ID=2, genai-mlops ID=1)
+- n8n workflow `gitlab-to-plane-v1` receives push/issue/MR/comment events
+- Routes events to Plane CE REST API — creates issues with mapped states and priorities
+- `PLANE_API_TOKEN` env var set on n8n deployment
+- Webhook token: `gitlab-plane-webhook-secret`
+
 **Commits this session:**
 - `932cab2` feat: Helm chart for mcp-plane + credential refresh hook + plugin taskfile
 - `1ef256a` feat: canary traffic routing with weighted random selection
 - `ce5c25d` feat: agent eval framework — live benchmarks, shadow execution, DB persistence
 - `2f5c2bb` feat: runtime benchmarking — POST /factory/benchmark/compare
+- `de3b34d` docs: update RESUME.md — full roadmap sweep complete
+- `d42b301` fix: add Plane to MCP seed, factory health reports real tool count (107)
+- `391a048` feat: gitlab-to-plane webhook workflow (genai-mlops repo)
 
 ### Next
 
-1. **Plane GitLab integration** — CE lacks built-in integration; need webhook-based approach
-2. **Skills seeding** — register skills from YAML files to gateway DB (currently 0 skills loaded)
-3. **Agent shadow creation** — create shadow/canary variants for existing agents to test the framework
-4. **Dashboard rework** — observatory should query k8s API directly (predates k3d-only architecture)
-5. **n8n openAiApi credential fix** — LangChain sub-nodes need working OpenAI-compatible credential
+1. **Dashboard rework** — observatory should query k8s API directly (predates k3d-only architecture)
+2. **Plane-GitLab bidirectional sync** — currently one-way (GitLab→Plane); add Plane→GitLab for issue close/update
+3. **n8n credential cleanup** — 22+ duplicate Ollama credentials from repeated imports
