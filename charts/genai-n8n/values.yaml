@@ -22,6 +22,12 @@ n8n:
       MLFLOW_TRACKING_URI: "http://genai-mlflow.genai.svc.cluster.local"
       # Ollama direct (host via Colima gateway)
       OLLAMA_BASE_URL: "http://192.168.5.2:11434"
+      # Plane project management (in-cluster)
+      PLANE_API_TOKEN: "plane_api_2ae384a415bd4c29acaa40872639e189"
+      PLANE_API_URL: "http://genai-plane-api.genai.svc.cluster.local:8000"
+      # GitLab (in-cluster)
+      GITLAB_PAT: "glpat-yGDTb8B7H5v4owSrN3Vxh286MQp1OjEH.01.0w06dez0e"
+      GITLAB_URL: "http://gitlab-ce.platform.svc.cluster.local:8181"
       # n8n settings
       N8N_PUBLIC_API_ENABLED: "true"
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
