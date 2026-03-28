@@ -7,8 +7,23 @@ set -euo pipefail
 
 CONFIG_DIR="/workspace/.claude-config"
 WORK_DIR="/home/agent/workspace"
+export HOME="/home/agent"
 
 echo "[agent-claude] Starting..." >&2
+
+# 0. Set up Claude Code credentials (OAuth token from k8s secret mount)
+CREDS_MOUNT="/secrets/claude/credentials.json"
+CLAUDE_HOME="/home/agent/.claude"
+if [ -f "$CREDS_MOUNT" ]; then
+    mkdir -p "$CLAUDE_HOME"
+    cp "$CREDS_MOUNT" "$CLAUDE_HOME/.credentials.json"
+    chmod 600 "$CLAUDE_HOME/.credentials.json"
+    echo "[agent-claude] Credentials loaded" >&2
+elif [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+    echo "[agent-claude] Using ANTHROPIC_API_KEY" >&2
+else
+    echo "[agent-claude] WARNING: No credentials found — claude may fail" >&2
+fi
 
 # 1. Write CLAUDE.md from ConfigMap
 if [ -f "$CONFIG_DIR/CLAUDE.md" ]; then
@@ -17,14 +32,14 @@ if [ -f "$CONFIG_DIR/CLAUDE.md" ]; then
 fi
 
 # 2. Write skill files
-for f in "$CONFIG_DIR"/.claude/skills/*/SKILL.md 2>/dev/null; do
-    if [ -f "$f" ]; then
-        skill_dir=$(dirname "$f" | sed "s|$CONFIG_DIR|$WORK_DIR|")
-        mkdir -p "$skill_dir"
-        cp "$f" "$skill_dir/SKILL.md"
-        echo "[agent-claude] Wrote skill: $skill_dir" >&2
-    fi
+shopt -s nullglob
+for f in "$CONFIG_DIR"/.claude/skills/*/SKILL.md; do
+    skill_dir=$(dirname "$f" | sed "s|$CONFIG_DIR|$WORK_DIR|")
+    mkdir -p "$skill_dir"
+    cp "$f" "$skill_dir/SKILL.md"
+    echo "[agent-claude] Wrote skill: $skill_dir" >&2
 done
+shopt -u nullglob
 
 # 3. Write MCP settings
 if [ -f "$CONFIG_DIR/.claude/settings.json" ]; then
@@ -48,7 +63,12 @@ TASK="${TASK_MESSAGE:-No task specified}"
 echo "[agent-claude] Task: ${TASK:0:200}" >&2
 
 # Run claude in non-interactive mode
-OUTPUT=$(claude --print --dangerously-skip-permissions "$TASK" 2>&1) || true
+# Capture stderr separately for debugging
+OUTPUT=$(claude --print --dangerously-skip-permissions "$TASK" 2>/tmp/claude-stderr.log) || true
+if [ -f /tmp/claude-stderr.log ] && [ -s /tmp/claude-stderr.log ]; then
+    echo "[agent-claude] stderr:" >&2
+    cat /tmp/claude-stderr.log >&2
+fi
 
 # 6. Output result as JSON on last line (gateway reads this)
 echo "[agent-claude] Completed" >&2

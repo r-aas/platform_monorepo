@@ -181,6 +181,11 @@ async def create_scheduled_job(data: dict[str, Any]):
                                             "mountPath": "/workspace/.claude-config",
                                             "readOnly": True,
                                         },
+                                        *([{
+                                            "name": "claude-creds",
+                                            "mountPath": "/secrets/claude",
+                                            "readOnly": True,
+                                        }] if runtime_name == "claude-code" else []),
                                     ],
                                     "resources": {
                                         "requests": {"cpu": "500m", "memory": "512Mi"},
@@ -196,6 +201,13 @@ async def create_scheduled_job(data: dict[str, Any]):
                                     "name": "workspace",
                                     "configMap": {"name": cm_name},
                                 },
+                                *([{
+                                    "name": "claude-creds",
+                                    "secret": {
+                                        "secretName": settings.claude_credentials_secret,
+                                        "optional": True,
+                                    },
+                                }] if runtime_name == "claude-code" else []),
                             ],
                         },
                     },

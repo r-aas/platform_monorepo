@@ -50,6 +50,7 @@ class Settings(BaseSettings):
 
     # Claude Code runtime
     claude_code_image: str = "agent-claude:latest"
+    claude_credentials_secret: str = "claude-credentials"  # k8s secret with OAuth credentials
 
     # A2A protocol
     a2a_protocol_version: str = "0.2.5"

@@ -92,11 +92,11 @@ class ClaudeCodeAdapter(RuntimeAdapter):
             ws.files[".claude/settings.json"] = self._build_mcp_settings(config)
 
         # 4. Environment variables
-        if config.llm_config.url:
-            ws.env["ANTHROPIC_BASE_URL"] = config.llm_config.url
-        if config.llm_config.api_key:
-            ws.env["ANTHROPIC_API_KEY"] = config.llm_config.api_key
-        if config.llm_config.model_id:
+        # NOTE: Do NOT set ANTHROPIC_BASE_URL or ANTHROPIC_API_KEY here.
+        # Claude Code authenticates via OAuth credentials mounted from k8s secret,
+        # and talks directly to api.anthropic.com. Template variables like
+        # {{llm_base_url}} from agent specs are for LiteLLM/OpenAI-compat runtimes.
+        if config.llm_config.model_id and not config.llm_config.model_id.startswith("{{"):
             ws.env["CLAUDE_MODEL"] = config.llm_config.model_id
 
         # Agent identity

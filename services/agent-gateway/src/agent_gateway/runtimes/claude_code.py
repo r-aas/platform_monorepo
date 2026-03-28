@@ -131,8 +131,6 @@ class ClaudeCodeRuntime(Runtime):
 
         # Build env vars from workspace + defaults
         env_vars = [
-            {"name": "ANTHROPIC_API_KEY", "value": workspace.env.get("ANTHROPIC_API_KEY", settings.litellm_api_key or "")},
-            {"name": "CLAUDE_MODEL", "value": workspace.env.get("CLAUDE_MODEL", "")},
             {"name": "AGENT_NAME", "value": config.agent_name},
             {"name": "SESSION_ID", "value": config.session_id},
             {"name": "TASK_MESSAGE", "value": config.message},
@@ -141,7 +139,7 @@ class ClaudeCodeRuntime(Runtime):
         ]
         # Add any extra env from workspace
         for k, v in workspace.env.items():
-            if k not in {"ANTHROPIC_API_KEY", "CLAUDE_MODEL", "AGENT_NAME", "SESSION_ID"}:
+            if k not in {"AGENT_NAME", "SESSION_ID"}:
                 env_vars.append({"name": k, "value": v})
 
         # Job manifest
@@ -182,6 +180,11 @@ class ClaudeCodeRuntime(Runtime):
                                         "mountPath": "/workspace/.claude-config",
                                         "readOnly": True,
                                     },
+                                    {
+                                        "name": "claude-creds",
+                                        "mountPath": "/secrets/claude",
+                                        "readOnly": True,
+                                    },
                                 ],
                                 "resources": {
                                     "requests": {"cpu": "500m", "memory": "512Mi"},
@@ -196,6 +199,13 @@ class ClaudeCodeRuntime(Runtime):
                             {
                                 "name": "workspace",
                                 "configMap": {"name": cm_name},
+                            },
+                            {
+                                "name": "claude-creds",
+                                "secret": {
+                                    "secretName": settings.claude_credentials_secret,
+                                    "optional": True,
+                                },
                             },
                         ],
                     },
