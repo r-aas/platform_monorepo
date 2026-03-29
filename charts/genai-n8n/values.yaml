@@ -20,7 +20,7 @@ n8n:
       LITELLM_API_KEY: "sk-litellm-mewtwo-local"
       LITELLM_BASE_URL: "http://genai-litellm.genai.svc.cluster.local:4000"
       # YouTube pipeline
-      YT_ANALYSIS_MODEL: "qwen2.5:7b"
+      YT_ANALYSIS_MODEL: "glm-4.7-flash"
       YT_INGEST_URL: "http://192.168.5.2:7778"
       # MLflow tracking (in-cluster)
       MLFLOW_TRACKING_URI: "http://genai-mlflow.genai.svc.cluster.local"

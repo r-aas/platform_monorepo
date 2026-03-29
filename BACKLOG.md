@@ -13,11 +13,7 @@ P0 = blocking/broken, P1 = high value, P2 = planned, P3 = nice-to-have
 
 ## Active
 
-- [ ] P1 Pull glm-4.7-flash + sync LiteLLM — model download then ArgoCD sync
-- [ ] P1 Export YouTube cookies — task yt:cookies for Watch Later playlist access
 - [ ] P1 Activate autonomous loop — start runner, activate n8n workflows, verify scheduled runs
-- [ ] P1 Test yt-pipeline end-to-end — start yt-ingest, trigger pipeline, verify DataHub
-- [ ] P1 LAN access to platform services — expose k3d ingress to home network (not just localhost)
 - [ ] P2 Benchmark tuning — 66.7% pass rate, threshold 70%; tune prompts or test cases for baseline
 - [ ] P2 DataOps Phase 4: domain tags — tag datasets by domain (agent, eval, trace, workflow)
 - [ ] P2 Dashboard topology — wire DataHub lineage into ReactFlow graph
@@ -27,6 +23,10 @@ P0 = blocking/broken, P1 = high value, P2 = planned, P3 = nice-to-have
 
 ## Completed (recent)
 
+- [x] yt-pipeline end-to-end — 50 videos, 50 transcripts, LLM analysis with glm-4.7-flash, pgvector storage (2026-03-29)
+- [x] glm-4.7-flash pulled + LiteLLM registered — 19GB model, reasoning mode, 4000 max_tokens for analysis (2026-03-29)
+- [x] LAN access to platform services — lan-ingress chart, 15 services on 192.0.0.2.nip.io, task urls-lan (2026-03-29)
+- [x] Export YouTube cookies — cookies.txt exported, yt-ingest verified with Watch Later access (2026-03-29)
 - [x] YouTube ETL pipeline — yt-ingest service, n8n workflow, pgvector schema, DataHub governance (2026-03-28)
 - [x] Agent Runner generalized — Claude + OpenClaw + generic CLI runtimes, MCP config, skills support (2026-03-28)
 - [x] Default model → glm-4.7-flash — global.env, LiteLLM config, gpt-4o alias updated (2026-03-28)
