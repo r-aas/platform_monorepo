@@ -14,11 +14,11 @@ P0 = blocking/broken, P1 = high value, P2 = planned, P3 = nice-to-have
 ## Active
 
 - [x] P1 Activate autonomous loop — runner on :7777, claude-autonomous workflow active (4h cron), MLflow logging (2026-03-29)
-- [ ] P2 Benchmark tuning — 66.7% pass rate, threshold 70%; tune prompts or test cases for baseline
+- [x] P2 Benchmark tuning — smoke 100% (3/3), glm-4.7-flash judge, scoring guide, relaxed criteria (2026-03-29)
 - [x] P2 DataOps Phase 4: domain tags — 5 domains, 22 datasets tagged (agent, eval, trace, workflow, research) (2026-03-29)
 - [ ] P2 Dashboard topology — wire DataHub lineage into ReactFlow graph
 - [x] P2 n8n credential rotation — LITELLM_API_KEY, PLANE_API_TOKEN, GITLAB_PAT moved to n8n-env-secrets; encryption key + pg password via existingSecret (2026-03-29)
-- [ ] P2 Benchmark baseline — establish passing baseline with working judge, store in MLflow
+- [x] P2 Benchmark baseline — smoke 100%, avg score 0.88, MLflow run f05eaa5a (2026-03-29)
 - [ ] P3 Spec 015 ship — finish all phases, mark shipped
 
 ## Completed (recent)
