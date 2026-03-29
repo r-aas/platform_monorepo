@@ -20,7 +20,7 @@ metadata:
 spec:
   description: "Alias for built-in kagent tool server (helm, k8s, argo, prometheus tools)"
   protocol: STREAMABLE_HTTP
-  url: http://{{ .Release.Name }}-kagent-tools.{{ .Release.Namespace }}:8084/mcp
+  url: http://genai-kagent-tools.{{ .Release.Namespace }}:8084/mcp
   timeout: 30s
   sseReadTimeout: 5m0s
   allowedNamespaces:
