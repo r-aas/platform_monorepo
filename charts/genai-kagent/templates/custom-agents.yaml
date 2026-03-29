@@ -98,7 +98,7 @@ spec:
       - Quantify trade-offs (latency vs quality, cost vs accuracy)
       - Cite specific metrics and thresholds in recommendations
 
-      Domain: {{ domain }}
+      Domain: ML experiment tracking, model lifecycle, LLM observability
     modelConfig: default-model-config
     a2aConfig:
       skills:
