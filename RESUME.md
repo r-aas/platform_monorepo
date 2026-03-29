@@ -1,75 +1,78 @@
 # Platform Monorepo — Session Resume
 
-## Session: 2026-03-29 — Single-Command Lifecycle + Post-Restart Recovery
+## Session: 2026-03-29 — Mothership Architecture: kagent + agentgateway + agentregistry
 
-### What Was Built / Fixed
+### What Was Built
 
-**Single-Command Lifecycle (verified working)**
-- `task stop` — stops k3d cluster (~21s), preserves all state
-- `task start` — full resume: colima → ollama → k3d start → DNS fix → local-path fix → secrets → image import → wait-healthy → smoke → urls (~7 min)
-- `task up` — full bootstrap from scratch (unchanged)
-- `task down` — destroy cluster (unchanged)
+**Mothership Agent Platform** — best-of-breed OSS components for each layer:
 
-**Post-Restart Platform Recovery**
-- Root cause: DNS failure inside k3d nodes (192.168.5.2 unreachable after restart)
-- Fix: `"dns": ["8.8.8.8", "8.8.4.4"]` in Docker daemon.json inside Colima VM
-- Fix: k3d agent-1 node password hash mismatch — must use `k3d cluster stop/start`, never raw `docker restart`
-- Fix: n8n encryption key secret renamed by chart upgrade — created missing secret
-- Fix: n8n postgres password drift — added `postgresPassword: n8n` to chart values (prevents Bitnami random generation)
-- Fix: Local images lost from k3d nodes — `--import-only` flag re-imports without rebuilding
-- Fix: smoke test n8n→LiteLLM auth header quoting bug
+| Layer | Component | Status |
+|-------|-----------|--------|
+| Agent Runtime | kagent (CNCF Sandbox) v0.8.0 | Running, 8 agents (5 Ready, 3 boot-looping) |
+| MCP Proxy | agentgateway (Linux Foundation) v1.0.1 | Running, 8 backend CRs created |
+| Artifact Registry | agentregistry v0.2.1 | Running, pgvector-backed |
+| MCP Scoping | MetaMCP | Already deployed, working |
+| LLM Proxy | LiteLLM | Already deployed, working |
+| Scheduling | k8s CronJobs | 6 CronJobs deployed, A2A format correct |
 
-**Autonomous Agent Infrastructure (committed as 2c62293)**
-- `agents/*/agent.yaml` — autonomy blocks (schedule, signals, memory, collaborators, guardrails)
-- `scripts/signal-collector.py` — polls k8s, ArgoCD, service health
-- `scripts/agent-autonomy-schema.sql` — pgvector tables (fixed partial index NOW() bug)
-- `taskfiles/agents.yml` — agent management tasks
+**New Helm Charts (3)**
+- `genai-agentgateway` — Rust MCP/A2A proxy with AgentgatewayBackend CRs for all MCP servers
+- `genai-agentregistry` — Agent/skill/MCP catalog with pgvector semantic search
+- `genai-agent-schedules` — CronJobs posting to kagent A2A endpoints
 
-**Cold-Start Resilience Scripts**
-- `scripts/ensure-colima.sh` — Docker daemon DNS config in both start paths
-- `scripts/ensure-secrets.sh` — creates missing secrets + syncs n8n postgres password
-- `scripts/build-images.sh` — `--import-only` flag, added mcp-plane + open-ontologies
+**kagent Fixes**
+- Added `kagent-tool-server` alias RemoteMCPServer (workaround for upstream naming bug)
+- Registered 7 new RemoteMCPServers: mlflow-tracking, langfuse-observability, minio-storage, ollama-models, plane-project, kagent-tool-server
+- Added 3 new agents: data-engineer-agent, project-coordinator-agent, qa-eval-agent
+- Wired existing agents to new MCP tools (mlops → 5 tools, developer → gitlab, platform-admin → kagent-tool-server + ollama)
+- Fixed `{{ domain }}` unresolved template var
+- Converted tool refs from shorthand to full CRD schema
 
-### Verified Working (after stop/start cycle)
+**Research (spec 029-platform-consolidation)**
+- Evaluated 8 agent platforms, 6 MCP gateways, 4 registries
+- C4 Context, Integration, and Scheduling sequence diagrams
+- Every diagram edge has a smoke test command
 
-- All 3 k3d nodes: Ready
-- 57 pods running (+ 3 Completed jobs)
-- Smoke: 22 passed, 0 failures, 2 warnings
-- n8n: healthy, postgres password in sync
-- MLflow: healthy
-- Agent gateway: healthy (4 agents, 10 skills, 5 MCP servers)
-- LiteLLM: healthy, n8n can reach it
-- Ollama: running with OLLAMA_NUM_PARALLEL=4, OLLAMA_FLASH_ATTENTION=1
+### What's Broken / Needs Work
 
-### Known Issues
+1. **3 agent pods CrashLoopBackOff**: data-engineer, project-coordinator, qa-eval — `http_tools.*.tools` validation error. kagent tries to fetch tool schemas from MCP servers before they respond. Will stabilize once backoff aligns with server readiness. **Fix**: may need startup delay or retry logic in kagent controller.
 
-1. **k3d agent-1 fragility** — node password hash mismatch after `docker restart`. Must use `k3d cluster stop/start`.
-2. **lan-ingress ArgoCD app** — OutOfSync/Missing (cosmetic, no impact)
-3. **agent-gateway e2e smoke** — requires n8n workflows imported + 60s Ollama inference timeout. Not a startup health issue.
-4. **Benchmark full suite** — general cases need tool-calling, not chat-only (16.7% pass rate)
+2. **Updated agents also crashing new replicas**: mlops and platform-admin got new ReplicaSets that reference new MCP tools (not yet cached). Old pods still Running fine.
 
-### Commits This Session (platform_monorepo)
+3. **CronJob scheduling format**: Fixed to use `message/send` method with `messageId`. Need to verify on next CronJob trigger.
 
-- `8c38e9b` feat: ontology update + Agent Spec → kagent transpiler
-- `b4fe105` chore: mark dashboard topology + spec 015 complete
-- `2c62293` feat: autonomous agent infrastructure + cold-start resilience
-- `8efe3be` fix: n8n postgres password drift (postgresPassword in chart values)
-- (uncommitted) fix: smoke test LiteLLM auth header quoting
+4. **agentgateway CRDs**: Installed manually via `kubectl apply --server-side` (exceed 262KB annotation limit for normal apply). Need to add to bootstrap script.
+
+5. **Slim agent-gateway**: Not started yet. Currently both kagent and agent-gateway coexist. Phase 2: remove registry/proxy code from agent-gateway, keep skill catalog + semantic discovery.
 
 ### Platform State
 
-| Component | Count | Status |
-|-----------|-------|--------|
-| k3d nodes | 3 | All Ready |
-| Pods | 57 | All Running |
-| ArgoCD apps | 24/25 | Healthy (lan-ingress cosmetic) |
-| Agents | 4 | mlops, developer, platform-admin, mlops-shadow |
-| Skills | 10 | Across all agents |
-| MCP servers | 5 | kubernetes, gitlab, n8n, datahub, plane |
+- **35 ArgoCD apps** (was 29): 31 Synced/Healthy, 1 Unknown (genai-kagent — intermittent), 2 OutOfSync (datahub, lan-ingress)
+- **~74 pods** in genai namespace
+- **8 kagent agents**: developer, mlops, platform-admin, helm, k8s (Ready) + data-engineer, project-coordinator, qa-eval (Accepted, boot-looping)
+- **9 RemoteMCPServers**: All Accepted
+- **6 CronJobs**: All created with correct A2A message format
+- **agentgateway**: Running (1 pod)
+- **agentregistry**: Running (1 pod), using shared pgvector
 
-### Next
+### Commits This Session
 
-1. **Agent Gateway merge** — execute plan at `~/.claude/plans/polymorphic-watching-tarjan.md`
-2. **Signal-to-task router** — n8n workflow or gateway endpoint
-3. **Memory API** — agent-gateway endpoints for read/write agent_memory with embeddings
-4. **Autonomous loop wiring** — signal collector → task router → agent invocation → verification
+```
+50623b2 feat: expand kagent agents + MCP servers, fix tool-server naming bug
+3a12f4e feat: deploy agentgateway + agentregistry + CronJob scheduling
+5acfe00 fix: remove agentgateway CRDs from subchart
+b5d9a9f fix: replace unresolved {{ domain }} template var
+7380bcd fix: use full McpServer tool form in kagent agent specs
+4a50e8a fix: correct kagent-tool-server alias URL
+ea437e5 fix: use correct A2A message/send method in CronJobs
+34afbc8 docs: add spec 029 — platform consolidation research + diagrams
+```
+
+### Next Steps
+
+1. **Stabilize agent pods**: Debug kagent tool fetch timing, consider init container or readiness gate
+2. **Verify CronJob → A2A**: Wait for next platform-admin-agent trigger (*/15m), check it invokes the agent
+3. **Slim agent-gateway**: Remove registry/proxy code, keep skill catalog + semantic discovery
+4. **Wire agentregistry**: Seed with our agent definitions + skill YAMLs + MCP server catalog
+5. **Update ~/work/CLAUDE.md**: Add agentgateway + agentregistry to toolchain section
+6. **Add agentgateway CRDs to bootstrap**: In `scripts/bootstrap-crds.sh` or helmfile pre-sync
