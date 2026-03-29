@@ -1,0 +1,67 @@
+%% Sequence Diagram: CronJob -> kagent A2A -> Tool Execution
+%% Each arrow has a comment noting the smoke test that verifies it
+
+sequenceDiagram
+    participant CJ as CronJob Pod
+    participant KA as kagent Controller
+    participant AP as Agent Pod (AutoGen)
+    participant LL as LiteLLM
+    participant OL as Ollama (192.168.5.2)
+    participant MM as MetaMCP
+    participant AG as agentgateway
+    participant MCP as MCP Server
+    participant MEM as Memory CRD (k8s)
+
+    Note over CJ,MEM: Scheduled Agent Task Execution
+
+    %% Step 1: CronJob triggers agent task
+    %% Smoke: kubectl create job --from=cronjob/test-agent test-run
+    CJ->>+KA: POST /a2a/tasks/send<br/>{"task": "daily-report", "agent": "reporter"}
+
+    %% Step 2: kagent creates agent pod
+    %% Smoke: kubectl get pods -l kagent.dev/agent=reporter --watch
+    KA->>KA: Lookup Agent CRD "reporter"<br/>Resolve ModelConfig, Tools
+    KA->>+AP: Create agent pod<br/>Mount Tool configs, ModelConfig
+
+    %% Step 3: Agent loads previous memory
+    %% Smoke: kubectl get memory reporter-memory -o jsonpath='{.status.entries}'
+    AP->>MEM: GET Memory CRD "reporter-memory"
+    MEM-->>AP: Previous context + state
+
+    %% Step 4: Agent calls LLM for planning
+    %% Smoke: kubectl exec deploy/kagent -- wget -qO- http://litellm:4000/health
+    AP->>+LL: POST /v1/chat/completions<br/>model: qwen2.5:14b<br/>tools: [filtered tool list]
+    LL->>+OL: POST /v1/chat/completions<br/>api_key: ollama
+    OL-->>-LL: completion with tool_calls[]
+    LL-->>-AP: tool_calls: [{name: "query_postgres", args: {...}}]
+
+    %% Step 5: Agent routes tool call through MetaMCP -> agentgateway
+    %% Smoke: kubectl exec deploy/metamcp -- wget -qO- http://agentgateway:8080/health
+    AP->>+MM: MCP tools/call "query_postgres"<br/>workspace: "reporter"
+    Note over MM: Verify tool "query_postgres"<br/>is in reporter's namespace
+    MM->>+AG: MCP tools/call "query_postgres"<br/>JWT auth
+
+    %% Step 6: agentgateway routes to MCP server
+    %% Smoke: curl http://agentgateway.genai.127.0.0.1.nip.io/mcp/tools/list
+    AG->>+MCP: Execute tool via stdio/SSE<br/>Per-server credentials
+    MCP-->>-AG: Tool result (JSON)
+    AG-->>-MM: Tool result
+    MM-->>-AP: Tool result
+
+    %% Step 7: Agent calls LLM with tool results
+    %% Smoke: same as step 4
+    AP->>+LL: POST /v1/chat/completions<br/>messages: [..., tool_result]
+    LL->>+OL: POST /v1/chat/completions
+    OL-->>-LL: Final completion (report text)
+    LL-->>-AP: Report text
+
+    %% Step 8: Agent stores result in Memory CRD
+    %% Smoke: kubectl get memory reporter-memory -o yaml | grep -A5 'entries'
+    AP->>MEM: PATCH Memory CRD<br/>Append task result + timestamp
+
+    %% Step 9: Agent pod reports completion and terminates
+    %% Smoke: kubectl get pods -l kagent.dev/agent=reporter --field-selector=status.phase=Succeeded
+    AP-->>-KA: Task complete<br/>status: succeeded
+    KA-->>-CJ: A2A task response<br/>{"status": "completed"}
+
+    Note over CJ,MEM: Agent pod terminates. Memory persists in CRD.

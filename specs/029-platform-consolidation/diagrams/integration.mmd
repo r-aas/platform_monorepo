@@ -1,0 +1,90 @@
+%% Integration Flow Diagram: Platform Consolidation
+%% Each edge has protocol + auth. Comments note verification smoke tests.
+
+flowchart LR
+    %% Triggers
+    cronjob["CronJob"]
+    n8n["n8n"]
+
+    %% Core Components
+    kagent["kagent\n(Agent Runtime)"]
+    metamcp["MetaMCP\n(Namespace Filter)"]
+    agentgateway["agentgateway\n(MCP/A2A Proxy)"]
+    litellm["LiteLLM\n(LLM Proxy)"]
+    agentregistry["agentregistry\n(Catalog)"]
+    agent_gw["agent-gateway\n(slim)"]
+
+    %% Storage
+    pgvector[("pgvector\n(Catalog DB)")]
+    ollama["Ollama\n(192.168.5.2)"]
+
+    %% MCP Servers
+    subgraph mcp["MCP Servers"]
+        github["github"]
+        gitlab["gitlab"]
+        filesystem["filesystem"]
+        postgres["postgres"]
+        mlflow["mlflow"]
+        langfuse["langfuse"]
+        slack["slack"]
+        memory["memory"]
+        fetch["fetch"]
+    end
+
+    %% === Scheduled Agent Execution Path ===
+    %% Smoke: kubectl create job --from=cronjob/test-agent test-run && kubectl logs job/test-run
+    cronjob -->|"POST /a2a/tasks\nServiceAccount"| kagent
+
+    %% Smoke: kubectl exec deploy/kagent-agent -- wget -qO- http://litellm:4000/health
+    kagent -->|"POST /v1/chat/completions\nBearer sk-litellm-*"| litellm
+
+    %% Smoke: curl -H 'Authorization: Bearer ollama' http://litellm.genai.127.0.0.1.nip.io/v1/models
+    litellm -->|"POST /v1/chat/completions\napi_key=ollama"| ollama
+
+    %% Smoke: kubectl exec deploy/kagent-agent -- wget -qO- http://metamcp:3000/health
+    kagent -->|"MCP tools/call\nworkspace=agent-name"| metamcp
+
+    %% Smoke: kubectl exec deploy/metamcp -- wget -qO- http://agentgateway:8080/health
+    metamcp -->|"MCP tools/call\nJWT"| agentgateway
+
+    %% === MCP Server Fan-out ===
+    %% Smoke: curl http://agentgateway.genai.127.0.0.1.nip.io/mcp/tools/list
+    agentgateway -->|"stdio"| github
+    agentgateway -->|"stdio"| gitlab
+    agentgateway -->|"stdio"| filesystem
+    agentgateway -->|"stdio"| postgres
+    agentgateway -->|"SSE"| mlflow
+    agentgateway -->|"SSE"| langfuse
+    agentgateway -->|"stdio"| slack
+    agentgateway -->|"stdio"| memory
+    agentgateway -->|"stdio"| fetch
+
+    %% === Tool Discovery ===
+    %% Smoke: curl http://agentgateway.genai.127.0.0.1.nip.io/api/v1/tools (if exposed)
+    agentgateway -->|"GET /api/v1/artifacts\nAPI key"| agentregistry
+
+    %% Smoke: kubectl exec deploy/agentregistry -- pg_isready -h pgvector-svc -p 5432
+    agentregistry -->|"TCP 5432\nPassword"| pgvector
+
+    %% === n8n Integration Paths ===
+    %% Smoke: curl -X POST http://n8n.genai.127.0.0.1.nip.io/webhook/test-mcp
+    n8n -->|"MCP (SSE)\nBearer token"| agentgateway
+
+    %% Smoke: curl -X POST http://n8n.genai.127.0.0.1.nip.io/webhook/test-chat
+    n8n -->|"POST /v1/chat/completions\nBearer sk-litellm-*"| litellm
+
+    %% === Orchestration Glue ===
+    %% Smoke: curl http://agent-gateway.genai.127.0.0.1.nip.io/health/detail
+    agent_gw -->|"GET /api/v1/search\nAPI key"| agentregistry
+    agent_gw -->|"kubectl get agents\nServiceAccount"| kagent
+
+    %% Styling
+    classDef trigger fill:#f9f,stroke:#333,stroke-width:2px
+    classDef core fill:#bbf,stroke:#333,stroke-width:2px
+    classDef storage fill:#fbb,stroke:#333,stroke-width:2px
+    classDef mcp_server fill:#ddd,stroke:#333,stroke-width:1px
+
+    class cronjob,n8n trigger
+    class kagent,metamcp,agentgateway,litellm,agentregistry,agent_gw core
+    class pgvector,ollama storage
+    class github,gitlab,filesystem,postgres,mlflow,langfuse,slack,memory,fetch mcp_server

@@ -1,0 +1,85 @@
+%% C4 Context Diagram: Platform Consolidation
+%% Each edge comment notes the smoke test that verifies it
+
+graph TB
+    %% External Actors
+    R["R (Human)\nPlatform Engineer"]
+    n8n["n8n\nWorkflow Orchestrator"]
+    ollama["Ollama\nLocal LLM Runtime\n(Mac host 192.168.5.2)"]
+    cronjob["K8s CronJobs\nScheduled Tasks"]
+
+    %% System Boundary
+    subgraph k3d["k3d Cluster (mewtwo) -- genai namespace"]
+
+        subgraph proxy_layer["Proxy Layer"]
+            agentgateway["agentgateway\n(Rust, CNCF)\nMCP + A2A + LLM Gateway"]
+            metamcp["MetaMCP\n(TypeScript)\nNamespace Scoping Proxy"]
+        end
+
+        subgraph runtime_layer["Agent Runtime"]
+            kagent["kagent\n(Go controller + Python runtime)\nK8s-native Agent CRDs"]
+            agent_gw_slim["agent-gateway (slim)\n(Python/FastAPI)\nOrchestration Glue"]
+        end
+
+        subgraph data_layer["Data + Discovery"]
+            agentregistry["agentregistry\n(Go)\nMCP/Agent/Skill Catalog"]
+            pgvector["PostgreSQL + pgvector\nCatalog Storage"]
+        end
+
+        subgraph llm_layer["LLM Proxy"]
+            litellm["LiteLLM\n(Python)\nOpenAI-compat Proxy"]
+        end
+
+        subgraph mcp_servers["MCP Servers (9)"]
+            mcp_group["github, gitlab, filesystem,\npostgres, mlflow, langfuse,\nslack, memory, fetch"]
+        end
+    end
+
+    %% External -> Cluster
+    %% Smoke: curl http://agentgateway.genai.127.0.0.1.nip.io/health
+    R -->|"MCP client / CLI"| agentgateway
+    R -->|"areg CLI"| agentregistry
+
+    %% Smoke: curl http://n8n.genai.127.0.0.1.nip.io/healthz
+    n8n -->|"MCP (SSE)\nBearer token"| agentgateway
+    n8n -->|"OpenAI-compat HTTP\nBearer token"| litellm
+
+    %% Smoke: kubectl create job --from=cronjob/test-agent test-run
+    cronjob -->|"HTTP POST (A2A)"| kagent
+
+    %% Intra-cluster
+    %% Smoke: kubectl exec deploy/kagent -- wget -qO- http://agentgateway:8080/health
+    kagent -->|"MCP (Streamable HTTP)\nJWT"| metamcp
+    kagent -->|"OpenAI-compat HTTP\nBearer token"| litellm
+
+    %% Smoke: kubectl exec deploy/metamcp -- wget -qO- http://agentgateway:8080/health
+    metamcp -->|"MCP\nJWT"| agentgateway
+
+    %% Smoke: kubectl exec deploy/agentgateway -- wget -qO- http://localhost:8080/health
+    agentgateway -->|"stdio / SSE / HTTP\nPer-server auth"| mcp_group
+    agentgateway -->|"HTTP\nAPI key"| agentregistry
+
+    %% Smoke: kubectl exec deploy/agentregistry -- pg_isready -h pgvector
+    agentregistry -->|"TCP 5432\nPassword"| pgvector
+
+    %% Smoke: curl http://litellm.genai.127.0.0.1.nip.io/health
+    litellm -->|"HTTP\napi_key=ollama"| ollama
+
+    %% Smoke: kubectl exec deploy/agent-gateway-slim -- wget -qO- http://agentregistry:8080/health
+    agent_gw_slim -->|"HTTP\nAPI key"| agentregistry
+    agent_gw_slim -->|"k8s API\nServiceAccount"| kagent
+
+    %% Styling
+    classDef external fill:#f9f,stroke:#333,stroke-width:2px
+    classDef proxy fill:#bbf,stroke:#333,stroke-width:2px
+    classDef runtime fill:#bfb,stroke:#333,stroke-width:2px
+    classDef data fill:#fbb,stroke:#333,stroke-width:2px
+    classDef llm fill:#ffb,stroke:#333,stroke-width:2px
+    classDef mcp fill:#ddd,stroke:#333,stroke-width:1px
+
+    class R,n8n,ollama,cronjob external
+    class agentgateway,metamcp proxy
+    class kagent,agent_gw_slim runtime
+    class agentregistry,pgvector data
+    class litellm llm
+    class mcp_group mcp
