@@ -3,6 +3,7 @@ postgresql:
   auth:
     username: n8n
     password: n8n
+    postgresPassword: n8n
     database: n8n
   primary:
     resources:
