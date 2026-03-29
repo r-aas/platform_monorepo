@@ -1,0 +1,5 @@
+apiVersion: v2
+name: lan-ingress
+description: LAN-accessible ingress rules mirroring localhost nip.io routes
+version: 0.1.0
+type: application

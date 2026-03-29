@@ -1,0 +1,48 @@
+{{- $lanIP := .Values.lanIP -}}
+{{- range .Values.services }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lan-{{ .name }}
+  namespace: {{ .namespace }}
+  labels:
+    app.kubernetes.io/managed-by: lan-ingress
+  {{- if .annotations }}
+  annotations:
+    {{- toYaml .annotations | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: {{ .host }}.{{ $lanIP }}.nip.io
+      http:
+        paths:
+          {{- if .paths }}
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .service }}
+                port:
+                  {{- if kindIs "string" .port }}
+                  name: {{ .port }}
+                  {{- else }}
+                  number: {{ .port }}
+                  {{- end }}
+          {{- end }}
+          {{- else }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .backend.service }}
+                port:
+                  {{- if kindIs "string" .backend.port }}
+                  name: {{ .backend.port }}
+                  {{- else }}
+                  number: {{ .backend.port }}
+                  {{- end }}
+          {{- end }}
+{{- end }}

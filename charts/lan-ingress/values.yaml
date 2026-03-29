@@ -1,0 +1,138 @@
+# LAN IP — detected automatically or override here
+# nip.io resolves {anything}.{IP}.nip.io to {IP}
+lanIP: "192.0.0.2"
+
+# Services to expose on LAN. Each entry creates an Ingress resource.
+# Format matches existing localhost nip.io ingress routes.
+services:
+  # genai namespace
+  - name: agent-gateway
+    namespace: genai
+    host: agent-gateway.genai
+    backend:
+      service: genai-agent-gateway
+      port: http
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+      nginx.ingress.kubernetes.io/proxy-buffering: "off"
+
+  - name: datahub
+    namespace: genai
+    host: datahub.genai
+    backend:
+      service: genai-datahub-datahub-frontend
+      port: 9002
+
+  - name: datahub-gms
+    namespace: genai
+    host: datahub-gms.genai
+    backend:
+      service: genai-datahub-datahub-gms
+      port: 8080
+
+  - name: kagent
+    namespace: genai
+    host: kagent.genai
+    backend:
+      service: genai-kagent-ui
+      port: 8080
+
+  - name: langfuse
+    namespace: genai
+    host: langfuse.genai
+    backend:
+      service: genai-langfuse-web
+      port: http
+
+  - name: litellm
+    namespace: genai
+    host: litellm.genai
+    backend:
+      service: genai-litellm
+      port: 4000
+
+  - name: minio
+    namespace: genai
+    host: minio.genai
+    backend:
+      service: genai-minio
+      port: 9000
+
+  - name: minio-console
+    namespace: genai
+    host: minio-console.genai
+    backend:
+      service: genai-minio-console
+      port: 9001
+
+  - name: mlflow
+    namespace: genai
+    host: mlflow.genai
+    backend:
+      service: genai-mlflow
+      port: 80
+
+  - name: n8n
+    namespace: genai
+    host: n8n.mewtwo
+    backend:
+      service: genai-n8n
+      port: 5678
+
+  - name: open-ontologies
+    namespace: genai
+    host: open-ontologies.genai
+    backend:
+      service: genai-open-ontologies
+      port: 8080
+
+  - name: plane
+    namespace: genai
+    host: plane.genai
+    paths:
+      - path: /
+        service: genai-plane-web
+        port: 3000
+      - path: /api
+        service: genai-plane-api
+        port: 8000
+      - path: /auth
+        service: genai-plane-api
+        port: 8000
+      - path: /live/
+        service: genai-plane-live
+        port: 3000
+      - path: /spaces
+        service: genai-plane-space
+        port: 3000
+      - path: /god-mode
+        service: genai-plane-admin
+        port: 3000
+      - path: /plane-uploads
+        service: genai-plane-minio
+        port: 9000
+
+  # platform namespace
+  - name: argocd
+    namespace: platform
+    host: argocd.mewtwo
+    backend:
+      service: argocd-server
+      port: 443
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+      nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+
+  - name: gitlab
+    namespace: platform
+    host: gitlab.mewtwo
+    backend:
+      service: gitlab-ce
+      port: http
+
+  - name: registry
+    namespace: platform
+    host: registry.mewtwo
+    backend:
+      service: gitlab-ce
+      port: registry
