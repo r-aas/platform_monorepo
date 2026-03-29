@@ -18,6 +18,10 @@ n8n:
       INFERENCE_DEFAULT_MODEL: "qwen2.5:14b"
       INFERENCE_ALLOWED_MODELS: "qwen2.5:14b,qwen2.5:7b,mistral:7b-instruct,gemma3:12b,nomic-embed-text"
       LITELLM_API_KEY: "sk-litellm-mewtwo-local"
+      LITELLM_BASE_URL: "http://genai-litellm.genai.svc.cluster.local:4000"
+      # YouTube pipeline
+      YT_ANALYSIS_MODEL: "qwen2.5:14b"
+      YT_INGEST_URL: "http://192.168.5.2:7778"
       # MLflow tracking (in-cluster)
       MLFLOW_TRACKING_URI: "http://genai-mlflow.genai.svc.cluster.local"
       # Ollama direct (host via Colima gateway)
