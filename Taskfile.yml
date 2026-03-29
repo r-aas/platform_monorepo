@@ -388,6 +388,11 @@ tasks:
     cmds:
       - python3 {{.PLATFORM_DIR}}/scripts/datahub-quality.py
 
+  datahub-domains:
+    desc: "Tag DataHub datasets by domain (agent, eval, trace, workflow, research)"
+    cmds:
+      - python3 {{.PLATFORM_DIR}}/scripts/datahub-domains.py {{.CLI_ARGS}}
+
   seed-secrets:
     desc: "Create all platform k8s secrets from ~/work/envs/secrets.env"
     cmds:
