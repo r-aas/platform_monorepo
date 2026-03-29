@@ -45,6 +45,34 @@ DEFAULT_SERVERS = [
         "namespace": "project-management",
         "description": "Plane CE project management — issues, labels, cycles, sprints",
     },
+    {
+        "name": "mlflow",
+        "url": "http://genai-mcp-mlflow.genai.svc.cluster.local:3000/mcp",
+        "transport": "streamable-http",
+        "namespace": "mlops",
+        "description": "MLflow experiment tracking — experiments, runs, metrics, model registry",
+    },
+    {
+        "name": "langfuse",
+        "url": "http://genai-mcp-langfuse.genai.svc.cluster.local:3000/mcp",
+        "transport": "streamable-http",
+        "namespace": "observability",
+        "description": "Langfuse LLM observability — traces, scores, token usage, cost analysis",
+    },
+    {
+        "name": "minio",
+        "url": "http://genai-mcp-minio.genai.svc.cluster.local:3000/mcp",
+        "transport": "streamable-http",
+        "namespace": "storage",
+        "description": "MinIO S3-compatible object storage — buckets, artifacts, model files",
+    },
+    {
+        "name": "ollama",
+        "url": "http://genai-mcp-ollama.genai.svc.cluster.local:3000/mcp",
+        "transport": "streamable-http",
+        "namespace": "llm",
+        "description": "Ollama model management — pull, delete, inspect, VRAM monitoring",
+    },
 ]
 
 

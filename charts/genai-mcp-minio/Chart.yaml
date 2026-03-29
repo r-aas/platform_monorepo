@@ -1,0 +1,6 @@
+apiVersion: v2
+name: genai-mcp-minio
+description: MinIO MCP server (Streamable HTTP) — S3-compatible object storage tools for agents
+type: application
+version: 0.1.0
+appVersion: "latest"

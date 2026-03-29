@@ -31,11 +31,13 @@ capabilities:
   - kubernetes
   - git
   - workflows
+  - model-management
 
 skills:
   - kubernetes-ops
   - n8n-workflow-ops
   - gitlab-pipeline-ops
+  - model-management
   - dev-sandbox
 
 metadata:

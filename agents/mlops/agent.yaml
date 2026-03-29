@@ -27,11 +27,17 @@ system_prompt: |
 capabilities:
   - experiment-tracking
   - model-registry
+  - observability
+  - model-management
+  - object-storage
   - kubernetes
 
 skills:
   - kubernetes-ops
   - mlflow-tracking
+  - langfuse-ops
+  - model-management
+  - artifact-ops
   - dev-sandbox
 
 metadata:

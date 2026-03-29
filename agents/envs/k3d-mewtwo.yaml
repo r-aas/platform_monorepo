@@ -24,11 +24,26 @@ capabilities:
     mcp_server: mcp-n8n
     url: "http://genai-mcp-n8n:8080/sse"
   experiment-tracking:
-    mcp_server: mlflow
-    url: "http://genai-mlflow:5000"
+    mcp_server: mcp-mlflow
+    url: "http://genai-mcp-mlflow.genai.svc.cluster.local:3000/mcp"
   model-registry:
-    mcp_server: mlflow
-    url: "http://genai-mlflow:5000"
+    mcp_server: mcp-mlflow
+    url: "http://genai-mcp-mlflow.genai.svc.cluster.local:3000/mcp"
+  data-catalog:
+    mcp_server: mcp-datahub
+    url: "http://genai-mcp-datahub.genai.svc.cluster.local:8000/mcp"
+  project-management:
+    mcp_server: mcp-plane
+    url: "http://genai-mcp-plane.genai.svc.cluster.local:3000/mcp"
+  observability:
+    mcp_server: mcp-langfuse
+    url: "http://genai-mcp-langfuse.genai.svc.cluster.local:3000/mcp"
+  object-storage:
+    mcp_server: mcp-minio
+    url: "http://genai-mcp-minio.genai.svc.cluster.local:3000/mcp"
+  model-management:
+    mcp_server: mcp-ollama
+    url: "http://genai-mcp-ollama.genai.svc.cluster.local:3000/mcp"
 
 runtimes:
   direct:

@@ -100,7 +100,7 @@ fi
 
 # n8n → LiteLLM connectivity
 if app_exists "genai-n8n" && app_exists "genai-litellm"; then
-  if kubectl exec -n genai deploy/genai-n8n -- wget -q -O- --header='Authorization: Bearer ${LITELLM_API_KEY:-sk-litellm-mewtwo-local}' http://genai-litellm.genai.svc.cluster.local:4000/v1/models 2>/dev/null | grep -q '"id"'; then
+  if kubectl exec -n genai deploy/genai-n8n -- wget -q -O- --header="Authorization: Bearer ${LITELLM_API_KEY:-sk-litellm-mewtwo-local}" http://genai-litellm.genai.svc.cluster.local:4000/v1/models 2>/dev/null | grep -q '"id"'; then
     ok "n8n → LiteLLM"
   else
     fail "n8n → LiteLLM (unreachable)"

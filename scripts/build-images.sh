@@ -26,6 +26,10 @@ IMAGES=(
   "datahub-ingestion-mlflow:latest:${PLATFORM_DIR}/images/datahub-ingestion-mlflow/Dockerfile:${PLATFORM_DIR}/images/datahub-ingestion-mlflow"
   "datahub-bridge:latest:${PLATFORM_DIR}/services/n8n-datahub-bridge/Dockerfile:${PLATFORM_DIR}/services/n8n-datahub-bridge"
   "mcp-plane:latest:${PLATFORM_DIR}/images/mcp-plane/Dockerfile:${PLATFORM_DIR}/images/mcp-plane"
+  "mcp-mlflow:latest:${PLATFORM_DIR}/images/mcp-mlflow/Dockerfile:${PLATFORM_DIR}/images/mcp-mlflow"
+  "mcp-langfuse:latest:${PLATFORM_DIR}/images/mcp-langfuse/Dockerfile:${PLATFORM_DIR}/images/mcp-langfuse"
+  "mcp-minio:latest:${PLATFORM_DIR}/images/mcp-minio/Dockerfile:${PLATFORM_DIR}/images/mcp-minio"
+  "mcp-ollama:latest:${PLATFORM_DIR}/images/mcp-ollama/Dockerfile:${PLATFORM_DIR}/images/mcp-ollama"
   "open-ontologies:latest:${PLATFORM_DIR}/images/open-ontologies/Dockerfile:${PLATFORM_DIR}/images/open-ontologies"
   "agent-registry:latest:${PLATFORM_DIR}/images/agent-registry/Dockerfile:${HOME}/work/repos/agent-platform"
 )
