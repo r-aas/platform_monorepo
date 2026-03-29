@@ -69,7 +69,7 @@ tasks:
       - task: ensure-ollama
       - task: k3d:cluster-start
       - task: ensure-secrets
-      - task: build-images
+      - task: import-images
       - task: sync-if-needed
       - bash {{.PLATFORM_DIR}}/scripts/wait-healthy.sh 300
       - echo ""
@@ -131,6 +131,13 @@ tasks:
       K3D_CLUSTER: "{{.K3D_CLUSTER}}"
     cmds:
       - bash {{.PLATFORM_DIR}}/scripts/build-images.sh
+
+  import-images:
+    desc: "Import pre-built images into k3d (skip builds — fast resume)"
+    env:
+      K3D_CLUSTER: "{{.K3D_CLUSTER}}"
+    cmds:
+      - bash {{.PLATFORM_DIR}}/scripts/build-images.sh "" --import-only
 
   # ── Helmfile ────────────────────────────────────────────────
 

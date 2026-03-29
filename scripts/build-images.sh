@@ -47,11 +47,25 @@ if [ "$CHECK_ONLY" = "--check" ]; then
 fi
 
 # ── Build and import ────────────────────────────────────────
+# --import-only: skip builds, just re-import existing images into k3d
+# Useful after k3d restart when images are already built locally.
+IMPORT_ONLY="${2:-}"
+
 for entry in "${IMAGES[@]}"; do
   IFS=: read -r NAME TAG DOCKERFILE CONTEXT <<< "$entry"
 
   if [ ! -f "$DOCKERFILE" ]; then
     echo "  ⚠ Skipping ${NAME}:${TAG} — Dockerfile not found: $DOCKERFILE"
+    continue
+  fi
+
+  if [ "$IMPORT_ONLY" = "--import-only" ]; then
+    if docker image inspect "${NAME}:${TAG}" &>/dev/null; then
+      log "Importing ${NAME}:${TAG} into k3d-${K3D_CLUSTER}..."
+      k3d image import "${NAME}:${TAG}" -c "$K3D_CLUSTER"
+    else
+      echo "  ⚠ ${NAME}:${TAG} not built locally — skipping (run without --import-only to build)"
+    fi
     continue
   fi
 
