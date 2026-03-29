@@ -1,4 +1,4 @@
-<!-- status: in-progress -->
+<!-- status: shipped -->
 # Spec 015: DataOps — DataHub Lineage & Quality
 
 ## Problem
@@ -37,7 +37,7 @@ DataHub GMS (GraphQL API)
 - [x] JSON recipes (not YAML) for execution compatibility
 - [x] First ingestion triggered and running
 
-### Phase 2: Lineage Emitter
+### Phase 2: Lineage Emitter (DONE)
 
 Script: `scripts/datahub-lineage.py`
 
@@ -49,7 +49,7 @@ Emit lineage edges via DataHub REST emitter:
 - `k3d-mewtwo.n8n.public.execution_entity` → `k3d-mewtwo.langfuse.public.traces`
   (n8n chat workflow logs traces to Langfuse)
 
-### Phase 3: Quality Assertions
+### Phase 3: Quality Assertions (DONE)
 
 DataHub Assertions API — create freshness and volume checks:
 - `workflow_entity`: updated within 1h (n8n is always active)
@@ -57,7 +57,7 @@ DataHub Assertions API — create freshness and volume checks:
 - `experiments`: >5 rows (seed experiments exist)
 - `traces`: updated within 24h (if Langfuse is active)
 
-### Phase 4: Domain Tags
+### Phase 4: Domain Tags (DONE)
 
 Tag datasets with business domains via DataHub API:
 - `agent` domain: agents table, skills table
