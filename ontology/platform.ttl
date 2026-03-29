@@ -90,6 +90,46 @@
     rdfs:label "Object Store" ;
     rdfs:comment "S3-compatible object storage (MinIO, etc)." .
 
+:ObservabilityPlatform a owl:Class ;
+    rdfs:subClassOf :APIService ;
+    rdfs:label "Observability Platform" ;
+    rdfs:comment "LLM observability and tracing (Langfuse, LangSmith, etc)." .
+
+:ProjectManagement a owl:Class ;
+    rdfs:subClassOf :APIService ;
+    rdfs:label "Project Management" ;
+    rdfs:comment "Issue tracking and project planning (Plane, Jira, etc)." .
+
+:AgentRuntime a owl:Class ;
+    rdfs:subClassOf :APIService ;
+    rdfs:label "Agent Runtime" ;
+    rdfs:comment "Service that spawns and manages agent sessions (claude-runner, etc)." .
+
+:ETLService a owl:Class ;
+    rdfs:subClassOf :APIService ;
+    rdfs:label "ETL Service" ;
+    rdfs:comment "Extract-transform-load pipeline service." .
+
+:SearchEngine a owl:Class ;
+    rdfs:subClassOf :Service ;
+    rdfs:label "Search Engine" ;
+    rdfs:comment "Full-text search and indexing (Elasticsearch, etc)." .
+
+:CacheStore a owl:Class ;
+    rdfs:subClassOf :Service ;
+    rdfs:label "Cache Store" ;
+    rdfs:comment "In-memory cache or key-value store (Redis, etc)." .
+
+:AgentDeployment a owl:Class ;
+    rdfs:subClassOf :APIService ;
+    rdfs:label "Agent Deployment" ;
+    rdfs:comment "A deployed AI agent instance managed by KAgent." .
+
+:AgentController a owl:Class ;
+    rdfs:subClassOf :Service ;
+    rdfs:label "Agent Controller" ;
+    rdfs:comment "Kubernetes operator managing agent lifecycle (KAgent)." .
+
 :GitServer a owl:Class ;
     rdfs:subClassOf :APIService ;
     rdfs:label "Git Server" ;
@@ -251,6 +291,12 @@
     rdfs:label "address" ;
     rdfs:comment "Internal cluster DNS or address." ;
     rdfs:domain :Service ;
+    rdfs:range xsd:string .
+
+:lanIngressHost a owl:DatatypeProperty ;
+    rdfs:label "LAN ingress host" ;
+    rdfs:comment "LAN-accessible hostname via LAN ingress chart." ;
+    rdfs:domain :APIService ;
     rdfs:range xsd:string .
 
 :condition a owl:DatatypeProperty ;

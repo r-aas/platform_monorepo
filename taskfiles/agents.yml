@@ -46,6 +46,24 @@ tasks:
         done
         echo ""
 
+  transpile:
+    desc: "Transpile Agent Spec YAML → kagent CRDs"
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - uvx --with pyyaml python3 scripts/agentspec-to-kagent.py
+
+  transpile-dry:
+    desc: "Preview transpiled CRDs without writing"
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - uvx --with pyyaml python3 scripts/agentspec-to-kagent.py --dry-run
+
+  drift:
+    desc: "Show drift between Agent Spec YAML and kagent CRDs"
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - uvx --with pyyaml python3 scripts/agentspec-to-kagent.py --drift
+
   invoke:
     desc: "Invoke an agent by name (usage: task agents:invoke -- platform-doctor)"
     vars:
