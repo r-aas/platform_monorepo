@@ -1,0 +1,132 @@
+# ~/work/repos/platform_monorepo/taskfiles/yt.yml — YouTube ETL pipeline
+# Extract playlists, analyze transcripts, store in pgvector, govern in DataHub.
+
+version: "3"
+
+vars:
+  YT_DIR: "{{.PLATFORM_DIR}}/services/yt-ingest"
+  YT_PORT: "7778"
+  YT_PID: "${HOME}/.claude/yt-ingest.pid"
+  YT_LOG: "${HOME}/.claude/yt-ingest.log"
+
+tasks:
+  default:
+    desc: Show YouTube pipeline tasks
+    cmds:
+      - task yt --list
+
+  start:
+    desc: "Start yt-ingest service (daemon, port {{.YT_PORT}})"
+    cmds:
+      - |
+        if [ -f "{{.YT_PID}}" ] && kill -0 "$(cat {{.YT_PID}})" 2>/dev/null; then
+          echo "yt-ingest already running (PID $(cat {{.YT_PID}}))"
+          exit 0
+        fi
+
+        cd "{{.YT_DIR}}"
+        uv sync --quiet 2>/dev/null
+
+        nohup uv run python -m uvicorn yt_ingest.server:app \
+          --host 0.0.0.0 \
+          --port {{.YT_PORT}} \
+          --log-level info \
+          > "{{.YT_LOG}}" 2>&1 &
+
+        echo $! > "{{.YT_PID}}"
+        sleep 1
+
+        if kill -0 "$(cat {{.YT_PID}})" 2>/dev/null; then
+          echo "yt-ingest started on :{{.YT_PORT}} (PID $(cat {{.YT_PID}}))"
+        else
+          echo "Failed to start — check {{.YT_LOG}}"
+          tail -20 "{{.YT_LOG}}"
+          exit 1
+        fi
+
+  stop:
+    desc: "Stop yt-ingest service"
+    cmds:
+      - |
+        if [ -f "{{.YT_PID}}" ]; then
+          PID=$(cat "{{.YT_PID}}")
+          if kill -0 "$PID" 2>/dev/null; then
+            kill "$PID"
+            echo "yt-ingest stopped (PID $PID)"
+          else
+            echo "yt-ingest not running (stale PID)"
+          fi
+          rm -f "{{.YT_PID}}"
+        else
+          echo "yt-ingest not running (no PID file)"
+        fi
+
+  status:
+    desc: "Check yt-ingest health"
+    cmds:
+      - |
+        if [ -f "{{.YT_PID}}" ] && kill -0 "$(cat {{.YT_PID}})" 2>/dev/null; then
+          echo "yt-ingest: running (PID $(cat {{.YT_PID}}))"
+          curl -sf http://localhost:{{.YT_PORT}}/health 2>/dev/null | python3 -m json.tool || echo "  (health endpoint not responding)"
+        else
+          echo "yt-ingest: stopped"
+        fi
+
+  logs:
+    desc: "Tail yt-ingest logs"
+    cmds:
+      - tail -f "{{.YT_LOG}}"
+
+  ingest:
+    desc: "Manually trigger YouTube playlist extraction"
+    cmds:
+      - |
+        curl -sf -X POST http://localhost:{{.YT_PORT}}/batch \
+          -H "Content-Type: application/json" \
+          -d '{"max_videos": 50}' \
+          | python3 -c "import json,sys; d=json.load(sys.stdin); print(f'Extracted {d[\"total_videos\"]} videos ({d[\"with_transcript\"]} with transcripts)')" \
+          || echo "yt-ingest not running — run: task yt:start"
+
+  govern:
+    desc: "Run DataHub governance for YouTube pipeline (lineage, tags, quality)"
+    cmds:
+      - python3 {{.PLATFORM_DIR}}/scripts/datahub-yt-governance.py
+
+  schema:
+    desc: "Apply YouTube schema to pgvector database"
+    cmds:
+      - |
+        kubectl exec -n genai genai-pgvector-0 -- bash -c \
+          'PGPASSWORD=pgvector psql -U pgvector -d pgvector -c "CREATE DATABASE youtube;"' 2>/dev/null || true
+        cat {{.PLATFORM_DIR}}/scripts/yt-schema.sql | \
+          kubectl exec -i -n genai genai-pgvector-0 -- bash -c \
+          'PGPASSWORD=pgvector psql -U pgvector -d youtube'
+
+  query:
+    desc: "Query high-relevance YouTube findings"
+    cmds:
+      - |
+        kubectl exec -n genai genai-pgvector-0 -- bash -c \
+          'PGPASSWORD=pgvector psql -U pgvector -d youtube -c "
+            SELECT v.title, v.channel, a.relevance_score, a.integration_potential, a.summary
+            FROM yt_analysis a
+            JOIN yt_videos v ON v.video_id = a.video_id
+            WHERE a.relevance_score >= 0.5
+            ORDER BY a.relevance_score DESC
+            LIMIT 20;
+          "'
+
+  cookies:
+    desc: "Export browser cookies for yt-dlp (requires browser-cookie3)"
+    cmds:
+      - |
+        COOKIE_DIR="${HOME}/.config/yt-dlp"
+        mkdir -p "$COOKIE_DIR"
+        echo "Export cookies from Chrome:"
+        echo "  1. Install: pip install browser-cookie3"
+        echo "  2. Or use: yt-dlp --cookies-from-browser chrome --cookies $COOKIE_DIR/cookies.txt https://www.youtube.com"
+        echo ""
+        echo "Or manually:"
+        echo "  1. Install 'Get cookies.txt LOCALLY' Chrome extension"
+        echo "  2. Go to youtube.com, export cookies"
+        echo "  3. Save to: $COOKIE_DIR/cookies.txt"

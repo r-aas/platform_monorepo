@@ -13,6 +13,11 @@ P0 = blocking/broken, P1 = high value, P2 = planned, P3 = nice-to-have
 
 ## Active
 
+- [ ] P1 Pull glm-4.7-flash + sync LiteLLM — model download then ArgoCD sync
+- [ ] P1 Export YouTube cookies — task yt:cookies for Watch Later playlist access
+- [ ] P1 Activate autonomous loop — start runner, activate n8n workflows, verify scheduled runs
+- [ ] P1 Test yt-pipeline end-to-end — start yt-ingest, trigger pipeline, verify DataHub
+- [ ] P1 LAN access to platform services — expose k3d ingress to home network (not just localhost)
 - [ ] P2 Benchmark tuning — 66.7% pass rate, threshold 70%; tune prompts or test cases for baseline
 - [ ] P2 DataOps Phase 4: domain tags — tag datasets by domain (agent, eval, trace, workflow)
 - [ ] P2 Dashboard topology — wire DataHub lineage into ReactFlow graph
@@ -22,6 +27,10 @@ P0 = blocking/broken, P1 = high value, P2 = planned, P3 = nice-to-have
 
 ## Completed (recent)
 
+- [x] YouTube ETL pipeline — yt-ingest service, n8n workflow, pgvector schema, DataHub governance (2026-03-28)
+- [x] Agent Runner generalized — Claude + OpenClaw + generic CLI runtimes, MCP config, skills support (2026-03-28)
+- [x] Default model → glm-4.7-flash — global.env, LiteLLM config, gpt-4o alias updated (2026-03-28)
+- [x] Claude Runner + n8n autonomous orchestrator — headless Claude CLI sessions triggered by n8n cron (2026-03-28)
 - [x] DataOps Phase 3: quality checks — 5/5 pass (workflows, executions, experiments, runs, models) (2026-03-28)
 - [x] DataOps Phase 2: lineage — 5 cross-service edges emitted to DataHub (2026-03-28)
 - [x] Fix benchmark judge — direct LLM judge via LiteLLM, 66.7% pass rate (2026-03-28)
@@ -42,10 +51,16 @@ P0 = blocking/broken, P1 = high value, P2 = planned, P3 = nice-to-have
 
 <!-- Items waiting on external dependency or decision -->
 
+## Personal
+
+- [ ] P1 Find faster internet for new house — current speed inadequate for model pulls and remote work
+- [ ] P2 Tailscale integration — tunnel platform services for remote access + mesh networking
+- [ ] P3 Onboard Maria to Tailscale — add her devices to the network when ready
+
 ## Ideas
 
 <!-- Not yet prioritized — move to Active when ready -->
 - Agent-gateway: add rate limiting per agent
 - Plane→n8n: auto-create n8n workflows from Plane issues tagged "automation"
 - Neo4j GraphRAG: knowledge graph for agent context
-- Multi-model benchmark matrix: compare qwen2.5:7b vs 14b vs gemma3:12b
+- Multi-model benchmark matrix: compare glm-4.7-flash vs qwen3:32b vs nemotron-cascade-2

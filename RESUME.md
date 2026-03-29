@@ -122,10 +122,72 @@
 - DataHub assertion upsert works; result reporting has eventual consistency issue (non-blocking)
 - `task datahub-quality` added to Taskfile
 
+**/continue session (same day, session 3)**
+
+**Claude Runner — Autonomous Headless Sessions**
+- `services/claude-runner/` — FastAPI service on Mac host (:7777)
+- Accepts `POST /run` with prompt, model, budget, permission mode
+- Spawns `claude --print` with `--permission-mode bypassPermissions`
+- Async execution with polling (`GET /run/{id}`), cancel support
+- Run logs persisted to `~/.claude/runner-logs/`
+- Concurrency-limited (default 1 concurrent session)
+- Verified: health endpoint reachable from k3d pods at `192.168.5.2:7777`
+
+**Taskfile Runner Tasks**
+- `task runner:start/stop/restart/status/logs/runs/trigger`
+- Daemon mode with PID file, log rotation
+
+**n8n Orchestrator Workflow**
+- `genai-mlops/n8n-data/workflows/claude-autonomous.json`
+- Cron trigger (every 4 hours) + manual webhook trigger
+- Flow: trigger run → poll status (30s intervals) → format result → log to MLflow
+- Imported to n8n (id=C4kGJr66FmxYqqE2, inactive — activate when ready)
+
+**Updated platform_monorepo/CLAUDE.md**
+- Full rewrite from stale auto-generated stub to proper project reference
+
+**/continue session (same day, session 4)**
+
+**Agent Runner Generalized (Claude + OpenClaw + Generic CLI)**
+- `services/claude-runner/` refactored into multi-runtime agent runner
+- Pluggable runtimes: `ClaudeRuntime`, `OpenClawRuntime`, `GenericCLIRuntime`
+- `POST /run` accepts `runtime` field (default: "claude")
+- `GET /runtimes` lists available agent backends with availability status
+- Supports MCP config (`--mcp-config`), skills dirs (`--plugin-dir`), custom env vars
+- OpenClaw runtime auto-discovers binary from common install paths
+
+**YouTube ETL Pipeline**
+- `services/yt-ingest/` — FastAPI extraction service on Mac host (:7778)
+  - yt-dlp for playlist metadata (no raw video download), youtube-transcript-api for transcripts
+  - Supports Watch Later, Liked Videos, custom playlists via browser cookies
+  - Batch endpoint: extract + transcripts in one call, deduplication, caching
+- PostgreSQL schema in pgvector `youtube` database:
+  - `yt_videos`, `yt_transcripts`, `yt_analysis`, `yt_embeddings`, `yt_pipeline_runs`
+  - IVFFlat index on 1024-dim embeddings for similarity search
+- `n8n-data/workflows/yt-pipeline.json` — multi-stage ETL:
+  - Cron (12h) or manual webhook trigger
+  - Stage 1: Extract videos + transcripts from yt-ingest service
+  - Stage 2: Upsert video metadata + transcripts to PostgreSQL
+  - Stage 3: LLM analysis (glm-4.7-flash) — tech extraction, relevance scoring, integration potential
+  - Stage 4: Store analysis results to PostgreSQL
+- `scripts/datahub-yt-governance.py` — DataHub governance:
+  - Lineage: yt_videos → yt_transcripts → yt_analysis → yt_embeddings
+  - Domain tags: youtube, research on all datasets
+  - Quality checks: video count, transcript count, analysis count, high-relevance findings
+  - Custom assertions with result reporting
+- Taskfile: `task yt:start/stop/status/ingest/govern/schema/query/cookies`
+
+**Default Model → glm-4.7-flash**
+- `global.env`: OPENAI_MODEL changed from qwen2.5:14b to glm-4.7-flash
+- LiteLLM values.yaml: added glm-4.7-flash model, gpt-4o alias now routes to glm-4.7-flash
+- glm-4.7-flash: 30B MoE (3B active), 198K context, native tool calling, 19GB VRAM
+- Best-in-class agentic benchmarks: tau2-Bench 79.5, SWE-bench 59.2%
+
 ### Next
 
-1. **DataOps Phase 4** — domain tags on datasets (agent, eval, trace, workflow)
-2. **Dashboard topology** — wire DataHub lineage into ReactFlow graph
-3. **n8n credential rotation** — move hardcoded tokens from values.yaml to existingSecret
-4. **Benchmark tuning** — tune prompts or test cases for >70% baseline
-5. **Spec 015 ship** — all phases done, mark shipped
+1. **Pull glm-4.7-flash** — Ollama download in progress, then ArgoCD sync LiteLLM
+2. **Export YouTube cookies** — `task yt:cookies` for Watch Later access
+3. **Activate autonomous loop** — `task runner:start` + activate n8n workflows
+4. **Test yt-pipeline end-to-end** — start yt-ingest, trigger pipeline, verify DataHub governance
+5. **Benchmark with glm-4.7-flash** — re-run benchmarks with new default model
+6. **DataOps Phase 4** — domain tags on all platform datasets

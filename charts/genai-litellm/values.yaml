@@ -81,6 +81,16 @@ config:
         model: "openai/qwen2.5:7b"
         api_base: "http://192.168.5.2:11434/v1"
         api_key: "ollama"
+    - model_name: "glm-4.7-flash"
+      litellm_params:
+        model: "openai/glm-4.7-flash"
+        api_base: "http://192.168.5.2:11434/v1"
+        api_key: "ollama"
+    - model_name: "qwen3:32b"
+      litellm_params:
+        model: "openai/qwen3:32b"
+        api_base: "http://192.168.5.2:11434/v1"
+        api_key: "ollama"
     - model_name: "mistral:7b-instruct"
       litellm_params:
         model: "openai/mistral:7b-instruct"
@@ -99,7 +109,7 @@ config:
     # Alias: allow agents that hardcode gpt-4o to work via Ollama
     - model_name: "gpt-4o"
       litellm_params:
-        model: "openai/qwen2.5:14b"
+        model: "openai/glm-4.7-flash"
         api_base: "http://192.168.5.2:11434/v1"
         api_key: "ollama"
 

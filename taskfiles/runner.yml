@@ -1,0 +1,100 @@
+# ~/work/repos/platform_monorepo/taskfiles/runner.yml — Agent Runner service
+# HTTP trigger for headless AI agent sessions (Claude, OpenClaw, generic CLI).
+# n8n (in k3d) calls http://192.168.5.2:7777/run to spawn autonomous sessions.
+
+version: "3"
+
+vars:
+  RUNNER_DIR: "{{.PLATFORM_DIR}}/services/claude-runner"
+  RUNNER_PORT: "7777"
+  RUNNER_PID: "${HOME}/.claude/runner.pid"
+  RUNNER_LOG: "${HOME}/.claude/runner.log"
+
+tasks:
+  default:
+    desc: Show runner tasks
+    cmds:
+      - task runner --list
+
+  start:
+    desc: "Start claude-runner service (daemon, port {{.RUNNER_PORT}})"
+    cmds:
+      - |
+        # Check if already running
+        if [ -f "{{.RUNNER_PID}}" ] && kill -0 "$(cat {{.RUNNER_PID}})" 2>/dev/null; then
+          echo "claude-runner already running (PID $(cat {{.RUNNER_PID}}))"
+          exit 0
+        fi
+
+        cd "{{.RUNNER_DIR}}"
+        uv sync --quiet 2>/dev/null
+
+        nohup uv run python -m uvicorn claude_runner.server:app \
+          --host 0.0.0.0 \
+          --port {{.RUNNER_PORT}} \
+          --log-level info \
+          > "{{.RUNNER_LOG}}" 2>&1 &
+
+        echo $! > "{{.RUNNER_PID}}"
+        sleep 1
+
+        if kill -0 "$(cat {{.RUNNER_PID}})" 2>/dev/null; then
+          echo "claude-runner started on :{{.RUNNER_PORT}} (PID $(cat {{.RUNNER_PID}}))"
+        else
+          echo "Failed to start — check {{.RUNNER_LOG}}"
+          cat "{{.RUNNER_LOG}}" | tail -20
+          exit 1
+        fi
+
+  stop:
+    desc: "Stop claude-runner service"
+    cmds:
+      - |
+        if [ -f "{{.RUNNER_PID}}" ]; then
+          PID=$(cat "{{.RUNNER_PID}}")
+          if kill -0 "$PID" 2>/dev/null; then
+            kill "$PID"
+            echo "claude-runner stopped (PID $PID)"
+          else
+            echo "claude-runner not running (stale PID)"
+          fi
+          rm -f "{{.RUNNER_PID}}"
+        else
+          echo "claude-runner not running (no PID file)"
+        fi
+
+  restart:
+    desc: "Restart claude-runner"
+    cmds:
+      - task: stop
+      - task: start
+
+  status:
+    desc: "Check claude-runner health"
+    cmds:
+      - |
+        if [ -f "{{.RUNNER_PID}}" ] && kill -0 "$(cat {{.RUNNER_PID}})" 2>/dev/null; then
+          echo "claude-runner: running (PID $(cat {{.RUNNER_PID}}))"
+          curl -sf http://localhost:{{.RUNNER_PORT}}/health 2>/dev/null | python3 -m json.tool || echo "  (health endpoint not responding)"
+        else
+          echo "claude-runner: stopped"
+        fi
+
+  logs:
+    desc: "Tail claude-runner logs"
+    cmds:
+      - tail -f "{{.RUNNER_LOG}}"
+
+  runs:
+    desc: "List recent autonomous runs"
+    cmds:
+      - curl -sf http://localhost:{{.RUNNER_PORT}}/runs 2>/dev/null | python3 -m json.tool || echo "claude-runner not running"
+
+  trigger:
+    desc: "Manually trigger an autonomous /continue run"
+    cmds:
+      - |
+        curl -sf -X POST http://localhost:{{.RUNNER_PORT}}/run \
+          -H "Content-Type: application/json" \
+          -d '{"prompt": "/continue", "work_dir": "{{.PLATFORM_DIR}}"}' \
+          | python3 -m json.tool || echo "claude-runner not running"
