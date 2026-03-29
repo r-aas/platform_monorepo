@@ -68,8 +68,16 @@ spec:
         - ci-cd
         - gitlab
     tools:
-    - remoteMCPServer: kubernetes-ops
-    - remoteMCPServer: gitlab-ops
+    - type: McpServer
+      mcpServer:
+        name: kubernetes-ops
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
+    - type: McpServer
+      mcpServer:
+        name: gitlab-ops
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
@@ -143,11 +151,31 @@ spec:
         - development
         - sandbox
     tools:
-    - remoteMCPServer: kubernetes-ops
-    - remoteMCPServer: mlflow-tracking
-    - remoteMCPServer: langfuse-observability
-    - remoteMCPServer: minio-storage
-    - remoteMCPServer: ollama-models
+    - type: McpServer
+      mcpServer:
+        name: kubernetes-ops
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
+    - type: McpServer
+      mcpServer:
+        name: mlflow-tracking
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
+    - type: McpServer
+      mcpServer:
+        name: langfuse-observability
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
+    - type: McpServer
+      mcpServer:
+        name: minio-storage
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
+    - type: McpServer
+      mcpServer:
+        name: ollama-models
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
@@ -210,10 +238,26 @@ spec:
         - development
         - sandbox
     tools:
-    - remoteMCPServer: kubernetes-ops
-    - remoteMCPServer: gitlab-ops
-    - remoteMCPServer: kagent-tool-server
-    - remoteMCPServer: ollama-models
+    - type: McpServer
+      mcpServer:
+        name: kubernetes-ops
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
+    - type: McpServer
+      mcpServer:
+        name: gitlab-ops
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
+    - type: McpServer
+      mcpServer:
+        name: kagent-tool-server
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
+    - type: McpServer
+      mcpServer:
+        name: ollama-models
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
 # ── Data Engineer Agent ───────────────────────────────
 ---
 apiVersion: kagent.dev/v1alpha2
@@ -268,9 +312,21 @@ spec:
         - data
         - ingestion
     tools:
-    - remoteMCPServer: kubernetes-ops
-    - remoteMCPServer: minio-storage
-    - remoteMCPServer: mlflow-tracking
+    - type: McpServer
+      mcpServer:
+        name: kubernetes-ops
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
+    - type: McpServer
+      mcpServer:
+        name: minio-storage
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
+    - type: McpServer
+      mcpServer:
+        name: mlflow-tracking
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
 # ── Project Coordinator Agent ─────────────────────────
 ---
 apiVersion: kagent.dev/v1alpha2
@@ -315,9 +371,21 @@ spec:
         - project
         - sprint
     tools:
-    - remoteMCPServer: kubernetes-ops
-    - remoteMCPServer: plane-project
-    - remoteMCPServer: gitlab-ops
+    - type: McpServer
+      mcpServer:
+        name: kubernetes-ops
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
+    - type: McpServer
+      mcpServer:
+        name: plane-project
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
+    - type: McpServer
+      mcpServer:
+        name: gitlab-ops
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
 # ── QA & Eval Agent ───────────────────────────────────
 ---
 apiVersion: kagent.dev/v1alpha2
@@ -371,6 +439,18 @@ spec:
         - qa
         - testing
     tools:
-    - remoteMCPServer: kubernetes-ops
-    - remoteMCPServer: mlflow-tracking
-    - remoteMCPServer: langfuse-observability
+    - type: McpServer
+      mcpServer:
+        name: kubernetes-ops
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
+    - type: McpServer
+      mcpServer:
+        name: mlflow-tracking
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
+    - type: McpServer
+      mcpServer:
+        name: langfuse-observability
+        kind: RemoteMCPServer
+        apiGroup: kagent.dev
