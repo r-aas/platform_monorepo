@@ -5,9 +5,10 @@ type: application
 version: 0.1.0
 appVersion: "1.0.1"
 dependencies:
-  - name: agentgateway-crds
-    version: "0.0.2"
-    repository: ""
+  # CRDs installed manually (kubectl apply --server-side) due to annotation size limits
+  # - name: agentgateway-crds
+  #   version: "0.0.2"
+  #   repository: ""
   - name: agentgateway
     version: "0.0.2"
     repository: ""
