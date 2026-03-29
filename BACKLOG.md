@@ -13,7 +13,7 @@ P0 = blocking/broken, P1 = high value, P2 = planned, P3 = nice-to-have
 
 ## Active
 
-- [ ] P1 Activate autonomous loop — start runner, activate n8n workflows, verify scheduled runs
+- [x] P1 Activate autonomous loop — runner on :7777, claude-autonomous workflow active (4h cron), MLflow logging (2026-03-29)
 - [ ] P2 Benchmark tuning — 66.7% pass rate, threshold 70%; tune prompts or test cases for baseline
 - [ ] P2 DataOps Phase 4: domain tags — tag datasets by domain (agent, eval, trace, workflow)
 - [ ] P2 Dashboard topology — wire DataHub lineage into ReactFlow graph
@@ -53,7 +53,7 @@ P0 = blocking/broken, P1 = high value, P2 = planned, P3 = nice-to-have
 
 ## Personal
 
-- [ ] P1 Find faster internet for new house — current speed inadequate for model pulls and remote work
+- [x] P1 Find faster internet for new house — going with Xfinity (2026-03-29)
 - [ ] P2 Tailscale integration — tunnel platform services for remote access + mesh networking
 - [ ] P3 Onboard Maria to Tailscale — add her devices to the network when ready
 

@@ -231,9 +231,19 @@
 - `ba48ee8` feat: add YT pipeline env vars to n8n chart
 - `c18093a` fix: use qwen2.5:7b for YT analysis (14b too slow)
 
+**Autonomous Loop Activated**
+- Runner service already running on :7777 (PID 63359), claude runtime available
+- `claude-autonomous` n8n workflow activated (every 4 hours cron + manual webhook)
+- Fixed MLflow logging URL: `nip.io` → `genai-mlflow.genai.svc.cluster.local` (nip.io resolves to 127.0.0.1 inside containers)
+- Verified: runner reachable from k3d at 192.168.5.2:7777, MLflow `/api/2.0/mlflow/runs/create` works from genai namespace
+- 14 active workflows, 3 inactive (eval/resolve/chat-complete — sub-workflows)
+
+**Plane Issue Closed**
+- "Find faster internet for new house" → Done (Xfinity chosen)
+
 ### Next
 
-1. **Activate autonomous loop** — `task runner:start` + activate n8n workflows
-2. **Benchmark with glm-4.7-flash** — re-run benchmarks with new default model
-3. **DataOps Phase 4** — domain tags on all platform datasets
-4. **Fix yt-pipeline batch analysis** — ensure all 34 transcript analyses get stored (not just 1)
+1. **Benchmark with glm-4.7-flash** — re-run benchmarks with new default model
+2. **DataOps Phase 4** — domain tags on all platform datasets
+3. **Fix yt-pipeline batch analysis** — ensure all 34 transcript analyses get stored (not just 1)
+4. **n8n credential rotation** — move hardcoded tokens to existingSecret refs
