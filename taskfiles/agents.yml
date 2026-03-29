@@ -7,44 +7,107 @@ tasks:
       - task agents --list
 
   list:
-    desc: List all registered agents
+    desc: List all platform agents with autonomy status
+    dir: "{{.ROOT_DIR}}"
     cmds:
       - |
         echo ""
-        echo "  Agents (~/.claude/agents/):"
+        echo "  Platform Agents (agents/*/agent.yaml):"
         echo "  ─────────────────────────────────────────"
-        for f in ~/.claude/agents/*.md; do
-          name=$(basename "$f" .md)
-          desc=$(head -5 "$f" | grep 'description:' | sed 's/.*description: //')
-          printf "  %-22s %s\n" "$name" "$desc"
-        done
-        echo ""
-        echo "  Scheduled Tasks (~/.claude/scheduled-tasks/):"
-        echo "  ─────────────────────────────────────────"
-        for d in ~/.claude/scheduled-tasks/*/; do
+        for d in agents/*/; do
           name=$(basename "$d")
-          desc=$(head -5 "$d/SKILL.md" | grep 'description:' | sed 's/.*description: //')
-          printf "  %-22s %s\n" "$name" "$desc"
-        done
-        echo ""
-
-  memory:
-    desc: Show agent memory status
-    cmds:
-      - |
-        echo ""
-        echo "  Agent Memory (~/.claude/agent-memory/):"
-        echo "  ─────────────────────────────────────────"
-        for d in ~/.claude/agent-memory/*/; do
-          name=$(basename "$d")
-          if [ -f "$d/MEMORY.md" ]; then
-            lines=$(wc -l < "$d/MEMORY.md" | tr -d ' ')
-            printf "  %-22s %s lines\n" "$name" "$lines"
-          else
-            printf "  %-22s (empty)\n" "$name"
+          [ "$name" = "_shared" ] && continue
+          [ "$name" = "envs" ] && continue
+          if [ -f "$d/agent.yaml" ]; then
+            desc=$(grep 'description:' "$d/agent.yaml" | head -1 | sed 's/.*description: "//' | sed 's/"//')
+            schedule=$(grep '  schedule:' "$d/agent.yaml" | head -1 | sed 's/.*schedule: "//' | sed 's/".*//' | tr -d ' ')
+            if [ -n "$schedule" ]; then
+              printf "  %-18s %-55s ⏰ %s\n" "$name" "$desc" "$schedule"
+            else
+              printf "  %-18s %s\n" "$name" "$desc"
+            fi
           fi
         done
         echo ""
+
+  new:
+    desc: "Scaffold a new autonomous agent (usage: task agents:new -- <name> <description>)"
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - |
+        NAME="{{.CLI_ARGS}}"
+        if [ -z "$NAME" ]; then
+          echo "Usage: task agents:new -- <name>"
+          echo "Example: task agents:new -- data-engineer"
+          exit 1
+        fi
+        # Extract just the name (first word)
+        NAME=$(echo "$NAME" | awk '{print $1}')
+        DIR="agents/$NAME"
+        if [ -d "$DIR" ]; then
+          echo "Agent '$NAME' already exists at $DIR/"
+          exit 1
+        fi
+        mkdir -p "$DIR"
+        cat > "$DIR/agent.yaml" << 'YAML'
+        component_type: Agent
+        name: AGENT_NAME
+        description: "AGENT_DESCRIPTION"
+        agentspec_version: "26.2.0"
+
+        llm_config:
+          url: "{{llm_base_url}}"
+          model_id: "{{llm_model}}"
+          api_key: "{{llm_api_key}}"
+          provider: openai-compatible
+
+        system_prompt: |
+          You are a ... [describe the agent's role and expertise]
+
+          Behavioral guidelines:
+          - ...
+
+        capabilities: []
+
+        skills: []
+
+        metadata:
+          runtime: n8n
+          workflow: chat
+          tags: []
+
+        autonomy:
+          schedule: "0 */6 * * *"
+
+          signals: []
+
+          memory:
+            backend: pgvector
+            table: agent_memory
+            ttl_days: 90
+            categories: []
+
+          collaborators: []
+
+          verify:
+            - "task smoke"
+
+          guardrails:
+            max_budget_usd: 5.00
+            max_turns: 200
+            max_actions_per_run: 10
+            require_approval_for: []
+        YAML
+        # Fix the placeholder
+        sed -i '' "s/AGENT_NAME/$NAME/g" "$DIR/agent.yaml"
+        # Remove leading whitespace from heredoc
+        sed -i '' 's/^        //' "$DIR/agent.yaml"
+        echo "  Created $DIR/agent.yaml"
+        echo "  Next steps:"
+        echo "    1. Edit $DIR/agent.yaml — fill in system_prompt, skills, signals"
+        echo "    2. task agents:transpile — generate kagent CRDs"
+        echo "    3. task agents:signals — verify signal collection"
+        echo "    4. git commit + push — ArgoCD deploys"
 
   transpile:
     desc: "Transpile Agent Spec YAML → kagent CRDs"
@@ -63,6 +126,32 @@ tasks:
     dir: "{{.ROOT_DIR}}"
     cmds:
       - uvx --with pyyaml python3 scripts/agentspec-to-kagent.py --drift
+
+  signals:
+    desc: "Collect platform signals (dry-run)"
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - uvx --with httpx --with 'psycopg[binary]' python3 scripts/signal-collector.py --dry-run
+
+  signals-write:
+    desc: "Collect and write platform signals to pgvector"
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - uvx --with httpx --with 'psycopg[binary]' python3 scripts/signal-collector.py --dsn "postgresql://pgvector:pgvector@localhost:5432/kagent"
+
+  schema:
+    desc: "Apply autonomy schema to pgvector (signals, memory, runs, tasks)"
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - kubectl exec -n genai deploy/genai-pgvector -- psql -U pgvector -d kagent -c "SELECT 1" > /dev/null 2>&1 || { echo "pgvector not reachable"; exit 1; }
+      - kubectl exec -n genai deploy/genai-pgvector -i -- psql -U pgvector -d kagent < scripts/agent-autonomy-schema.sql
+      - echo "  Schema applied to kagent database"
+
+  stats:
+    desc: "Show agent run statistics (last 24h)"
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - kubectl exec -n genai deploy/genai-pgvector -- psql -U pgvector -d kagent -c "SELECT * FROM v_agent_stats;" 2>/dev/null || echo "  Schema not yet applied (run task agents:schema)"
 
   invoke:
     desc: "Invoke an agent by name (usage: task agents:invoke -- platform-doctor)"

@@ -40,3 +40,44 @@ metadata:
   runtime: n8n
   workflow: chat
   tags: ["development", "code"]
+
+autonomy:
+  schedule: "0 */6 * * *"  # every 6 hours
+
+  signals:
+    - type: new_issue
+      source: plane
+      condition: "label contains 'bug' OR label contains 'security'"
+      priority: P1
+    - type: pipeline_failure
+      source: gitlab
+      condition: "pipeline.status == 'failed'"
+      priority: P1
+
+  memory:
+    backend: pgvector
+    table: agent_memory
+    ttl_days: 90
+    categories:
+      - code_patterns    # "this repo uses factory pattern for X"
+      - bug_fixes        # "issue Y was caused by Z, fixed with W"
+      - review_feedback  # "R prefers explicit over implicit"
+
+  collaborators:
+    - name: mlops
+      delegation: sync
+      when: "needs experiment data or model metrics"
+    - name: platform-admin
+      delegation: sync
+      when: "needs deployment status or k8s context"
+
+  verify:
+    - "task smoke"
+
+  guardrails:
+    max_budget_usd: 5.00
+    max_turns: 200
+    max_actions_per_run: 15
+    require_approval_for:
+      - "git push --force"
+      - "rm -rf"

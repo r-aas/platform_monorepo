@@ -42,3 +42,55 @@ metadata:
   runtime: n8n
   workflow: chat
   tags: ["platform", "infrastructure", "operations"]
+
+autonomy:
+  schedule: "*/15 * * * *"  # every 15 minutes — this is the watchdog
+
+  signals:
+    - type: pod_crash
+      source: kubernetes
+      condition: "restarts > 3 in 1h OR status == CrashLoopBackOff"
+      priority: P0
+    - type: argocd_degraded
+      source: argocd
+      condition: "health != Healthy OR sync_status != Synced"
+      priority: P0
+    - type: disk_pressure
+      source: kubernetes
+      condition: "node.condition.DiskPressure == True"
+      priority: P0
+    - type: resource_exhaustion
+      source: kubernetes
+      condition: "cpu_usage > 85% OR memory_usage > 90%"
+      priority: P1
+
+  memory:
+    backend: pgvector
+    table: agent_memory
+    ttl_days: 30  # shorter — ops context is more ephemeral
+    categories:
+      - incidents      # "pod X crashed because of OOM, fixed by bumping limits"
+      - capacity       # "cluster is at 70% memory, 45% CPU"
+      - remediations   # "when datahub OOMs, restart prereqs-mysql first"
+
+  collaborators:
+    - name: mlops
+      delegation: async
+      when: "mlflow or langfuse issues detected"
+    - name: developer
+      delegation: async
+      when: "needs code fix for config issue"
+
+  verify:
+    - "task smoke"
+    - "kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded"
+
+  guardrails:
+    max_budget_usd: 2.00   # ops should be quick
+    max_turns: 100
+    max_actions_per_run: 20
+    require_approval_for:
+      - "kubectl delete namespace"
+      - "helm uninstall"
+      - "k3d cluster delete"
+    auto_rollback: true     # revert changes if verify fails

@@ -23,9 +23,10 @@ IMAGES=(
   "agent-gateway:latest:${PLATFORM_DIR}/services/agent-gateway/Dockerfile:${PLATFORM_DIR}"
   "litellm-mlflow:latest:${PLATFORM_DIR}/images/litellm/Dockerfile:${PLATFORM_DIR}/images/litellm"
   "mcp-kubernetes:latest:${PLATFORM_DIR}/images/mcp-kubernetes/Dockerfile:${PLATFORM_DIR}/images/mcp-kubernetes"
-  "genai-streaming-proxy:latest:${GENAI_MLOPS}/Dockerfile.streaming:${GENAI_MLOPS}"
   "datahub-ingestion-mlflow:latest:${PLATFORM_DIR}/images/datahub-ingestion-mlflow/Dockerfile:${PLATFORM_DIR}/images/datahub-ingestion-mlflow"
   "datahub-bridge:latest:${PLATFORM_DIR}/services/n8n-datahub-bridge/Dockerfile:${PLATFORM_DIR}/services/n8n-datahub-bridge"
+  "mcp-plane:latest:${PLATFORM_DIR}/images/mcp-plane/Dockerfile:${PLATFORM_DIR}/images/mcp-plane"
+  "open-ontologies:latest:${PLATFORM_DIR}/images/open-ontologies/Dockerfile:${PLATFORM_DIR}/images/open-ontologies"
   "agent-registry:latest:${PLATFORM_DIR}/images/agent-registry/Dockerfile:${HOME}/work/repos/agent-platform"
 )
 

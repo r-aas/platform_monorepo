@@ -24,6 +24,21 @@ if docker info &>/dev/null; then
       systemctl restart systemd-resolved 2>/dev/null
     fi
   ' 2>/dev/null || true
+  # Ensure Docker daemon has public DNS fallback (critical for k3d image pulls)
+  colima ssh -- sudo sh -c '
+    if ! grep -q "8.8.8.8" /etc/docker/daemon.json 2>/dev/null; then
+      python3 -c "
+import json
+try:
+    cfg = json.load(open(\"/etc/docker/daemon.json\"))
+except (FileNotFoundError, json.JSONDecodeError):
+    cfg = {}
+cfg[\"dns\"] = [\"8.8.8.8\", \"8.8.4.4\"]
+json.dump(cfg, open(\"/etc/docker/daemon.json\", \"w\"), indent=2)
+"
+      systemctl restart docker
+    fi
+  ' 2>/dev/null || true
   exit 0
 fi
 
@@ -71,6 +86,24 @@ colima ssh -- sh -c '
   mkdir -p /etc/systemd/resolved.conf.d
   echo -e "[Resolve]\nFallbackDNS=8.8.8.8 8.8.4.4" > /etc/systemd/resolved.conf.d/fallback.conf
   systemctl restart systemd-resolved 2>/dev/null
+' 2>/dev/null || true
+
+# ── 4b. Configure Docker daemon DNS ─────────────────────────
+# k3d node containers inherit Docker daemon DNS. After restart, Colima VM
+# DNS (192.168.5.2) may be unreachable — ensure public fallback is set.
+colima ssh -- sudo sh -c '
+  if ! grep -q "8.8.8.8" /etc/docker/daemon.json 2>/dev/null; then
+    python3 -c "
+import json, sys
+try:
+    cfg = json.load(open(\"/etc/docker/daemon.json\"))
+except (FileNotFoundError, json.JSONDecodeError):
+    cfg = {}
+cfg[\"dns\"] = [\"8.8.8.8\", \"8.8.4.4\"]
+json.dump(cfg, open(\"/etc/docker/daemon.json\", \"w\"), indent=2)
+"
+    systemctl restart docker
+  fi
 ' 2>/dev/null || true
 
 # ── 5. Verify Docker is responsive ──────────────────────────

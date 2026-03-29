@@ -38,3 +38,61 @@ metadata:
   runtime: n8n
   workflow: chat
   tags: ["mlops", "platform"]
+
+# ── Autonomy extensions (r-aas platform) ──────────────
+# These fields are NOT part of Oracle Agent Spec.
+# They're consumed by our transpiler to generate:
+#   - kagent CRDs (agent + model config)
+#   - n8n workflows (signal collector + task executor)
+#   - pgvector schemas (agent memory)
+#   - signal subscriptions
+
+autonomy:
+  # How often this agent runs autonomously
+  schedule: "0 */4 * * *"  # every 4 hours
+
+  # What signals trigger this agent outside its schedule
+  signals:
+    - type: metric_drift
+      source: mlflow
+      condition: "latency_p99 > baseline * 1.5 OR error_rate > 0.05"
+      priority: P1
+    - type: benchmark_regression
+      source: mlflow
+      condition: "pass_rate < baseline - 0.1"
+      priority: P0
+
+  # Persistent memory — survives across runs
+  memory:
+    backend: pgvector
+    table: agent_memory
+    ttl_days: 90
+    # What this agent remembers between runs
+    categories:
+      - decisions      # "chose model X because Y"
+      - observations   # "latency spiked after deploy Z"
+      - patterns       # "glm-4.7-flash needs 4000+ max_tokens"
+
+  # Other agents this one can delegate to
+  collaborators:
+    - name: developer
+      delegation: sync
+      when: "needs code review or generation"
+    - name: platform-admin
+      delegation: sync
+      when: "needs k8s operations or capacity info"
+
+  # What this agent checks after taking action
+  verify:
+    - "task benchmark-smoke"
+    - "task smoke"
+
+  # Safety limits
+  guardrails:
+    max_budget_usd: 5.00
+    max_turns: 200
+    max_actions_per_run: 10
+    require_approval_for:
+      - "git push"
+      - "kubectl delete"
+      - "helm uninstall"
