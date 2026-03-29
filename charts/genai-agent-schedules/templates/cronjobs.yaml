@@ -32,11 +32,12 @@ spec:
             - /bin/sh
             - -c
             - |
+              MSG_ID="schedule-$(date +%s)"
               curl -sf -X POST \
                 -H "Content-Type: application/json" \
-                -d '{"jsonrpc":"2.0","method":"tasks/send","params":{"id":"schedule-'$(date +%s)'","message":{"role":"user","parts":[{"type":"text","text":{{ $agent.task | toJson }}}]}}}' \
-                "http://{{ $name }}.{{ $.Release.Namespace }}.svc.cluster.local:8080/a2a/task" \
-                --max-time 30 \
+                -d "{\"jsonrpc\":\"2.0\",\"method\":\"message/send\",\"id\":\"$MSG_ID\",\"params\":{\"message\":{\"role\":\"user\",\"messageId\":\"$MSG_ID\",\"parts\":[{\"type\":\"text\",\"text\":{{ $agent.task | toJson }}}]}}}" \
+                "http://{{ $name }}.{{ $.Release.Namespace }}.svc.cluster.local:8080/" \
+                --max-time 60 \
                 -o /dev/null -w "HTTP %{http_code}\n"
             resources:
               {{- toYaml $.Values.resources | nindent 14 }}
