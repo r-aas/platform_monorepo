@@ -177,6 +177,29 @@ tasks:
         echo "  MinIO:        minioadmin / minioadmin"
         echo ""
 
+  urls-lan:
+    desc: Print LAN-accessible URLs (for other devices on home network)
+    cmds:
+      - |
+        LAN_IP=$(ifconfig en0 2>/dev/null | grep 'inet ' | awk '{print $2}')
+        echo ""
+        echo "  LAN URLs (accessible from any device at $LAN_IP):"
+        echo "  ─────────────────────────────────────────"
+        echo "  ArgoCD:       http://argocd.mewtwo.${LAN_IP}.nip.io"
+        echo "  GitLab:       http://gitlab.mewtwo.${LAN_IP}.nip.io"
+        echo "  n8n:          http://n8n.mewtwo.${LAN_IP}.nip.io"
+        echo "  MLflow:       http://mlflow.genai.${LAN_IP}.nip.io"
+        echo "  LiteLLM:      http://litellm.genai.${LAN_IP}.nip.io"
+        echo "  MinIO:        http://minio-console.genai.${LAN_IP}.nip.io"
+        echo "  DataHub:      http://datahub.genai.${LAN_IP}.nip.io"
+        echo "  Agent GW:     http://agent-gateway.genai.${LAN_IP}.nip.io"
+        echo "  Langfuse:     http://langfuse.genai.${LAN_IP}.nip.io"
+        echo "  Plane:        http://plane.genai.${LAN_IP}.nip.io"
+        echo "  kagent:       http://kagent.genai.${LAN_IP}.nip.io"
+        echo ""
+        echo "  Note: Update charts/lan-ingress/values.yaml if LAN IP changes"
+        echo ""
+
   # ── GitLab ──────────────────────────────────────────────────
 
   gitlab-password:
