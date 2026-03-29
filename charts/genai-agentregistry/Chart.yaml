@@ -1,0 +1,7 @@
+apiVersion: v2
+name: genai-agentregistry
+description: Agent Registry — curate and manage AI agents, MCP servers, skills, and prompts with semantic search and blueprints
+type: application
+version: 0.1.0
+appVersion: "0.2.1"
+kubeVersion: ">=1.19.0-0"

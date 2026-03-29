@@ -1,0 +1,13 @@
+apiVersion: v2
+name: genai-agentgateway
+description: Agentgateway MCP/A2A proxy — multiplexes platform MCP servers
+type: application
+version: 0.1.0
+appVersion: "1.0.1"
+dependencies:
+  - name: agentgateway-crds
+    version: "0.0.2"
+    repository: ""
+  - name: agentgateway
+    version: "0.0.2"
+    repository: ""

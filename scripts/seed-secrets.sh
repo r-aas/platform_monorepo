@@ -172,6 +172,10 @@ if [[ -n "${N8N_API_KEY:-}" ]]; then
     --from-literal=owner-password="Admin-k3d-L0cal"
 fi
 
+# Agent Registry JWT signing key
+create_secret genai agentregistry-jwt \
+  --from-literal=AGENT_REGISTRY_JWT_PRIVATE_KEY="${AGENTREGISTRY_JWT_KEY:-$(openssl rand -hex 32)}"
+
 # GitLab automation PAT (platform namespace)
 create_secret platform gitlab-automation-pat \
   --from-literal=token="${GITLAB_PAT}"

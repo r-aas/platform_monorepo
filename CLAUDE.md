@@ -5,18 +5,19 @@ Shared infrastructure for the k3d "mewtwo" platform. Helm charts, agent definiti
 ## Structure
 
 ```
-charts/              # 28 Helm charts (ArgoCD manages all post-bootstrap)
+charts/              # 35 Helm charts (ArgoCD manages all post-bootstrap)
 services/
-  agent-gateway/     # Unified service: agent registry, OpenAI chat, MCP proxy, A2A cards, sandbox
+  agent-gateway/     # Slim orchestrator: skill catalog, semantic discovery, schedule→A2A glue
   datahub-obsidian-source/  # DataHub custom source for Obsidian vault
   n8n-datahub-bridge/       # n8n → DataHub event bridge
-agents/              # Agent YAML definitions (mlops, developer, platform-admin + _shared)
+agents/              # Agent YAML definitions (6 agents + _shared)
+skills/              # Skill definitions (21 skills)
 scripts/             # Bootstrap, setup, ingestion, lineage, quality, secrets
-specs/               # Spec-driven feature designs (001, 015, 020-027)
+specs/               # Spec-driven feature designs (001, 015, 020-029)
 taskfiles/           # Taskfile includes (agents, arch, sandbox, etc.)
 envs/                # Environment config (global.env, secrets.env)
 manifests/           # Raw k8s manifests
-images/              # Custom Docker image builds
+images/              # Custom Docker image builds (13 images)
 mcp-servers/         # MCP server configs
 helmfile.yaml        # Bootstrap-only (seeds ArgoCD, ingress, GitLab)
 Taskfile.yml         # Root task runner (symlinked to ~/work/Taskfile.yml)
@@ -28,8 +29,8 @@ BACKLOG.md           # Prioritized task queue (P0-P3)
 
 ```bash
 task up              # Full bootstrap: colima → k3d → helmfile → GitLab → images → ArgoCD → n8n → agents → smoke
-task start           # Resume paused cluster
-task stop            # Pause cluster (preserves state)
+task start           # Resume paused cluster (single command, ~7 min)
+task stop            # Pause cluster (single command, ~21s)
 task down            # Destroy cluster (PV data preserved)
 task smoke           # Verify all services reachable
 task status          # Full platform status
@@ -48,17 +49,83 @@ task benchmark-smoke # Quick 1-agent, 3-case benchmark
 task benchmark-agents # Full agent benchmarks with LLM-as-judge
 ```
 
-## Agent Gateway (`services/agent-gateway/`)
+## Agent Platform Architecture
 
-Python 3.12 + FastAPI. Single service that consolidates:
+The platform uses best-of-breed OSS components for each layer:
 
-- **Agent registry**: CRUD via PostgreSQL + pgvector (replacing MLflow tag-based storage)
-- **OpenAI-compatible chat**: `/v1/chat/completions` with `model=agent:{name}` routing
-- **MCP proxy**: Aggregates tools from k8s MCP servers, exposes SSE + Streamable HTTP
-- **MCP discovery**: Tool search via embeddings
-- **A2A cards**: `/.well-known/agent-card.json`
+| Layer | Component | Role |
+|-------|-----------|------|
+| **Agent Runtime** | kagent (CNCF Sandbox) | K8s CRDs for agents, MCP servers, memory. A2A protocol. Google ADK execution |
+| **MCP Proxy** | agentgateway (Linux Foundation) | Rust, multiplexes MCP servers, policy/RBAC, Streamable HTTP + SSE |
+| **Artifact Registry** | agentregistry | Agents, skills, prompts catalog. pgvector semantic search. Blueprints |
+| **MCP Scoping** | MetaMCP | Namespace-scoped MCP aggregation, tool filtering, middleware |
+| **LLM Proxy** | LiteLLM | OpenAI-compatible, routes to Ollama, per-key access control |
+| **Scheduling** | k8s CronJobs | POST to kagent A2A endpoints on cadence |
+| **Orchestration** | agent-gateway (custom, slimmed) | Skill catalog, semantic tool discovery, orchestration glue |
+
+## Agent Ecosystem
+
+### Agents (8: 5 built-in kagent + 3 custom via Helm)
+
+| Agent | Schedule | Role | MCP Tools |
+|-------|----------|------|-----------|
+| platform-admin-agent | */15m | Watchdog — k8s health, incident response | kubernetes-ops, gitlab-ops, kagent-tool-server, ollama-models |
+| project-coordinator-agent | */1h | Backlog triage, sprint management, status | kubernetes-ops, plane-project, gitlab-ops |
+| data-engineer-agent | */2h | Data catalog, lineage, quality, ingestion | kubernetes-ops, minio-storage, mlflow-tracking |
+| mlops-agent | */4h | Experiment tracking, model lifecycle | kubernetes-ops, mlflow-tracking, langfuse-observability, minio-storage, ollama-models |
+| developer-agent | */6h | Code gen, review, security, CI/CD | kubernetes-ops, gitlab-ops |
+| qa-eval-agent | nightly | Benchmarks, regression detection, prompt eval | kubernetes-ops, mlflow-tracking, langfuse-observability |
+| helm-agent (built-in) | reactive | Helm release management | kagent-tool-server |
+| k8s-agent (built-in) | reactive | Kubernetes operations | kagent-tool-server |
+
+### MCP Servers (9)
+
+| Server | Wraps | Namespace | Key Tools |
+|--------|-------|-----------|-----------|
+| mcp-kubernetes | k8s API | platform | kubectl operations, pod logs, exec |
+| mcp-gitlab | GitLab CE | platform | repos, MRs, pipelines, issues |
+| mcp-n8n | n8n API | orchestration | workflow CRUD, execution, node docs |
+| mcp-datahub | DataHub GMS | data | entity search, lineage, quality |
+| mcp-plane | Plane API | project-management | issues, labels, cycles, sprints |
+| mcp-mlflow | MLflow API | mlops | experiments, runs, metrics, model registry |
+| mcp-langfuse | Langfuse API | observability | traces, scores, usage, cost analysis |
+| mcp-minio | MinIO S3 | storage | buckets, objects, artifacts |
+| mcp-ollama | Ollama API | llm | model pull/delete, VRAM, inference test |
+
+### Skills (21)
+
+Core: kubernetes-ops, mlflow-tracking, n8n-workflow-ops, code-generation, documentation, security-audit, benchmark-runner, data-ingestion, prompt-engineering, agent-management, skill-management, vector-store-ops, dev-sandbox
+
+New: datahub-ops, langfuse-ops, artifact-ops, model-management, issue-triage, sprint-management, test-generation, gitlab-pipeline-ops
+
+## Agent Gateway (`services/agent-gateway/`) — Being Slimmed
+
+Python 3.12 + FastAPI. Being reduced to orchestration glue as kagent + agentgateway + agentregistry absorb overlapping functions:
+
+- **Skill catalog**: Hybrid search over agent skills (unique capability, no OSS equivalent)
+- **Semantic tool discovery**: pgvector embeddings over tool schemas
 - **Sandbox**: Ephemeral k8s Jobs for code execution
-- **Skill catalog**: Hybrid search over agent skills
+- ~~Agent registry~~ → kagent CRDs
+- ~~MCP proxy~~ → agentgateway (Rust)
+- ~~A2A cards~~ → kagent A2A protocol
+- ~~OpenAI chat~~ → LiteLLM
+
+## Agentgateway (`charts/genai-agentgateway/`)
+
+Rust-based MCP/A2A proxy from Linux Foundation. Multiplexes all platform MCP servers.
+- AgentgatewayBackend CRs define MCP server targets
+- Supports StreamableHTTP + SSE transports
+- Policy engine via CEL expressions
+- ARM64 native, images from `cr.agentgateway.dev`
+
+## Agent Registry (`charts/genai-agentregistry/`)
+
+Agent/skill/MCP server catalog with semantic search and blueprints.
+- pgvector-backed (shared `genai-pgvector` instance, `agentregistry` database)
+- Ports: HTTP 12121, gRPC 21212, MCP 31313
+- CLI: `arctl` for scaffolding, building, publishing
+- Images from `ghcr.io/agentregistry-dev/agentregistry`
+- Anonymous auth enabled for k3d (JWT secret: `agentregistry-jwt`)
 
 ### Dev workflow
 
@@ -81,7 +148,7 @@ kubectl rollout restart deployment/genai-agent-gateway -n genai
 
 ## Helm Charts
 
-28 charts in `charts/`. All managed by ArgoCD after bootstrap. Key charts:
+35 charts in `charts/`. All managed by ArgoCD after bootstrap. Key charts:
 
 | Chart | Namespace | Purpose |
 |-------|-----------|---------|
@@ -93,13 +160,27 @@ kubectl rollout restart deployment/genai-agent-gateway -n genai
 | `genai-datahub` | genai | Data catalog |
 | `genai-minio` | genai | Object storage |
 | `genai-plane` | genai | Project management |
-| `genai-mcp-*` | genai | MCP servers (kubernetes, gitlab, n8n, datahub, plane) |
+| `genai-agentgateway` | genai | MCP/A2A proxy (agentgateway, Rust) |
+| `genai-agentregistry` | genai | Agent/skill/MCP catalog + semantic search |
+| `genai-agent-schedules` | genai | CronJobs → kagent A2A scheduling |
+| `genai-mcp-*` | genai | MCP servers (9 total) |
 | `genai-pg-*` | genai | PostgreSQL instances (n8n, mlflow, plane, metamcp) |
 | `gitlab-ce` | platform | Source control |
 | `argocd` | platform | GitOps controller |
 | `ingress-nginx` | ingress-nginx | Ingress controller |
 
 Never `helm install` manually. ArgoCD manages day-2 operations.
+
+## System Integration Process
+
+New services follow the research-first process defined in `~/work/CLAUDE.md` § SYSTEM INTEGRATION PROCESS:
+
+1. **Research** — upstream docs, community deployments, integration-specific research per connection
+2. **Diagrams** — testable Mermaid diagrams in `specs/NNN-name/diagrams/` (C4 context, integration flows, sequences)
+3. **Helm audit** — review every chart value, align to platform conventions (existingSecret, ARM64, resource limits)
+4. **Deploy + verify** — every diagram edge becomes a smoke test assertion
+
+Diagram and spec artifacts live in `specs/NNN-name/`.
 
 ## Namespaces
 
@@ -129,13 +210,16 @@ Use `--force` flag to recreate existing secrets.
 
 ## Agent Definitions (`agents/`)
 
-YAML-based agent specs synced to MLflow prompt registry via `task agent-sync`.
+YAML-based agent specs with autonomy blocks (schedule, signals, memory, collaborators, guardrails).
 
-- `mlops/` — MLOps agent (experiment tracking, model deployment)
-- `developer/` — Developer assistant
-- `platform-admin/` — Infrastructure management
-- `_shared/` — Shared skills and tool definitions
-- `envs/` — Environment bindings (k3d-mewtwo, docker-compose)
+- `mlops/` — MLOps agent (experiment tracking, model deployment, observability)
+- `developer/` — Developer assistant (code gen, review, security, CI/CD)
+- `platform-admin/` — Infrastructure management (watchdog, incident response)
+- `data-engineer/` — Data catalog, lineage, quality, ingestion
+- `project-coordinator/` — Backlog triage, sprint management, status reporting
+- `qa-eval/` — Benchmarks, regression detection, prompt evaluation
+- `_shared/` — Shared LLM and MCP configs
+- `envs/` — Environment bindings (k3d-mewtwo)
 
 ## DataHub Integration
 
@@ -166,3 +250,4 @@ task doctor                   # Preflight + smoke
 Feature specs at `specs/NNN-name/`. Status tracked in frontmatter.
 
 Shipped: 001 (agent-gateway), 015 (DataOps — phases 1-3), 020-027 (various platform features).
+In-progress: 029 (platform consolidation — kagent + agentgateway + agentregistry integration).

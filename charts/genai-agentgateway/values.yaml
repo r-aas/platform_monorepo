@@ -1,0 +1,54 @@
+# ── Agentgateway — MCP/A2A proxy for platform ──────────
+# Multiplexes all platform MCP servers into unified endpoints.
+# Adds policy-based RBAC, observability, and session management.
+#
+# Images from cr.agentgateway.dev (multi-arch, ARM64 supported)
+
+agentgateway:
+  image:
+    registry: cr.agentgateway.dev
+    tag: "v1.0.1"
+    pullPolicy: IfNotPresent
+
+  controller:
+    replicaCount: 1
+    logLevel: info
+    image:
+      registry: cr.agentgateway.dev
+      repository: controller
+      tag: "v1.0.1"
+    service:
+      enabled: true
+      type: ClusterIP
+      ports:
+        agwGrpc: 9978
+        health: 9093
+        metrics: 9092
+
+  proxy:
+    image:
+      registry: cr.agentgateway.dev
+      repository: agentgateway
+      tag: "v1.0.1"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Discover resources in genai namespace
+  discoveryNamespaceSelectors:
+    - matchLabels:
+        kubernetes.io/metadata.name: genai
+
+  # No TLS needed inside k3d
+  xds:
+    tls:
+      enabled: false
+
+  # No Gateway API inference extension needed
+  inferenceExtension:
+    enabled: false

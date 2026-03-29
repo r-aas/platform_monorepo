@@ -1,0 +1,51 @@
+# ── Agent Scheduling — CronJobs → kagent A2A ──────────
+# Each agent gets a CronJob that POSTs a task to its A2A endpoint.
+# kagent agents are long-running Deployments (FastAPI on :8080).
+# A2A endpoint: POST http://{agent-name}.genai.svc.cluster.local:8080/a2a/task
+
+# Schedule definitions per agent
+# Matches the autonomy.schedule from agent YAML specs
+agents:
+  platform-admin-agent:
+    schedule: "*/15 * * * *"    # Every 15 minutes
+    task: "Run platform health check. Verify all pods are running, check resource utilization, identify any failing deployments or services. Report any issues found."
+    enabled: true
+
+  project-coordinator-agent:
+    schedule: "0 * * * *"       # Every hour
+    task: "Review open issues and recent activity. Triage any new issues, update sprint status, identify blockers. Summarize current project state."
+    enabled: true
+
+  data-engineer-agent:
+    schedule: "0 */2 * * *"     # Every 2 hours
+    task: "Check data ingestion pipeline health. Verify DataHub sources are current, check data quality assertions, identify any stale datasets or failed ingestions."
+    enabled: true
+
+  mlops-agent:
+    schedule: "0 */4 * * *"     # Every 4 hours
+    task: "Review ML experiment status. Check recent MLflow runs, verify model registry health, review Langfuse traces for anomalies, check Ollama model availability."
+    enabled: true
+
+  developer-agent:
+    schedule: "0 */6 * * *"     # Every 6 hours
+    task: "Review recent GitLab activity. Check open MRs, identify stale branches, review pipeline health, flag any security findings."
+    enabled: true
+
+  qa-eval-agent:
+    schedule: "0 2 * * *"       # Daily at 2 AM
+    task: "Run nightly evaluation suite. Execute agent benchmarks against baselines, check for regressions, evaluate prompt performance, generate quality report."
+    enabled: true
+
+# Common settings
+image:
+  repository: curlimages/curl
+  tag: "8.13.0"
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 16Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi

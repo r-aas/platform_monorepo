@@ -1,0 +1,6 @@
+apiVersion: v2
+name: genai-agent-schedules
+description: CronJob-based scheduling for kagent agents via A2A protocol
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

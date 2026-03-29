@@ -1,0 +1,126 @@
+# ── Agent Registry — agent/skill/MCP server catalog ────
+# Curates agents, MCP servers, skills, and prompts.
+# pgvector-backed semantic search for tool discovery.
+# Blueprints pattern for bundled deployments.
+#
+# Image: ghcr.io/agentregistry-dev/agentregistry/server:0.2.1 (multi-arch ARM64)
+
+image:
+  registry: ghcr.io
+  repository: agentregistry-dev/agentregistry
+  name: server
+  tag: "0.2.1"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+config:
+  serverAddress: ":8080"
+  agentGatewayPort: "21212"
+  agentRegistryMcpPort: "31313"
+  # Anonymous auth for internal k3d use
+  enableAnonymousAuth: "true"
+  # Don't seed 363 bundled MCP servers — we have our own
+  disableBuiltinSeed: "true"
+  enableRegistryValidation: "false"
+  seedFrom: ""
+  existingSecret: "agentregistry-jwt"
+  jwtPrivateKey: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Use existing pgvector instance — no bundled postgres
+database:
+  postgres:
+    url: "postgresql://pgvector:pgvector@genai-pgvector.genai.svc.cluster.local:5432/agentregistry"
+    vectorEnabled: true
+    bundled:
+      enabled: false
+
+service:
+  type: ClusterIP
+  ports:
+    http: 12121
+    grpc: 21212
+    mcp: 31313
+  targetPorts:
+    http: 8080
+    grpc: 21212
+    mcp: 31313
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automountServiceAccountToken: true
+
+rbac:
+  enabled: true
+  watchedNamespaces:
+    - genai
+
+podSecurityContext:
+  enabled: true
+  fsGroup: 1001
+  fsGroupChangePolicy: Always
+
+containerSecurityContext:
+  enabled: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+  successThreshold: 1
+
+startupProbe:
+  enabled: true
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
+  successThreshold: 1
+
+# Scheduling
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAffinityPreset: ""
+podAntiAffinityPreset: ""
+nodeAffinityPreset:
+  type: ""
+  key: ""
+  values: []
+
+# Common
+nameOverride: ""
+fullnameOverride: ""
+commonLabels: {}
+commonAnnotations: {}
+extraEnvVars: []

@@ -1,0 +1,34 @@
+# ═══════════════════════════════════════════════════════
+# AgentgatewayBackend resources — one per MCP server
+# These register MCP servers as agentgateway backends
+# for multiplexed tool federation and policy enforcement
+# ═══════════════════════════════════════════════════════
+{{- $ns := .Release.Namespace }}
+{{- $servers := dict
+  "kubernetes" (dict "host" "genai-mcp-kubernetes.genai.svc.cluster.local" "port" 3000 "desc" "Kubernetes cluster management")
+  "gitlab" (dict "host" "genai-mcp-gitlab.genai.svc.cluster.local" "port" 3000 "desc" "GitLab repos, MRs, pipelines")
+  "mlflow" (dict "host" "genai-mcp-mlflow.genai.svc.cluster.local" "port" 3000 "desc" "MLflow experiments and model registry")
+  "langfuse" (dict "host" "genai-mcp-langfuse.genai.svc.cluster.local" "port" 3000 "desc" "Langfuse LLM observability")
+  "minio" (dict "host" "genai-mcp-minio.genai.svc.cluster.local" "port" 3000 "desc" "MinIO S3 object storage")
+  "ollama" (dict "host" "genai-mcp-ollama.genai.svc.cluster.local" "port" 3000 "desc" "Ollama model management")
+  "plane" (dict "host" "genai-mcp-plane.genai.svc.cluster.local" "port" 3000 "desc" "Plane project management")
+  "kagent-tools" (dict "host" "genai-kagent-tools.genai.svc.cluster.local" "port" 8084 "desc" "kagent built-in tools (k8s, helm, argo, prometheus)")
+}}
+{{- range $name, $cfg := $servers }}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: mcp-{{ $name }}
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: genai-agentgateway
+spec:
+  mcp:
+    targets:
+    - name: {{ $name }}
+      static:
+        host: {{ $cfg.host }}
+        port: {{ $cfg.port }}
+        protocol: StreamableHTTP
+{{- end }}
