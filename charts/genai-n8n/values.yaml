@@ -1,7 +1,8 @@
 # n8n workflow engine — uses external PostgreSQL from genai-pg-n8n
 n8n:
   fullnameOverride: genai-n8n
-  encryptionKey: "genai-mlops-n8n-encryption-key-k3d"
+  # Encryption key from k8s secret (must have key N8N_ENCRYPTION_KEY)
+  existingEncryptionKeySecret: "genai-n8n-encryption-key-secret-v2"
   image:
     tag: "1.123.21"
   resources:
@@ -17,7 +18,6 @@ n8n:
       INFERENCE_BASE_URL: "http://genai-litellm.genai.svc.cluster.local:4000/v1"
       INFERENCE_DEFAULT_MODEL: "qwen2.5:14b"
       INFERENCE_ALLOWED_MODELS: "qwen2.5:14b,qwen2.5:7b,mistral:7b-instruct,gemma3:12b,nomic-embed-text"
-      LITELLM_API_KEY: "sk-litellm-mewtwo-local"
       LITELLM_BASE_URL: "http://genai-litellm.genai.svc.cluster.local:4000"
       # YouTube pipeline
       YT_ANALYSIS_MODEL: "glm-4.7-flash"
@@ -27,15 +27,16 @@ n8n:
       # Ollama direct (host via Colima gateway)
       OLLAMA_BASE_URL: "http://192.168.5.2:11434"
       # Plane project management (in-cluster)
-      PLANE_API_TOKEN: "plane_api_2ae384a415bd4c29acaa40872639e189"
       PLANE_API_URL: "http://genai-plane-api.genai.svc.cluster.local:8000"
       # GitLab (in-cluster)
-      GITLAB_PAT: "glpat-yGDTb8B7H5v4owSrN3Vxh286MQp1OjEH.01.0w06dez0e"
       GITLAB_URL: "http://gitlab-ce.platform.svc.cluster.local:8181"
       # n8n settings
       N8N_PUBLIC_API_ENABLED: "true"
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
       NODE_FUNCTION_ALLOW_EXTERNAL: "axios"
+    # Sensitive env vars from k8s secret (LITELLM_API_KEY, PLANE_API_TOKEN, GITLAB_PAT)
+    extraSecretNamesForEnvFrom:
+      - n8n-env-secrets
   db:
     type: postgresdb
   postgresql:
@@ -44,5 +45,5 @@ n8n:
     host: "genai-pg-n8n.genai.svc.cluster.local"
     port: 5432
     username: n8n
-    password: n8n
     database: n8n
+    existingSecret: "genai-pg-n8n"

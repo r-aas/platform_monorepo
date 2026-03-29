@@ -158,6 +158,12 @@ create_secret genai langfuse-api-keys \
 create_secret genai mysql-secrets \
   --from-literal=mysql-root-password="${DATAHUB_MYSQL_ROOT_PASSWORD}"
 
+# n8n sensitive env vars (loaded via extraSecretNamesForEnvFrom)
+create_secret genai n8n-env-secrets \
+  --from-literal=LITELLM_API_KEY="${LITELLM_API_KEY:-sk-litellm-mewtwo-local}" \
+  --from-literal=PLANE_API_TOKEN="${PLANE_API_TOKEN}" \
+  --from-literal=GITLAB_PAT="${GITLAB_PAT}"
+
 # n8n API credentials (if set)
 if [[ -n "${N8N_API_KEY:-}" ]]; then
   create_secret genai n8n-api-credentials \
