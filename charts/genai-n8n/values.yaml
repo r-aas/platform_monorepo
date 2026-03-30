@@ -49,12 +49,12 @@ n8n:
     existingSecret: "genai-pg-n8n"
 
 # ── Workflow Promotion (GitOps) ─────────────────────────
-# Clones workflow JSONs from GitLab on every deploy,
+# Clones workflow JSONs from the platform monorepo on every deploy,
 # patches URLs, and upserts into n8n via REST API.
 workflowPromotion:
   enabled: true
-  # In-cluster GitLab repo containing workflow JSONs
-  gitUrl: "http://gitlab-ce.platform.svc.cluster.local:8181/root/genai-mlops.git"
+  # Same repo ArgoCD syncs — workflows live here now
+  gitUrl: "http://gitlab-ce.platform.svc.cluster.local:8181/root/platform_monorepo.git"
   gitBranch: main
   workflowPath: "n8n-data/workflows"
   # k8s secret containing 'gitlab-pat' key

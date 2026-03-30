@@ -1,0 +1,119 @@
+{
+  "id": "chat-complete-v1",
+  "name": "Chat Complete",
+  "active": false,
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "Start",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        0,
+        200
+      ],
+      "parameters": {},
+      "typeVersion": 1
+    },
+    {
+      "id": "n2",
+      "name": "Build Request",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        220,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "var input = $input.first().json;\nvar cfg = input.config || {};\nvar model = cfg.model || 'qwen2.5:14b';\nvar messages = [];\nif (input.system_prompt) messages.push({role:'system',content:input.system_prompt});\nvar history = input.messages_history || [];\nfor (var i=0;i<history.length;i++) messages.push(history[i]);\nmessages.push({role:'user',content:input.message||''});\nvar INFERENCE_BASE = $env.INFERENCE_BASE_URL || 'http://genai-litellm.genai.svc.cluster.local:4000/v1';\nvar INFERENCE_KEY = $env.LITELLM_API_KEY || '';\nvar agentName = input.agent_name || 'chat';\nvar task = input.task || '';\nvar sessionId = input.session_id || '';\nvar metadata = {\n  trace_name: agentName + (task ? '.' + task : '') + '.chat',\n  session_id: sessionId || undefined,\n  tags: ['agent:' + agentName, 'mode:chat', 'runtime:direct']\n};\nif (task) metadata.tags.push('task:' + task);\nreturn [{json:{_url:INFERENCE_BASE+'/chat/completions', _auth:'Bearer '+INFERENCE_KEY, _body:{model:model,messages:messages,temperature:cfg.temperature||0.7,top_p:cfg.top_p||0.9,metadata:metadata}}}];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n3",
+      "name": "LLM Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        440,
+        200
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json._url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._body) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $json._auth }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "n4",
+      "name": "Extract Response",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        660,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "var resp = $input.first().json;\nvar output = '';\ntry { output = resp.choices[0].message.content || ''; } catch(e) { output = 'Error: '+(resp.message||JSON.stringify(resp)); }\nreturn [{json:{output:output, intermediateSteps:[]}}];"
+      },
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Build Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Request": {
+      "main": [
+        [
+          {
+            "node": "LLM Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Call": {
+      "main": [
+        [
+          {
+            "node": "Extract Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null
+}

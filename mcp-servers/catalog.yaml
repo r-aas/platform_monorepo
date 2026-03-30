@@ -1,0 +1,127 @@
+###############################################################################
+# MCP Gateway — Server Catalog (Docker-Managed Mode)
+#
+# All servers use type: "server" — the gateway manages container lifecycle
+# via Docker socket. Containers start on-demand per tool call and stop after.
+#
+# system: tag — links each MCP server to its parent subsystem (Helm release).
+#   Used by the Observatory dashboard to slot MCP nodes into the right group.
+#   Valid values: orchestration, experiments, platform, agents, inference,
+#                 tracing, dataops
+#
+# Adding a new server:
+#   1. Create Dockerfile in mcp-servers/
+#   2. Build: task mcp:build
+#   3. Add entry below with system: tag
+#   4. Gateway auto-reloads via --watch (no restart needed)
+#   5. Dashboard discovers it on next poll cycle
+#
+# Secrets: Loaded from mcp-servers/mcp-secrets.env via gateway --secrets flag.
+#          Generate with: task mcp:secrets
+#
+# Config: Machine-specific values in mcp-servers/config.yaml (gitignored).
+#         Copy from config.yaml.example and adjust paths.
+###############################################################################
+
+registry:
+  # ── n8n Knowledge Base ────────────────────────────────────────────────────
+  # Node documentation, template search, configuration validation.
+  # Does NOT require n8n connectivity — standalone knowledge base.
+  n8n-knowledge:
+    type: server
+    system: orchestration
+    title: "n8n Knowledge Base"
+    description: "Node docs, template search, workflow validation, configuration guidance"
+    image: genai-mcp-n8n-knowledge:latest
+    env:
+      - name: N8N_API_URL
+        value: "http://n8n:5678"
+      - name: LOG_LEVEL
+        value: "error"
+      - name: N8N_MCP_TELEMETRY_DISABLED
+        value: "true"
+    secrets:
+      - name: "n8n-knowledge.n8n_api_key"
+        env: "N8N_API_KEY"
+
+  # ── n8n Workflow Manager ──────────────────────────────────────────────────
+  # Workflow CRUD, execution management, webhook triggers.
+  # Requires n8n API connectivity.
+  n8n-manager:
+    type: server
+    system: orchestration
+    title: "n8n Workflow Manager"
+    description: "Workflow CRUD, execution management, webhook triggers"
+    image: genai-mcp-n8n-manager:latest
+    env:
+      - name: N8N_API_URL
+        value: "http://n8n:5678/api/v1"
+      - name: N8N_MCP_TELEMETRY_DISABLED
+        value: "true"
+    secrets:
+      - name: "n8n-manager.n8n_api_key"
+        env: "N8N_API_KEY"
+      - name: "n8n-manager.n8n_webhook_username"
+        env: "N8N_WEBHOOK_USERNAME"
+      - name: "n8n-manager.n8n_webhook_password"
+        env: "N8N_WEBHOOK_PASSWORD"
+
+  # ── GitLab ────────────────────────────────────────────────────────────────
+  # Project management, file operations, merge requests, branches.
+  # GitLab runs in k3d (Helm chart), accessed via ingress on port 80.
+  # GITLAB_HOST triggers entrypoint to add /etc/hosts → Docker host gateway,
+  # fixing nip.io 127.0.0.1 resolution from inside the spawned container.
+  gitlab:
+    type: server
+    system: platform
+    title: "GitLab"
+    description: "Project management, file ops, merge requests, branches"
+    image: genai-mcp-gitlab:latest
+    env:
+      - name: GITLAB_API_URL
+        value: "http://gitlab.platform.127.0.0.1.nip.io/api/v4"
+      - name: GITLAB_HOST
+        value: "gitlab.platform.127.0.0.1.nip.io"
+    secrets:
+      - name: "gitlab.gitlab_token"
+        env: "GITLAB_PERSONAL_ACCESS_TOKEN"
+
+  # ── MLflow ────────────────────────────────────────────────────────────────
+  # Experiment tracking, run analysis, model registry, artifact browsing.
+  mlflow:
+    type: server
+    system: experiments
+    title: "MLflow"
+    description: "Experiment tracking, run analysis, model registry"
+    image: genai-mcp-mlflow:latest
+    env:
+      - name: MLFLOW_TRACKING_URI
+        value: "http://mlflow:5050"
+
+  # ── Kubernetes ────────────────────────────────────────────────────────────
+  # Cluster management, pod operations, deployments, logs, exec.
+  # Requires kubeconfig volume mount (host path from config.yaml).
+  kubernetes:
+    type: server
+    system: platform
+    title: "Kubernetes"
+    description: "Cluster management, pod ops, deployments, logs, exec"
+    image: genai-mcp-kubernetes:latest
+    env:
+      - name: KUBECONFIG
+        value: "/root/.kube/config"
+    volumes:
+      - "{{kubernetes.kubeconfig_path}}:/root/.kube/config:ro"
+
+  # ── Claude Code ───────────────────────────────────────────────────────────
+  # File operations, bash execution, code search (grep/glob), editing.
+  # Requires Anthropic API key.
+  claude-code:
+    type: server
+    system: agents
+    title: "Claude Code"
+    description: "File ops, bash execution, code search, editing"
+    image: genai-mcp-claude-code:latest
+    secrets:
+      - name: "claude-code.anthropic_api_key"
+        env: "ANTHROPIC_API_KEY"

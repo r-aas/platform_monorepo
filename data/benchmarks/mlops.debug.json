@@ -1,0 +1,64 @@
+[
+  {
+    "label": "debug-high-inference-latency",
+    "variables": {
+      "error_description": "Inference latency spiked from 200ms p95 to 4.5s p95 starting at 14:30 UTC. No deployment changes in the last 24 hours. GPU utilization jumped from 60% to 98%. Request volume is stable at ~50 req/s.",
+      "context": "Ollama serving qwen2.5:14b on Apple Silicon M4 Max. Model was running fine for 3 days. Other models on the same instance are also slow."
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "GPU"},
+      {"type": "expect_contains", "value": "memory"},
+      {"type": "expect_min_length", "value": 150}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "debug-empty-responses",
+    "variables": {
+      "error_description": "Model returns empty string responses for approximately 15% of requests. Affected requests have no error in logs. Response status is 200 with an empty choices array. Other requests work normally with the same model.",
+      "context": "Using OpenAI-compatible API via Ollama. Temperature 0.7, max_tokens 2048. The empty responses seem correlated with longer input prompts (>3000 tokens)."
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "token"},
+      {"type": "expect_min_length", "value": 150}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "debug-training-loss-plateau",
+    "variables": {
+      "error_description": "Fine-tuning loss plateaued at 1.82 after epoch 2 and has not decreased through epochs 3-8. Validation loss started increasing at epoch 4 (1.85 -> 2.1). Learning rate is 2e-5 with cosine schedule.",
+      "context": "Fine-tuning a 7B parameter model on 3,000 instruction pairs using LoRA (r=16, alpha=32). Training on 1x A100 40GB. Dataset was deduplicated and cleaned."
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "learning rate"},
+      {"type": "expect_contains", "value": "overfit"},
+      {"type": "expect_min_length", "value": 150}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "debug-mlflow-tracking-failure",
+    "variables": {
+      "error_description": "MLflow experiment logging fails silently. mlflow.log_metric() calls return without error but metrics don't appear in the UI. mlflow.start_run() succeeds and returns a valid run_id. The MLflow tracking server is reachable via curl.",
+      "context": "MLflow 3.x deployed in k3d cluster, genai namespace. Tracking URI is http://genai-mlflow.genai.svc.cluster.local:5000. Client running in a separate pod in the same namespace. Security middleware is disabled."
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "MLflow"},
+      {"type": "expect_min_length", "value": 150}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "debug-data-drift-production",
+    "variables": {
+      "error_description": "Production model accuracy dropped from 89% to 71% over 2 weeks. No model changes deployed. Input feature distributions show the 'category' field has 3 new values not seen in training data. Numerical features show increased variance.",
+      "context": "Classification model serving e-commerce product categorization. Training data is 6 months old. Model is retrained monthly but the last retrain was 5 weeks ago due to pipeline failure."
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "drift"},
+      {"type": "expect_min_length", "value": 150}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  }
+]

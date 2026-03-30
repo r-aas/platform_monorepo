@@ -1,0 +1,370 @@
+{
+  "id": "openai-compat-v1",
+  "name": "OpenAI-Compatible API",
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "GET /v1/models",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        260,
+        300
+      ],
+      "webhookId": "compat-models",
+      "parameters": {
+        "path": "v1/models",
+        "httpMethod": "GET",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n2",
+      "name": "List Models",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const allowedStr = $env.INFERENCE_ALLOWED_MODELS || \"qwen2.5:14b,qwen2.5:7b,qwen3:32b,qwen3:30b,mistral:7b-instruct,llama3.2:latest,nomic-embed-text:latest\";\nconst ALLOWED = allowedStr.split(',').map(s => s.trim()).filter(Boolean);\nconst ts = Math.floor(Date.now() / 1000);\nconst models = ALLOWED.map(id => ({ id, object: 'model', created: ts, owned_by: 'ollama' }));\nreturn [{ json: { object: 'list', data: models } }];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n3",
+      "name": "Models Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        700,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "n4",
+      "name": "POST /v1/chat/completions",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        260,
+        600
+      ],
+      "webhookId": "compat-chat",
+      "parameters": {
+        "path": "v1/chat/completions",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n5",
+      "name": "Chat Handler",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        480,
+        600
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// fetch-based HTTP helpers (replaces axios to avoid task runner crash)\nasync function _post(url, data, opts) {\n  var headers = {'Content-Type': 'application/json'};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(url, {method:'POST', headers: headers, body: JSON.stringify(data), signal: opts && opts.timeout ? AbortSignal.timeout(opts.timeout) : undefined});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  if (!r.ok) { var err = new Error('HTTP ' + r.status); err.response = {status: r.status, data: json}; throw err; }\n  return {data: json, status: r.status};\n}\nasync function _get(url, opts) {\n  var qurl = url;\n  if (opts && opts.params) { var qs = new URLSearchParams(opts.params).toString(); if (qs) qurl += (url.includes('?') ? '&' : '?') + qs; }\n  var headers = {};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(qurl, {headers: headers, signal: opts && opts.timeout ? AbortSignal.timeout(opts.timeout) : undefined});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  if (!r.ok) { var err = new Error('HTTP ' + r.status); err.response = {status: r.status, data: json}; throw err; }\n  return {data: json, status: r.status};\n}\nasync function _del(url, opts) {\n  var headers = {'Content-Type': 'application/json'};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(url, {method:'DELETE', headers: headers, body: opts && opts.data ? JSON.stringify(opts.data) : undefined});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  if (!r.ok) { var err = new Error('HTTP ' + r.status); err.response = {status: r.status, data: json}; throw err; }\n  return {data: json, status: r.status};\n}\nasync function _put(url, body, opts) {\n  var headers = {};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(url, {method:'PUT', headers: headers, body: typeof body === 'string' ? body : JSON.stringify(body)});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  return {data: json, status: r.status};\n}\nconst INFERENCE_BASE = $env.INFERENCE_BASE_URL || 'http://host.docker.internal:11434/v1';\nconst INFERENCE = INFERENCE_BASE + '/chat/completions';\nconst MLFLOW = 'http://mlflow:5050/api/2.0/mlflow';\nconst defaultModel = $env.INFERENCE_DEFAULT_MODEL || 'qwen2.5:14b';\nconst INFERENCE_KEY = $env.LITELLM_API_KEY || '';\nconst LLM_HEADERS = INFERENCE_KEY ? { Authorization: 'Bearer ' + INFERENCE_KEY } : {};\nconst body = $input.item.json.body;\n\n// OpenAI-shaped error helper\nfunction oaiError(status, message, type, code) {\n  return { _error: true, _status: status, error: { message, type: type || 'invalid_request_error', param: null, code: code || null } };\n}\n\ntry {\n  const model = body.model;\n  if (!model) return [{ json: oaiError(400, 'model is required', 'invalid_request_error') }];\n\n  const messages = body.messages || [];\n  const stream = body.stream || false;\n  const temperature = body.temperature !== undefined ? body.temperature : 0.7;\n\n  // Curated model allowlist from env\n  const allowedStr = $env.INFERENCE_ALLOWED_MODELS || \"qwen2.5:14b,qwen2.5:7b,qwen3:32b,qwen3:30b,mistral:7b-instruct,llama3.2:latest,nomic-embed-text:latest\";\n  const ALLOWED = new Set(allowedStr.split(',').map(s => s.trim()).filter(Boolean));\n\n  // Extract last user message\n  const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');\n  if (!lastUserMsg) return [{ json: oaiError(400, 'No user message found') }];\n  const userInput = typeof lastUserMsg.content === 'string'\n    ? lastUserMsg.content\n    : Array.isArray(lastUserMsg.content)\n      ? lastUserMsg.content.filter(c => c.type === 'text').map(c => c.text).join('\\n')\n      : String(lastUserMsg.content);\n\n  var chatStart = Date.now();\n\n  let response, usage, promptInfo;\n\n  // Try prompt-enhanced path first (MLflow prompt registry)\n  try {\n    const rmResp = await _get(MLFLOW + '/registered-models/get', {\n      params: { name: model }, timeout: 10000\n    });\n    const rm = rmResp.data.registered_model;\n    const aliasEntry = (rm.aliases || []).find(a => a.alias === 'production');\n    if (!aliasEntry) throw new Error('No production alias');\n\n    // Canary routing: check if canary is active and roll dice\n    var rmTags = {};\n    (rm.tags || []).forEach(function(t) { rmTags[t.key] = t.value; });\n    var canaryEnabled = rmTags['canary.enabled'] === 'true';\n    var selectedVersion = aliasEntry.version;\n    var isCanary = false;\n    if (canaryEnabled) {\n      var canaryPct = Number(rmTags['canary.traffic_pct'] || 0);\n      var canaryVer = rmTags['canary.staging_version'] || '';\n      if (canaryVer && canaryPct > 0) {\n        var useCanary;\n        var canarySessionId = body.session_id || '';\n        if (canarySessionId) {\n          var hash = 0;\n          for (var ci = 0; ci < canarySessionId.length; ci++) {\n            hash = ((hash << 5) - hash) + canarySessionId.charCodeAt(ci);\n            hash = hash & hash;\n          }\n          useCanary = (Math.abs(hash) % 100) < canaryPct;\n        } else {\n          useCanary = Math.random() * 100 < canaryPct;\n        }\n        if (useCanary) {\n          selectedVersion = canaryVer;\n          isCanary = true;\n        }\n      }\n    }\n\n    // Fix: fetch version directly instead of relying on latest_versions\n    const mvResp = await _get(MLFLOW + '/model-versions/get', {\n      params: { name: model, version: selectedVersion }, timeout: 10000\n    });\n    const mv = mvResp.data.model_version;\n    const promptTag = (mv.tags || []).find(t => t.key === 'mlflow.prompt.text');\n    if (!promptTag) throw new Error('No prompt template');\n\n    // Build variables: explicit body.variables, falling back to {message: userInput}\n    const vars = body.variables || { message: userInput };\n    if (!vars.message) vars.message = userInput;\n\n    // Render template\n    let rendered = promptTag.value;\n    for (const [key, value] of Object.entries(vars)) {\n      const pattern = new RegExp('\\\\{\\\\{\\\\s*' + key + '\\\\s*\\\\}\\\\}', 'g');\n      rendered = rendered.replace(pattern, String(value));\n    }\n\n    // Check for unresolved variables\n    const unresolved = rendered.match(/\\{\\{\\s*\\w+\\s*\\}\\}/g);\n    if (unresolved) {\n      return [{ json: oaiError(400, 'Unresolved template variables: ' + unresolved.join(', ')) }];\n    }\n\n    const ir = await _post(INFERENCE, {\n      model: defaultModel,\n      messages: [{ role: 'user', content: rendered }],\n      temperature\n    }, { headers: LLM_HEADERS, timeout: 120000 });\n\n    response = ir.data.choices[0].message.content;\n    usage = ir.data.usage || {};\n    promptInfo = { name: rm.name, version: selectedVersion, is_canary: isCanary };\n  } catch (err) {\n    // Fallback: direct pass-through\n    if (!ALLOWED.has(model)) return [{ json: oaiError(404, 'Model not available: ' + model, 'invalid_request_error', 'model_not_found') }];\n    const or = await _post(INFERENCE, {\n      model, messages, temperature, stream: false\n    }, { headers: LLM_HEADERS, timeout: 120000 });\n    response = or.data.choices[0].message.content;\n    usage = or.data.usage || {};\n    promptInfo = null;\n  }\n\n  var traceId = 'tr_chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);\n  var latencyMs = Date.now() - chatStart;\n  _post('http://n8n:5678/webhook/traces', {\n    action: 'log', trace_id: traceId, source: 'chat',\n    model: promptInfo ? defaultModel : body.model,\n    prompt_name: promptInfo ? promptInfo.name : null,\n    prompt_version: promptInfo ? String(promptInfo.version) : null,\n    status: 'ok', latency_ms: latencyMs,\n    tokens: { prompt: usage.prompt_tokens || 0, completion: usage.completion_tokens || 0, total: usage.total_tokens || 0 }\n  }).catch(function(){});\n\n  const cid = 'chatcmpl-' + Date.now();\n  const ts = Math.floor(Date.now() / 1000);\n  const fp = promptInfo ? 'fp_' + promptInfo.name + '_v' + promptInfo.version + (promptInfo.is_canary ? '_canary' : '') : 'fp_inference';\n\n  if (stream) {\n    // Split response into word-level chunks for more realistic SSE\n    const words = response.split(/( +)/);\n    const lines = [];\n    // Role chunk (no content)\n    lines.push('data: ' + JSON.stringify({ id: cid, object: 'chat.completion.chunk', created: ts, model, system_fingerprint: fp, choices: [{ index: 0, delta: { role: 'assistant' }, finish_reason: null }] }));\n    // Content chunks \u2014 batch ~3 words per chunk\n    for (let i = 0; i < words.length; i += 3) {\n      const content = words.slice(i, i + 3).join('');\n      if (!content) continue;\n      lines.push('data: ' + JSON.stringify({ id: cid, object: 'chat.completion.chunk', created: ts, model, system_fingerprint: fp, choices: [{ index: 0, delta: { content }, finish_reason: null }] }));\n    }\n    // Final chunk\n    lines.push('data: ' + JSON.stringify({ id: cid, object: 'chat.completion.chunk', created: ts, model, system_fingerprint: fp, choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: usage.prompt_tokens || 0, completion_tokens: usage.completion_tokens || 0, total_tokens: usage.total_tokens || 0 } }));\n    lines.push('data: [DONE]');\n    return [{ json: { _error: false, _stream: true, stream_data: lines.join('\\n\\n') + '\\n\\n' } }];\n  }\n\n  return [{ json: { _error: false, _stream: false, completion: {\n    id: cid, object: 'chat.completion', created: ts, model, system_fingerprint: fp,\n    choices: [{ index: 0, message: { role: 'assistant', content: response }, finish_reason: 'stop' }],\n    usage: { prompt_tokens: usage.prompt_tokens || 0, completion_tokens: usage.completion_tokens || 0, total_tokens: usage.total_tokens || 0 },\n    trace_id: traceId\n  } } }];\n} catch (e) {\n  const msg = e.response && e.response.data && e.response.data.error ? e.response.data.error.message : (e.message || String(e));\n  const status = (e.response && e.response.status) || 500;\n  return [{ json: { _error: true, _status: status, error: { message: msg, type: 'api_error', param: null, code: null } } }];\n}"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n6",
+      "name": "Is Error?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        700,
+        600
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "ec",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "typeVersion": 2.2
+    },
+    {
+      "id": "n7",
+      "name": "Stream Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        1140,
+        620
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.stream_data }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/event-stream"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-cache"
+              }
+            ]
+          }
+        }
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "n8",
+      "name": "JSON Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        1140,
+        760
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.completion }}",
+        "options": {}
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "n9",
+      "name": "POST /v1/embeddings",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        260,
+        900
+      ],
+      "webhookId": "compat-embeddings",
+      "parameters": {
+        "path": "v1/embeddings",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n10",
+      "name": "Embeddings Handler",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        480,
+        900
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// fetch-based HTTP helpers (replaces axios to avoid task runner crash)\nasync function _post(url, data, opts) {\n  var headers = {'Content-Type': 'application/json'};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(url, {method:'POST', headers: headers, body: JSON.stringify(data), signal: opts && opts.timeout ? AbortSignal.timeout(opts.timeout) : undefined});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  if (!r.ok) { var err = new Error('HTTP ' + r.status); err.response = {status: r.status, data: json}; throw err; }\n  return {data: json, status: r.status};\n}\nasync function _get(url, opts) {\n  var qurl = url;\n  if (opts && opts.params) { var qs = new URLSearchParams(opts.params).toString(); if (qs) qurl += (url.includes('?') ? '&' : '?') + qs; }\n  var headers = {};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(qurl, {headers: headers, signal: opts && opts.timeout ? AbortSignal.timeout(opts.timeout) : undefined});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  if (!r.ok) { var err = new Error('HTTP ' + r.status); err.response = {status: r.status, data: json}; throw err; }\n  return {data: json, status: r.status};\n}\nasync function _del(url, opts) {\n  var headers = {'Content-Type': 'application/json'};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(url, {method:'DELETE', headers: headers, body: opts && opts.data ? JSON.stringify(opts.data) : undefined});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  if (!r.ok) { var err = new Error('HTTP ' + r.status); err.response = {status: r.status, data: json}; throw err; }\n  return {data: json, status: r.status};\n}\nasync function _put(url, body, opts) {\n  var headers = {};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(url, {method:'PUT', headers: headers, body: typeof body === 'string' ? body : JSON.stringify(body)});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  return {data: json, status: r.status};\n}\nconst INFERENCE_BASE = $env.INFERENCE_BASE_URL || 'http://host.docker.internal:11434/v1';\nconst INFERENCE_KEY = $env.LITELLM_API_KEY || '';\nconst LLM_HEADERS = INFERENCE_KEY ? { Authorization: 'Bearer ' + INFERENCE_KEY } : {};\nconst body = $input.item.json.body;\n\nfunction oaiError(status, message, type) {\n  return { _error: true, _status: status, error: { message, type: type || 'invalid_request_error', param: null, code: null } };\n}\n\ntry {\n  if (!body.input) return [{ json: oaiError(400, 'input is required') }];\n\n  const allowedStr = $env.INFERENCE_ALLOWED_MODELS || \"qwen2.5:14b,qwen2.5:7b,qwen3:32b,qwen3:30b,mistral:7b-instruct,llama3.2:latest,nomic-embed-text:latest\";\n  const ALLOWED = new Set(allowedStr.split(',').map(s => s.trim()).filter(Boolean));\n  const model = body.model || 'nomic-embed-text:latest';\n\n  if (!ALLOWED.has(model)) return [{ json: oaiError(404, 'Model not available: ' + model) }];\n\n  const resp = await _post(INFERENCE_BASE + '/embeddings', {\n    model,\n    input: body.input,\n    encoding_format: body.encoding_format || 'float'\n  }, { headers: LLM_HEADERS, timeout: 60000 });\n\n  return [{ json: { _error: false, result: resp.data } }];\n} catch (e) {\n  const msg = e.response && e.response.data && e.response.data.error ? e.response.data.error.message : (e.message || String(e));\n  return [{ json: oaiError((e.response && e.response.status) || 500, msg, 'api_error') }];\n}"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n11",
+      "name": "Embeddings Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        700,
+        900
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json._error ? { error: $json.error } : $json.result }}",
+        "options": {
+          "responseCode": "={{ $json._error ? $json._status : 200 }}"
+        }
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "n12",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        920,
+        520
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: $json.error } }}",
+        "options": {
+          "responseCode": "={{ $json._status || 500 }}"
+        }
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "n13",
+      "name": "Is Stream?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        920,
+        680
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "sc2",
+              "leftValue": "={{ $json._stream }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "typeVersion": 2.2
+    }
+  ],
+  "connections": {
+    "GET /v1/models": {
+      "main": [
+        [
+          {
+            "node": "List Models",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Models": {
+      "main": [
+        [
+          {
+            "node": "Models Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST /v1/chat/completions": {
+      "main": [
+        [
+          {
+            "node": "Chat Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Handler": {
+      "main": [
+        [
+          {
+            "node": "Is Error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Error?": {
+      "main": [
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Stream?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Stream?": {
+      "main": [
+        [
+          {
+            "node": "Stream Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "JSON Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST /v1/embeddings": {
+      "main": [
+        [
+          {
+            "node": "Embeddings Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Handler": {
+      "main": [
+        [
+          {
+            "node": "Embeddings Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "pinData": {},
+  "tags": [],
+  "meta": {
+    "instanceId": "genai-mlops"
+  }
+}

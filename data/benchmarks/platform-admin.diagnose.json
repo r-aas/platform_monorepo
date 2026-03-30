@@ -1,0 +1,66 @@
+[
+  {
+    "label": "diagnose-crashloopbackoff",
+    "variables": {
+      "symptoms": "Pod genai-mlflow-0 in namespace genai is in CrashLoopBackOff. Container logs show 'gunicorn: error: No application module specified'. Previous container exited with code 1. Pod has been restarting for 45 minutes with backoff increasing to 5 minutes. The pod was healthy before a Helm chart upgrade that changed the MLflow version from 2.x to 3.x.",
+      "namespace": "genai"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "CrashLoopBackOff"},
+      {"type": "expect_contains", "value": "command"},
+      {"type": "expect_min_length", "value": 150}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "diagnose-502-errors",
+    "variables": {
+      "symptoms": "Service agent-gateway in namespace genai returns 502 Bad Gateway intermittently. About 30% of requests fail. kubectl get pods shows all 3 replicas Running with 1/1 READY. Ingress is nginx class with backend pointing to the service on port 8000. Describe on the service shows endpoints are populated. The 502s started after scaling from 1 to 3 replicas.",
+      "namespace": "genai"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "502"},
+      {"type": "expect_min_length", "value": 150}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "diagnose-pvc-pending",
+    "variables": {
+      "symptoms": "PVC mlflow-data-genai-mlflow-0 stuck in Pending state for 20 minutes. Events show 'waiting for a volume to be created'. StorageClass is local-path. The k3d cluster was deleted and recreated but PV data directory ~/work/data/k3d/mewtwo/ still exists on the host. Other PVCs in the same namespace are bound normally.",
+      "namespace": "genai"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "PVC"},
+      {"type": "expect_contains", "value": "StorageClass"},
+      {"type": "expect_min_length", "value": 150}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "diagnose-dns-cross-namespace",
+    "variables": {
+      "symptoms": "Pod in namespace dev cannot resolve genai-mlflow.genai.svc.cluster.local. nslookup from the pod returns NXDOMAIN. Pods within the genai namespace can resolve it fine. CoreDNS pods are running in kube-system. The service exists and has ClusterIP assigned. kubectl exec into a genai namespace pod and nslookup works. Resolv.conf in the dev pod shows search dev.svc.cluster.local svc.cluster.local cluster.local.",
+      "namespace": "dev"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "DNS"},
+      {"type": "expect_contains", "value": "CoreDNS"},
+      {"type": "expect_min_length", "value": 150}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "diagnose-node-notready",
+    "variables": {
+      "symptoms": "After running 'colima restart', the k3d node k3d-mewtwo-server-0 shows NotReady for 10 minutes. kubectl describe node shows condition: 'KubeletNotReady - container runtime network not ready: NetworkReady=false reason:NetworkPluginNotReady message:Network plugin returns error: cni plugin not initialized'. Other k3d control plane processes are running. Docker ps shows the k3d container is up.",
+      "namespace": "kube-system"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "NotReady"},
+      {"type": "expect_contains", "value": "CNI"},
+      {"type": "expect_min_length", "value": 150}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  }
+]

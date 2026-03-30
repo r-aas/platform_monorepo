@@ -1,0 +1,67 @@
+[
+  {
+    "label": "runbook-cluster-restart-colima-crash",
+    "variables": {
+      "procedure": "Document the complete procedure to recover the k3d cluster after Colima crashes or becomes unresponsive. Include detecting the stuck state, killing orphaned processes, restarting Colima, verifying k3d cluster health, rebuilding any lost container images, and running smoke tests to confirm all services are accessible.",
+      "environment": "k3d"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "step"},
+      {"type": "expect_contains", "value": "colima"},
+      {"type": "expect_min_length", "value": 200}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "runbook-rotate-database-credentials",
+    "variables": {
+      "procedure": "Document how to rotate PostgreSQL credentials used by MLflow and other services in the k3d cluster. Include updating the Kubernetes secret, restarting dependent pods, verifying connectivity, and rolling back if the rotation causes failures. Cover both the database superuser password and application-specific user passwords.",
+      "environment": "k3d"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "step"},
+      {"type": "expect_contains", "value": "secret"},
+      {"type": "expect_min_length", "value": 200}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "runbook-deploy-new-service",
+    "variables": {
+      "procedure": "Document the end-to-end procedure for deploying a brand new service into the k3d cluster. Include creating the namespace (if needed), writing Helm chart or k8s manifests, building and importing the Docker image into k3d, configuring ingress with nip.io DNS, setting up environment variables from global.env, and verifying the deployment with health checks.",
+      "environment": "k3d"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "step"},
+      {"type": "expect_contains", "value": "ingress"},
+      {"type": "expect_min_length", "value": 200}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "runbook-investigate-high-memory",
+    "variables": {
+      "procedure": "Document how to investigate and resolve high memory usage in the k3d cluster. Include identifying which pods are consuming the most memory, checking for memory leaks via container metrics, analyzing OOMKilled events, adjusting resource limits, and preventing recurrence. Cover both application-level memory issues and cluster-level resource exhaustion.",
+      "environment": "k3d"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "step"},
+      {"type": "expect_contains", "value": "memory"},
+      {"type": "expect_min_length", "value": 200}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "runbook-backup-restore-pvcs",
+    "variables": {
+      "procedure": "Document the procedure for backing up and restoring PersistentVolumeClaim data in the k3d cluster. Include identifying all PVCs and their host bind mount paths under ~/work/data/k3d/mewtwo/, creating consistent snapshots (handling active database writes), storing backups, and performing point-in-time restores. Cover both full cluster recovery and single-PVC restore scenarios.",
+      "environment": "k3d"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "step"},
+      {"type": "expect_contains", "value": "PVC"},
+      {"type": "expect_min_length", "value": 200}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  }
+]

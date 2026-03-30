@@ -1,0 +1,929 @@
+###############################################################################
+# GenAI MLOps Stack — n8n + MLflow
+#
+# Services:
+#   n8n-postgres  — n8n metadata store
+#   pgvector      — vector embeddings store (PostgreSQL + pgvector extension)
+#   mlflow-postgres — MLflow backend store
+#   minio         — S3-compatible artifact storage for MLflow
+#   create-bucket — init container to create MinIO bucket
+#   mlflow        — experiment tracking, model registry
+#   n8n           — workflow automation
+#   mcp-gateway   — unified MCP endpoint (manages MCP server containers on-demand)
+#   litellm       — LLM proxy (routes to Ollama, logs to MLflow + Langfuse)
+#   langfuse      — LLM observability (traces, tool calls, sessions, cost tracking)
+#   neo4j         — graph database for GraphRAG (signal-ops knowledge graph)
+#
+# MCP Servers (managed by mcp-gateway, NOT compose services):
+#   n8n-knowledge — node docs, templates, validation
+#   n8n-manager   — workflow CRUD, execution
+#   gitlab        — project management, file ops, MRs
+#   mlflow        — experiment tracking, run analysis
+#   kubernetes    — cluster management, pod ops
+#   claude-code   — file ops, bash, code search
+#
+# The gateway starts/stops MCP server containers on demand via Docker socket.
+# No restart needed to add servers — edit catalog.yaml, gateway auto-reloads.
+# Build MCP images: task mcp:build
+#
+# Ports:
+#   3100  — Langfuse UI
+#   4000  — LiteLLM Proxy
+#   4010  — Streaming Proxy (real SSE streaming for /v1/chat/completions)
+#   5050  — MLflow UI
+#   5678  — n8n UI
+#   8811  — MCP Gateway (SSE — on-demand MCP server management)
+#   9000  — MinIO API
+#   7474  — Neo4j HTTP (browser UI)
+#   7687  — Neo4j Bolt (cypher-shell)
+#   9001  — MinIO Console
+#
+# Secrets:
+#   Run `task init-secrets` to generate secrets/. See scripts/init-secrets.sh.
+#   Run `task mcp:secrets` to generate mcp-servers/mcp-secrets.env.
+###############################################################################
+
+secrets:
+  n8n_postgres_password:
+    file: ./secrets/n8n_postgres_password
+  mlflow_postgres_password:
+    file: ./secrets/mlflow_postgres_password
+  minio_root_password:
+    file: ./secrets/minio_root_password
+  n8n_encryption_key:
+    file: ./secrets/n8n_encryption_key
+  n8n_api_key:
+    file: ./secrets/n8n_api_key
+  litellm_master_key:
+    file: ./secrets/litellm_master_key
+  pgvector_password:
+    file: ./secrets/pgvector_password
+  langfuse_postgres_password:
+    file: ./secrets/langfuse_postgres_password
+  langfuse_nextauth_secret:
+    file: ./secrets/langfuse_nextauth_secret
+  langfuse_salt:
+    file: ./secrets/langfuse_salt
+  langfuse_init_user_password:
+    file: ./secrets/langfuse_init_user_password
+  langfuse_clickhouse_password:
+    file: ./secrets/langfuse_clickhouse_password
+  langfuse_redis_password:
+    file: ./secrets/langfuse_redis_password
+  langfuse_encryption_key:
+    file: ./secrets/langfuse_encryption_key
+  neo4j_password:
+    file: ./secrets/neo4j_password
+  airflow_postgres_password:
+    file: ./secrets/airflow_postgres_password
+  openmetadata_postgres_password:
+    file: ./secrets/openmetadata_postgres_password
+  # gitlab_token and anthropic_api_key are handled by MCP gateway --secrets
+  # mechanism (mcp-servers/mcp-secrets.env), not compose secrets.
+
+volumes:
+  n8n-pgdata:
+  pgvector-data:
+  mlflow-pgdata:
+  minio-data:
+  n8n-data:
+  langfuse-pgdata:
+  langfuse-clickhouse-data:
+  langfuse-clickhouse-logs:
+  langfuse-redis-data:
+  neo4j-data:
+  neo4j-import:
+  airflow-pgdata:
+  airflow-dags:
+  airflow-logs:
+  openmetadata-pgdata:
+  openmetadata-searchdata:
+
+networks:
+  mlops-net:
+    name: genai-mlops-network
+
+services:
+  # ── n8n PostgreSQL ────────────────────────────────────────────────────────────
+  n8n-postgres:
+    image: postgres:${N8N_POSTGRES_VERSION:-16.8}
+    container_name: genai-n8n-postgres
+    networks: [mlops-net]
+    secrets:
+      - n8n_postgres_password
+    environment:
+      POSTGRES_USER: ${N8N_POSTGRES_USER:-n8n}
+      POSTGRES_PASSWORD_FILE: /run/secrets/n8n_postgres_password
+      POSTGRES_DB: ${N8N_POSTGRES_DB:-n8n}
+    volumes:
+      - n8n-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${N8N_POSTGRES_USER:-n8n} -d ${N8N_POSTGRES_DB:-n8n}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits: { memory: 256m, cpus: "0.5" }
+    restart: unless-stopped
+
+  # ── pgvector — vector embeddings store ────────────────────────────────────────
+  pgvector:
+    image: pgvector/pgvector:${PGVECTOR_VERSION:-pg16}
+    container_name: genai-pgvector
+    networks: [mlops-net]
+    secrets:
+      - pgvector_password
+    environment:
+      POSTGRES_USER: ${PGVECTOR_USER:-vectors}
+      POSTGRES_PASSWORD_FILE: /run/secrets/pgvector_password
+      POSTGRES_DB: ${PGVECTOR_DB:-vectors}
+    volumes:
+      - pgvector-data:/var/lib/postgresql/data
+      - ./scripts/init-pgvector.sql:/docker-entrypoint-initdb.d/01-pgvector.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGVECTOR_USER:-vectors} -d ${PGVECTOR_DB:-vectors}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits: { memory: 512m, cpus: "1.0" }
+    restart: unless-stopped
+
+  # ── Neo4j (GraphRAG) ────────────────────────────────────────────────────────
+  neo4j:
+    image: neo4j:${NEO4J_VERSION:-5.26-community}
+    container_name: genai-neo4j
+    networks: [mlops-net]
+    secrets:
+      - neo4j_password
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        export NEO4J_AUTH="neo4j/$$(cat /run/secrets/neo4j_password)"
+        exec /startup/docker-entrypoint.sh neo4j
+    environment:
+      NEO4J_server_memory_heap_initial__size: 1g
+      NEO4J_server_memory_heap_max__size: 2g
+      NEO4J_server_memory_pagecache_size: 1g
+      NEO4J_PLUGINS: '[]'
+    volumes:
+      - neo4j-data:/data
+      - neo4j-import:/var/lib/neo4j/import
+    ports:
+      - "${NEO4J_HTTP_PORT:-7474}:7474"
+      - "${NEO4J_BOLT_PORT:-7687}:7687"
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p \"$$(cat /run/secrets/neo4j_password)\" 'RETURN 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    deploy:
+      resources:
+        limits: { memory: 4g, cpus: "2.0" }
+    restart: unless-stopped
+
+  # ── MLflow PostgreSQL ─────────────────────────────────────────────────────────
+  mlflow-postgres:
+    image: postgres:${MLFLOW_POSTGRES_VERSION:-16.8}
+    container_name: genai-mlflow-postgres
+    networks: [mlops-net]
+    secrets:
+      - mlflow_postgres_password
+    environment:
+      POSTGRES_USER: ${MLFLOW_POSTGRES_USER:-mlflow}
+      POSTGRES_PASSWORD_FILE: /run/secrets/mlflow_postgres_password
+      POSTGRES_DB: ${MLFLOW_POSTGRES_DB:-mlflow}
+    volumes:
+      - mlflow-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${MLFLOW_POSTGRES_USER:-mlflow} -d ${MLFLOW_POSTGRES_DB:-mlflow}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits: { memory: 256m, cpus: "0.5" }
+    restart: unless-stopped
+
+  # ── MinIO — S3-compatible artifact storage ────────────────────────────────────
+  minio:
+    image: minio/minio:${MINIO_VERSION:-RELEASE.2025-04-22T22-12-26Z}
+    container_name: genai-minio
+    networks: [mlops-net]
+    secrets:
+      - minio_root_password
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_root_password
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits: { memory: 512m, cpus: "1.0" }
+    restart: unless-stopped
+
+  # ── Bucket init ───────────────────────────────────────────────────────────────
+  create-bucket:
+    image: minio/mc:${MINIO_MC_VERSION:-RELEASE.2025-05-21T01-59-54Z}
+    container_name: genai-create-bucket
+    networks: [mlops-net]
+    secrets:
+      - minio_root_password
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        MINIO_PASS=$$(cat /run/secrets/minio_root_password)
+        mc alias set myminio "http://minio:9000" "${MINIO_ROOT_USER:-minio}" "$$MINIO_PASS"
+        mc mb --ignore-existing "myminio/${MINIO_BUCKET:-mlflow}"
+        mc mb --ignore-existing "myminio/langfuse"
+    restart: "no"
+
+  # ── MLflow — experiment tracking & model registry ─────────────────────────────
+  mlflow:
+    build:
+      context: ./mlflow
+      args:
+        MLFLOW_VERSION: ${MLFLOW_VERSION:-v3.10.0}
+    container_name: genai-mlflow
+    networks: [mlops-net]
+    secrets:
+      - mlflow_postgres_password
+      - minio_root_password
+    depends_on:
+      mlflow-postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      create-bucket:
+        condition: service_completed_successfully
+    environment:
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      MLFLOW_ARTIFACTS_DESTINATION: s3://${MINIO_BUCKET:-mlflow}/
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minio}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+    command:
+      - /bin/bash
+      - -c
+      - |
+        export POSTGRES_PASSWORD=$$(cat /run/secrets/mlflow_postgres_password)
+        export AWS_SECRET_ACCESS_KEY=$$(cat /run/secrets/minio_root_password)
+        mlflow server \
+          --backend-store-uri "postgresql://${MLFLOW_POSTGRES_USER:-mlflow}:$${POSTGRES_PASSWORD}@mlflow-postgres:5432/${MLFLOW_POSTGRES_DB:-mlflow}" \
+          --artifacts-destination "$${MLFLOW_ARTIFACTS_DESTINATION}" \
+          --serve-artifacts \
+          --host 0.0.0.0 \
+          --port ${MLFLOW_PORT:-5050} \
+          --allowed-hosts "mlflow:5050,mlflow,localhost,localhost:5050,0.0.0.0"
+    ports:
+      - "${MLFLOW_PORT:-5050}:${MLFLOW_PORT:-5050}"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:${MLFLOW_PORT:-5050}/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    deploy:
+      resources:
+        limits: { memory: 2g, cpus: "2.0" }
+    restart: unless-stopped
+
+  # ── n8n — workflow automation ─────────────────────────────────────────────────
+  n8n:
+    image: n8nio/n8n:${N8N_VERSION:-1.123.21}
+    container_name: genai-n8n
+    networks: [mlops-net]
+    secrets:
+      - n8n_postgres_password
+      - n8n_encryption_key
+      - litellm_master_key
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      n8n-postgres:
+        condition: service_healthy
+      litellm:
+        condition: service_healthy
+    environment:
+      N8N_HOST: 0.0.0.0
+      N8N_PORT: 5678
+      GENERIC_TIMEZONE: ${TIMEZONE:-America/Denver}
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: n8n-postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${N8N_POSTGRES_DB:-n8n}
+      DB_POSTGRESDB_USER: ${N8N_POSTGRES_USER:-n8n}
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_PUBLIC_API_ENABLED: "true"
+      NODE_FUNCTION_ALLOW_EXTERNAL: "axios"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      # LITELLM_API_KEY injected via entrypoint from /run/secrets/litellm_master_key
+      INFERENCE_BASE_URL: ${INFERENCE_BASE_URL:-http://litellm:4000/v1}
+      INFERENCE_DEFAULT_MODEL: ${INFERENCE_DEFAULT_MODEL:-qwen2.5:14b}
+      INFERENCE_ALLOWED_MODELS: ${INFERENCE_ALLOWED_MODELS:-qwen2.5:14b,qwen2.5:7b,qwen3:32b,qwen3:30b,mistral:7b-instruct,llama3.2:latest,nomic-embed-text:latest}
+      MLFLOW_TRACKING_URI: http://mlflow:${MLFLOW_PORT:-5050}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-lf-pk-local}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-lf-sk-local}
+      LANGFUSE_HOST: http://langfuse:3000
+      WEBHOOK_API_KEY: ${WEBHOOK_API_KEY:-}
+      N8N_INTERNAL_URL: http://n8n:5678/webhook
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        export N8N_ENCRYPTION_KEY=$$(cat /run/secrets/n8n_encryption_key)
+        export DB_POSTGRESDB_PASSWORD=$$(cat /run/secrets/n8n_postgres_password)
+        export LITELLM_API_KEY=$$(cat /run/secrets/litellm_master_key)
+        exec n8n
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    volumes:
+      - n8n-data:/home/node/.n8n
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5678/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    deploy:
+      resources:
+        limits: { memory: 1g, cpus: "1.0" }
+    restart: unless-stopped
+
+  # ── MCP Gateway — on-demand MCP server management ────────────────────────────
+  # Manages MCP server containers on demand via Docker socket. When a tool is
+  # called, the gateway starts the corresponding server container, runs the tool,
+  # and tears down the container after completion.
+  #
+  # Adding servers: Edit mcp-servers/catalog.yaml — gateway auto-reloads (--watch).
+  # Build images: task mcp:build
+  # Generate secrets: task mcp:secrets
+  #
+  # MCP servers reach stack services via host.docker.internal:PORT.
+  # Docs: https://github.com/docker/mcp-gateway
+  #
+  # NOTE (Colima): Host-to-container port forwarding may hang for this image.
+  # Inter-container access works fine. On Docker Desktop, host access works normally.
+  mcp-gateway:
+    image: docker/mcp-gateway
+    container_name: genai-mcp-gateway
+    networks: [mlops-net]
+    command:
+      - "--transport=sse"
+      - "--port=8811"
+      - "--catalog=/mcp/catalog.yaml"
+      - "--config=/mcp/config.yaml"
+      - "--secrets=/mcp/mcp-secrets.env"
+      # gitlab disabled: upstream schema bug — create_or_update_file has nil input type,
+      # causes gateway panic (go-sdk v1.3.1 requires type:"object"). Track: docker/mcp-gateway.
+      - "--servers=fetch,n8n-knowledge,n8n-manager,mlflow,kubernetes,claude-code"
+      - "--watch"
+      - "--cpus=1"
+      - "--memory=512Mb"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./mcp-servers/catalog.yaml:/mcp/catalog.yaml:ro
+      - ./mcp-servers/config.yaml:/mcp/config.yaml:ro
+      - ./mcp-servers/mcp-secrets.env:/mcp/mcp-secrets.env:ro
+    ports: ["${MCP_GATEWAY_PORT:-8811}:8811"]
+    environment:
+      DOCKER_MCP_IN_CONTAINER: "1"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8811/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    deploy:
+      resources:
+        limits: { memory: 256m, cpus: "0.5" }
+    restart: unless-stopped
+
+  # ── LiteLLM — LLM proxy (routes to Ollama, logs to MLflow + Langfuse) ──────
+  # OpenAI-compatible gateway. All n8n Code nodes use INFERENCE_BASE_URL which
+  # points here. LiteLLM fires success_callback to MLflow and Langfuse.
+  # Config: ./litellm/config.yaml (model list, callbacks, master key)
+  # Docs: https://docs.litellm.ai/docs/proxy/configs
+  litellm:
+    build:
+      context: ./litellm
+      args:
+        LITELLM_VERSION: ${LITELLM_VERSION:-main-latest}
+    container_name: genai-litellm
+    networks: [mlops-net]
+    secrets:
+      - litellm_master_key
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      mlflow:
+        condition: service_healthy
+      langfuse:
+        condition: service_healthy
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:${MLFLOW_PORT:-5050}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-lf-pk-local}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-lf-sk-local}
+      LANGFUSE_HOST: http://langfuse:3000
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        export LITELLM_MASTER_KEY=$$(cat /run/secrets/litellm_master_key)
+        exec litellm --config /app/config.yaml --port 4000 --host 0.0.0.0
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+    ports:
+      - "${LITELLM_PORT:-4000}:4000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    deploy:
+      resources:
+        limits: { memory: 1g, cpus: "1.0" }
+    restart: unless-stopped
+
+  # ── Streaming Proxy — real SSE streaming for /v1/chat/completions ────────────
+  # n8n cannot do real SSE streaming (issue #25982). This thin FastAPI proxy:
+  # - stream=true  → resolves prompt via n8n, streams from LiteLLM, logs trace
+  # - stream=false → passes through to n8n openai-compat (existing behavior)
+  # - /v1/models, /v1/embeddings → pass through to n8n openai-compat
+  # Constitution Principle I: Workflow-First with Escape Hatches.
+  streaming-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.streaming
+    container_name: genai-streaming-proxy
+    networks: [mlops-net]
+    secrets:
+      - litellm_master_key
+    depends_on:
+      n8n:
+        condition: service_healthy
+      litellm:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        export LITELLM_API_KEY=$$(cat /run/secrets/litellm_master_key)
+        exec uvicorn streaming_proxy:app --host 0.0.0.0 --port 4010 --log-level info
+    environment:
+      N8N_BASE_URL: http://n8n:5678
+      LITELLM_BASE_URL: http://litellm:4000
+      INFERENCE_DEFAULT_MODEL: ${INFERENCE_DEFAULT_MODEL:-qwen2.5:14b}
+      WEBHOOK_API_KEY: ${WEBHOOK_API_KEY:-}
+    ports:
+      - "${STREAMING_PROXY_PORT:-4010}:4010"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4010/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits: { memory: 256m, cpus: "0.5" }
+    restart: unless-stopped
+
+  # ── Langfuse PostgreSQL ───────────────────────────────────────────────────────
+  langfuse-postgres:
+    image: postgres:${LANGFUSE_POSTGRES_VERSION:-16.8}
+    container_name: genai-langfuse-postgres
+    networks: [mlops-net]
+    secrets:
+      - langfuse_postgres_password
+    environment:
+      POSTGRES_USER: ${LANGFUSE_POSTGRES_USER:-langfuse}
+      POSTGRES_PASSWORD_FILE: /run/secrets/langfuse_postgres_password
+      POSTGRES_DB: ${LANGFUSE_POSTGRES_DB:-langfuse}
+    volumes:
+      - langfuse-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${LANGFUSE_POSTGRES_USER:-langfuse} -d ${LANGFUSE_POSTGRES_DB:-langfuse}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits: { memory: 256m, cpus: "0.5" }
+    restart: unless-stopped
+
+  # ── Langfuse ClickHouse — trace & observation storage ─────────────────────────
+  langfuse-clickhouse:
+    image: clickhouse/clickhouse-server
+    container_name: genai-langfuse-clickhouse
+    networks: [mlops-net]
+    secrets:
+      - langfuse_clickhouse_password
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        export CLICKHOUSE_PASSWORD=$$(cat /run/secrets/langfuse_clickhouse_password)
+        exec /entrypoint.sh
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: default
+    volumes:
+      - langfuse-clickhouse-data:/var/lib/clickhouse
+      - langfuse-clickhouse-logs:/var/log/clickhouse-server
+      - ./langfuse/clickhouse-config.xml:/etc/clickhouse-server/config.d/keeper.xml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+    deploy:
+      resources:
+        limits: { memory: 2g, cpus: "1.0" }
+    restart: unless-stopped
+
+  # ── Langfuse Redis — queue & cache ────────────────────────────────────────────
+  langfuse-redis:
+    image: redis:7
+    container_name: genai-langfuse-redis
+    networks: [mlops-net]
+    secrets:
+      - langfuse_redis_password
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        exec redis-server --requirepass "$$(cat /run/secrets/langfuse_redis_password)"
+    volumes:
+      - langfuse-redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$(cat /run/secrets/langfuse_redis_password) ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits: { memory: 256m, cpus: "0.5" }
+    restart: unless-stopped
+
+  # ── Langfuse — LLM observability (traces, tool calls, sessions) ─────────────
+  # Langfuse v3: requires ClickHouse + Redis + S3 (shared MinIO) + PostgreSQL.
+  # LiteLLM logs LLM calls here via success_callback. n8n Trace Logger sends
+  # parent traces + tool-call spans via /api/public/ingestion.
+  # UI: http://localhost:3100  Login: admin@local.dev / <langfuse_init_user_password>
+  langfuse:
+    image: langfuse/langfuse:${LANGFUSE_VERSION:-3}
+    container_name: genai-langfuse
+    networks: [mlops-net]
+    secrets:
+      - langfuse_postgres_password
+      - langfuse_nextauth_secret
+      - langfuse_salt
+      - langfuse_init_user_password
+      - langfuse_clickhouse_password
+      - langfuse_redis_password
+      - langfuse_encryption_key
+      - minio_root_password
+    depends_on:
+      langfuse-postgres:
+        condition: service_healthy
+      langfuse-clickhouse:
+        condition: service_healthy
+      langfuse-redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      create-bucket:
+        condition: service_completed_successfully
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        export DATABASE_URL="postgresql://${LANGFUSE_POSTGRES_USER:-langfuse}:$$(cat /run/secrets/langfuse_postgres_password)@langfuse-postgres:5432/${LANGFUSE_POSTGRES_DB:-langfuse}"
+        export NEXTAUTH_SECRET=$$(cat /run/secrets/langfuse_nextauth_secret)
+        export SALT=$$(cat /run/secrets/langfuse_salt)
+        export LANGFUSE_INIT_USER_PASSWORD=$$(cat /run/secrets/langfuse_init_user_password)
+        export CLICKHOUSE_PASSWORD=$$(cat /run/secrets/langfuse_clickhouse_password)
+        export REDIS_AUTH=$$(cat /run/secrets/langfuse_redis_password)
+        export ENCRYPTION_KEY=$$(cat /run/secrets/langfuse_encryption_key)
+        export LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY=$$(cat /run/secrets/minio_root_password)
+        export LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY=$$(cat /run/secrets/minio_root_password)
+        exec dumb-init -- ./web/entrypoint.sh node ./web/server.js
+    environment:
+      HOSTNAME: "0.0.0.0"
+      NEXTAUTH_URL: http://localhost:${LANGFUSE_PORT:-3100}
+      CLICKHOUSE_URL: http://langfuse-clickhouse:8123
+      CLICKHOUSE_MIGRATION_URL: clickhouse://langfuse-clickhouse:9000
+      CLICKHOUSE_USER: default
+      REDIS_HOST: langfuse-redis
+      REDIS_PORT: "6379"
+      LANGFUSE_S3_EVENT_UPLOAD_ENABLED: "true"
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minio}
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_S3_MEDIA_UPLOAD_ENABLED: "true"
+      LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_MEDIA_UPLOAD_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minio}
+      LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_INIT_ORG_ID: genai-mlops
+      LANGFUSE_INIT_ORG_NAME: GenAI MLOps
+      LANGFUSE_INIT_PROJECT_ID: default
+      LANGFUSE_INIT_PROJECT_NAME: Default
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-lf-pk-local}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-lf-sk-local}
+      LANGFUSE_INIT_USER_EMAIL: admin@local.dev
+      LANGFUSE_INIT_USER_NAME: Admin
+      TELEMETRY_ENABLED: "false"
+    ports:
+      - "${LANGFUSE_PORT:-3100}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/public/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    deploy:
+      resources:
+        limits: { memory: 1g, cpus: "1.0" }
+    restart: unless-stopped
+
+  # ── Langfuse Worker — background trace processing ─────────────────────────────
+  langfuse-worker:
+    image: langfuse/langfuse-worker:${LANGFUSE_VERSION:-3}
+    container_name: genai-langfuse-worker
+    networks: [mlops-net]
+    secrets:
+      - langfuse_postgres_password
+      - langfuse_clickhouse_password
+      - langfuse_redis_password
+      - langfuse_encryption_key
+      - langfuse_salt
+      - minio_root_password
+    depends_on:
+      langfuse-postgres:
+        condition: service_healthy
+      langfuse-clickhouse:
+        condition: service_healthy
+      langfuse-redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        export DATABASE_URL="postgresql://${LANGFUSE_POSTGRES_USER:-langfuse}:$$(cat /run/secrets/langfuse_postgres_password)@langfuse-postgres:5432/${LANGFUSE_POSTGRES_DB:-langfuse}"
+        export SALT=$$(cat /run/secrets/langfuse_salt)
+        export CLICKHOUSE_PASSWORD=$$(cat /run/secrets/langfuse_clickhouse_password)
+        export REDIS_AUTH=$$(cat /run/secrets/langfuse_redis_password)
+        export ENCRYPTION_KEY=$$(cat /run/secrets/langfuse_encryption_key)
+        export LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY=$$(cat /run/secrets/minio_root_password)
+        export LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY=$$(cat /run/secrets/minio_root_password)
+        exec dumb-init -- ./worker/entrypoint.sh node worker/dist/index.js
+    environment:
+      CLICKHOUSE_URL: http://langfuse-clickhouse:8123
+      CLICKHOUSE_MIGRATION_URL: clickhouse://langfuse-clickhouse:9000
+      CLICKHOUSE_USER: default
+      REDIS_HOST: langfuse-redis
+      REDIS_PORT: "6379"
+      LANGFUSE_S3_EVENT_UPLOAD_ENABLED: "true"
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minio}
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_S3_MEDIA_UPLOAD_ENABLED: "true"
+      LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_MEDIA_UPLOAD_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minio}
+      LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+      TELEMETRY_ENABLED: "false"
+    deploy:
+      resources:
+        limits: { memory: 512m, cpus: "0.5" }
+    restart: unless-stopped
+
+  # ── Airflow 3 PostgreSQL ───────────────────────────────────────────────────
+  airflow-postgres:
+    image: postgres:${AIRFLOW_POSTGRES_VERSION:-16.8}
+    container_name: genai-airflow-postgres
+    networks: [mlops-net]
+    secrets:
+      - airflow_postgres_password
+    environment:
+      POSTGRES_USER: ${AIRFLOW_POSTGRES_USER:-airflow}
+      POSTGRES_DB: ${AIRFLOW_POSTGRES_DB:-airflow}
+      POSTGRES_PASSWORD_FILE: /run/secrets/airflow_postgres_password
+    volumes:
+      - airflow-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AIRFLOW_POSTGRES_USER:-airflow}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 512m, cpus: "0.5" }
+    restart: unless-stopped
+    profiles: ["dataops"]
+
+  # ── Apache Airflow 3 ──────────────────────────────────────────────────────
+  airflow:
+    image: apache/airflow:${AIRFLOW_VERSION:-3.0.1}
+    container_name: genai-airflow
+    networks: [mlops-net]
+    secrets:
+      - airflow_postgres_password
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+    ports:
+      - "${AIRFLOW_PORT:-8080}:8080"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+      AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth"
+    volumes:
+      - airflow-dags:/opt/airflow/dags
+      - airflow-logs:/opt/airflow/logs
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        export AIRFLOW__DATABASE__SQL_ALCHEMY_CONN="postgresql+psycopg2://${AIRFLOW_POSTGRES_USER:-airflow}:$$(cat /run/secrets/airflow_postgres_password)@airflow-postgres:5432/${AIRFLOW_POSTGRES_DB:-airflow}"
+        airflow db migrate
+        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@local.dev 2>/dev/null || true
+        exec airflow standalone
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/heartbeat || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits: { memory: 2g, cpus: "1.0" }
+    restart: unless-stopped
+    profiles: ["dataops"]
+
+  # ── OpenMetadata PostgreSQL ───────────────────────────────────────────────
+  openmetadata-postgres:
+    image: postgres:${OMD_POSTGRES_VERSION:-16.8}
+    container_name: genai-openmetadata-postgres
+    networks: [mlops-net]
+    secrets:
+      - openmetadata_postgres_password
+    environment:
+      POSTGRES_USER: ${OMD_POSTGRES_USER:-openmetadata}
+      POSTGRES_DB: ${OMD_POSTGRES_DB:-openmetadata}
+      POSTGRES_PASSWORD_FILE: /run/secrets/openmetadata_postgres_password
+    volumes:
+      - openmetadata-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${OMD_POSTGRES_USER:-openmetadata}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 512m, cpus: "0.5" }
+    restart: unless-stopped
+    profiles: ["dataops"]
+
+  # ── OpenMetadata Search (OpenSearch — forced amd64, ARM64 JRE crashes) ──
+  openmetadata-search:
+    image: opensearchproject/opensearch:${OMD_OPENSEARCH_VERSION:-2.18.0}
+    platform: linux/amd64
+    container_name: genai-openmetadata-search
+    networks: [mlops-net]
+    environment:
+      discovery.type: single-node
+      plugins.security.disabled: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      bootstrap.system_call_filter: "false"
+    volumes:
+      - openmetadata-searchdata:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    deploy:
+      resources:
+        limits: { memory: 1g, cpus: "0.5" }
+    restart: unless-stopped
+    profiles: ["dataops"]
+
+  # ── OpenMetadata Server ───────────────────────────────────────────────────
+  openmetadata:
+    image: docker.io/openmetadata/server:${OMD_VERSION:-1.6.4}
+    container_name: genai-openmetadata
+    networks: [mlops-net]
+    secrets:
+      - openmetadata_postgres_password
+    depends_on:
+      openmetadata-postgres:
+        condition: service_healthy
+      openmetadata-search:
+        condition: service_healthy
+    ports:
+      - "${OMD_PORT:-8585}:8585"
+    environment:
+      OPENMETADATA_CLUSTER_NAME: genai-mlops
+      DB_DRIVER_CLASS: org.postgresql.Driver
+      DB_SCHEME: postgresql
+      DB_HOST: openmetadata-postgres
+      DB_PORT: 5432
+      DB_PARAMS: "allowPublicKeyRetrieval=true&useSSL=false"
+      DB_USER: ${OMD_POSTGRES_USER:-openmetadata}
+      DB_USER_PASSWORD_FILE: /run/secrets/openmetadata_postgres_password
+      OM_DATABASE: ${OMD_POSTGRES_DB:-openmetadata}
+      SEARCH_TYPE: opensearch
+      ELASTICSEARCH_HOST: openmetadata-search
+      ELASTICSEARCH_PORT: 9200
+      ELASTICSEARCH_SCHEME: http
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8585/api/v1/system/version || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits: { memory: 2g, cpus: "1.0" }
+    restart: unless-stopped
+    profiles: ["dataops"]
+
+  # ── n8n workflow import (one-shot) ──────────────────────────────────────────
+  n8n-import:
+    image: n8nio/n8n:${N8N_VERSION:-1.123.21}
+    container_name: genai-n8n-import
+    networks: [mlops-net]
+    secrets:
+      - n8n_postgres_password
+      - n8n_encryption_key
+    depends_on:
+      n8n:
+        condition: service_healthy
+    volumes:
+      - ./n8n-data:/demo-data
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        export N8N_ENCRYPTION_KEY=$$(cat /run/secrets/n8n_encryption_key)
+        export DB_POSTGRESDB_PASSWORD=$$(cat /run/secrets/n8n_postgres_password)
+        n8n import:workflow --separate --input=/demo-data/workflows
+        n8n update:workflow --id=prompt-crud-v1 --active=true
+        n8n update:workflow --id=prompt-eval-v1 --active=true
+        n8n update:workflow --id=openai-compat-v1 --active=true
+        n8n update:workflow --id=mlflow-data-v1 --active=true
+        n8n update:workflow --id=mlflow-experiments-v1 --active=true
+        n8n update:workflow --id=chat-v1 --active=true
+        n8n update:workflow --id=a2a-server-v1 --active=true
+        n8n update:workflow --id=trace-v1 --active=true
+        n8n update:workflow --id=sessions-v1 --active=true
+        n8n update:workflow --id=agents-v1 --active=true
+        echo "Workflows imported and activated."
+    environment:
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "false"
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: n8n-postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${N8N_POSTGRES_DB:-n8n}
+      DB_POSTGRESDB_USER: ${N8N_POSTGRES_USER:-n8n}
+    restart: "no"

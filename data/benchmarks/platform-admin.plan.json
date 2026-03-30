@@ -1,0 +1,70 @@
+[
+  {
+    "label": "plan-scaling-high-throughput",
+    "variables": {
+      "instructions": "You are a platform operations engineer. Analyze the current resource usage below and create a detailed capacity plan with scaling recommendations. Include sections for: current utilization summary, bottleneck identification, growth projections, and prioritized scaling recommendations (immediate, short-term, long-term). Use specific numbers and mention replica counts and CPU/memory resource limits.",
+      "current_state": "Agent-gateway service currently handles 200 req/sec with 2 replicas, each allocated 512Mi memory and 500m CPU. Average response time is 150ms. Pod CPU utilization is at 70% during peak hours (10am-2pm). The service is stateless and uses Ollama on the host for inference.",
+      "growth_rate": "Expected to reach 1000 req/sec within 3 months due to new client onboarding. Peak hours may shift to 8am-6pm."
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "replica"},
+      {"type": "expect_contains", "value": "CPU"},
+      {"type": "expect_min_length", "value": 200}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "plan-storage-growth-mlflow",
+    "variables": {
+      "instructions": "You are a platform operations engineer. Analyze the storage situation below and create a detailed capacity plan. Include sections for: current storage utilization, projected storage growth in GB, bottleneck identification, and prioritized recommendations for storage expansion. Provide specific numbers for current and projected storage usage in GB or Gi.",
+      "current_state": "MLflow experiment store uses a 10Gi PVC currently at 4.2Gi (about 4.2 GB) usage. Each evaluation run produces ~5MB of artifacts (model metrics, plots, confusion matrices). Running approximately 50 evaluations per day. Artifact store is on local-path StorageClass backed by ~/work/data/k3d/mewtwo/.",
+      "growth_rate": "Plan to increase evaluation frequency to 200 runs/day as automated CI/CD evaluation pipelines come online. Additionally, model artifacts (1-5GB each) may be stored starting next quarter."
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "storage"},
+      {"type": "expect_contains", "value": "GB"},
+      {"type": "expect_min_length", "value": 200}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "plan-memory-llm-inference",
+    "variables": {
+      "instructions": "You are a platform operations engineer. Analyze the memory and model serving situation below and create a detailed capacity plan. Include sections for: current memory utilization, model resource requirements, projected memory needs, and recommendations for scaling inference capacity. Discuss memory allocation for each model.",
+      "current_state": "Ollama running natively on M4 Max with 128GB unified memory. Currently serving qwen2.5:14b (~10GB VRAM) and nomic-embed-text (~300MB). Concurrent request handling set to default (1 parallel request per model). Average 30 concurrent users during peak.",
+      "growth_rate": "Need to add a second LLM (qwen2.5:32b at ~22GB) for complex reasoning tasks. Also evaluating running 3 model variants simultaneously for A/B testing. Parallel request count needs to increase to 4."
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "memory"},
+      {"type": "expect_contains", "value": "model"},
+      {"type": "expect_min_length", "value": 200}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "plan-hpa-thresholds",
+    "variables": {
+      "instructions": "You are a platform operations engineer. Design a Horizontal Pod Autoscaler (HPA) scaling strategy for the services described below. Include sections for: recommended HPA configuration per service, scaling thresholds and metrics, scale-up and scale-down behavior, and resource optimization during idle periods. Discuss auto-scaling policies for each service.",
+      "current_state": "Three services in the genai namespace need HPA: agent-gateway (web API, latency-sensitive), eval-worker (batch evaluation jobs, throughput-sensitive), and embedding-service (embedding generation, GPU-bound on host). Currently all use static replica counts. Metrics server is installed. No custom metrics configured yet.",
+      "growth_rate": "Traffic patterns are bursty — 10x spikes during automated evaluation runs that last 15-30 minutes. Baseline traffic is low (5 req/sec) but spikes to 50 req/sec. Need to minimize pod count during idle to save cluster resources."
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "scal"},
+      {"type": "expect_min_length", "value": 200}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "plan-disaster-recovery-stateful",
+    "variables": {
+      "instructions": "You are a platform operations engineer. Create a disaster recovery and backup strategy for the stateful services described below. Include sections for: current risk assessment, automated backup schedule and procedures, recovery procedures, data retention policies, and recommendations for improving resilience. Detail specific backup approaches for each stateful service.",
+      "current_state": "Stateful services in k3d: PostgreSQL (MLflow metadata, 2Gi), MLflow artifact store (10Gi PVC), GitLab CE (30Gi PVC for repos + CI artifacts). All use local-path StorageClass with host bind mounts to ~/work/data/k3d/mewtwo/. No automated backups configured. Last manual backup was 2 weeks ago.",
+      "growth_rate": "Adding Redis for session caching and a second PostgreSQL instance for application data. Total stateful data expected to reach 100Gi within 6 months. Cluster delete/recreate happens approximately once per month during infrastructure changes."
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "backup"},
+      {"type": "expect_min_length", "value": 200}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  }
+]

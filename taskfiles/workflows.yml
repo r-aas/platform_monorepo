@@ -1,0 +1,69 @@
+# n8n Workflow management — import, seed, agent setup
+version: "3"
+
+tasks:
+  import:
+    desc: Import all workflows, resolve IDs, patch credentials (delegates to n8n-import-all.sh)
+    cmds:
+      - bash scripts/n8n-import-all.sh
+
+  import-all:
+    desc: "Alias for import"
+    cmds:
+      - bash scripts/n8n-import-all.sh
+
+  seed-prompts:
+    desc: Seed MLflow Prompt Registry with starter prompts (via n8n)
+    cmds:
+      - |
+        PROMPTS=$(cat data/seed-prompts.json)
+        AUTH_HEADER=""
+        if [ -n "${WEBHOOK_API_KEY:-}" ]; then
+          AUTH_HEADER="-H \"x-api-key: ${WEBHOOK_API_KEY}\""
+        fi
+        RESP=$(eval curl -sf -X POST "http://localhost:${N8N_PORT:-5678}/webhook/prompts" \
+          -H 'Content-Type: application/json' \
+          $AUTH_HEADER \
+          -d "{\"action\":\"seed\",\"prompts\":$PROMPTS}")
+        echo "$RESP" | jq .
+        CREATED=$(echo "$RESP" | jq -r '.created | length')
+        SKIPPED=$(echo "$RESP" | jq -r '.skipped | length')
+        echo "  ✓ $CREATED created, $SKIPPED skipped"
+
+  setup-n8n-api:
+    desc: Create n8n owner account and API key (idempotent)
+    cmds:
+      - bash scripts/setup-n8n-api.sh
+
+  reset-n8n-api:
+    desc: Regenerate n8n API key (DESTRUCTIVE — invalidates existing)
+    cmds:
+      - bash scripts/setup-n8n-api.sh --force
+
+  setup-agent:
+    desc: Create Ollama credential and configure AI Agent workflow (idempotent)
+    cmds:
+      - bash scripts/setup-agent.sh
+
+  reset-agent:
+    desc: Recreate Ollama credential (DESTRUCTIVE — overwrites existing)
+    cmds:
+      - bash scripts/setup-agent.sh --force
+
+  chat-test:
+    desc: Send a greeting through the chat workflow and print the response
+    silent: true
+    cmds:
+      - |
+        echo "── Chat Test ──"
+        RESP=$(curl -sf -X POST "http://localhost:${N8N_PORT:-5678}/webhook/v1/chat/completions" \
+          -H "Content-Type: application/json" \
+          -d '{"model":"assistant","messages":[{"role":"user","content":"Hello! Introduce yourself in one sentence."}]}')
+        MSG=$(echo "$RESP" | jq -r '.choices[0].message.content // empty')
+        if [ -n "$MSG" ]; then
+          echo "  ✓ assistant: $MSG"
+        else
+          echo "  ✗ No response from chat workflow"
+          echo "  Raw: $RESP"
+          exit 1
+        fi

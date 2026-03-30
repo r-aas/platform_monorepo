@@ -1,0 +1,190 @@
+# MLOps operations — benchmarks, optimization, drift, data retention
+version: "3"
+
+tasks:
+  benchmark:
+    desc: "Run AgenticOps benchmarks (usage: task mlops:benchmark -- --agent mlops --model qwen2.5:7b)"
+    cmds:
+      - uv run python scripts/benchmark.py {{.CLI_ARGS}}
+
+  benchmark-matrix:
+    desc: "Run full model × agent matrix (all models, direct runtime, logged to MLflow)"
+    cmds:
+      - uv run python scripts/benchmark.py --type agent --runtime direct --matrix --log-mlflow -v
+
+  benchmark-compare:
+    desc: "Compare gateway vs direct runtimes (all agents, default model, logged to MLflow)"
+    cmds:
+      - uv run python scripts/benchmark.py --type agent --runtime all --log-mlflow -v
+
+  optimize:
+    desc: "Optimize a prompt with MLflow GEPA (usage: task mlops:optimize -- summarizer)"
+    cmds:
+      - uv run python scripts/optimize_prompt.py {{.CLI_ARGS}}
+
+  drift-check:
+    desc: Run drift monitor against baselines (stack must be running)
+    cmds:
+      - uv run python scripts/drift_monitor.py {{.CLI_ARGS}}
+
+  drift-baseline:
+    desc: "Set performance baseline (usage: task mlops:drift-baseline -- assistant)"
+    vars:
+      PROMPT: '{{.CLI_ARGS | default "assistant"}}'
+    cmds:
+      - |
+        curl -sf -X POST "http://localhost:${N8N_PORT:-5678}/webhook/traces" \
+          -H 'Content-Type: application/json' \
+          -d "{\"action\":\"baseline_set\",\"prompt_name\":\"{{.PROMPT}}\",\"metrics\":{\"avg_latency_ms\":${DRIFT_LATENCY_MAX_MS:-10000},\"avg_tokens\":500,\"error_rate\":${DRIFT_ERROR_RATE_MAX:-0.1}}}" | jq .
+
+  demo:
+    desc: Run MLOps full-lifecycle demo (stack must be running)
+    cmds:
+      - uv run python scripts/demo-mlops.py
+
+  cleanup-traces:
+    desc: "Delete traces older than N days (default: 30). Usage: task mlops:cleanup-traces -- 14"
+    vars:
+      DAYS: '{{.CLI_ARGS | default "30"}}'
+    cmds:
+      - |
+        MLFLOW="http://localhost:${MLFLOW_PORT:-5050}/api/2.0/mlflow"
+        CUTOFF_MS=$(( $(date +%s) * 1000 - {{.DAYS}} * 86400000 ))
+        echo "Deleting traces older than {{.DAYS}} days (before $(date -r $(( CUTOFF_MS / 1000 )) '+%Y-%m-%d %H:%M' 2>/dev/null || echo 'cutoff'))..."
+
+        # Get __traces experiment
+        EXP_ID=$(curl -sf "${MLFLOW}/experiments/get-by-name?experiment_name=__traces" | jq -r '.experiment.experiment_id // empty')
+        if [ -z "$EXP_ID" ]; then
+          echo "  No __traces experiment found. Nothing to clean."
+          exit 0
+        fi
+
+        # Search for old runs
+        RUNS=$(curl -sf -X POST "${MLFLOW}/runs/search" \
+          -H 'Content-Type: application/json' \
+          -d "{\"experiment_ids\":[\"${EXP_ID}\"],\"filter\":\"attributes.start_time < ${CUTOFF_MS}\",\"max_results\":1000}" \
+          | jq -r '.runs[]?.info.run_id // empty')
+
+        COUNT=0
+        for RUN_ID in $RUNS; do
+          curl -sf -X POST "${MLFLOW}/runs/delete" \
+            -H 'Content-Type: application/json' \
+            -d "{\"run_id\":\"${RUN_ID}\"}" >/dev/null
+          ((COUNT++))
+        done
+        echo "  ✓ Deleted $COUNT trace(s) older than {{.DAYS}} days"
+
+  promote:
+    desc: "Promote workflows to k8s n8n instance (NS=dev|stage|prod)"
+    vars:
+      NS: '{{.NS | default "dev"}}'
+    cmds:
+      - bash scripts/n8n-promote.sh {{.NS}}
+      - bash scripts/n8n-verify.sh {{.NS}}
+
+  eval:
+    desc: "Run eval-triad benchmarks (usage: task mlops:eval -- -d coder.review)"
+    cmds:
+      - uv run scripts/eval-triad.py {{.CLI_ARGS}}
+
+  eval-all:
+    desc: Run all eval-triad benchmarks with LLM-as-judge
+    cmds:
+      - uv run scripts/eval-triad.py
+
+  eval-parallel:
+    desc: Run all eval-triad benchmarks in parallel (4 workers)
+    cmds:
+      - uv run scripts/eval-triad.py --parallel
+
+  agent-benchmark:
+    desc: Run agent benchmarks with Langfuse scoring
+    cmds:
+      - uv run python scripts/agent-benchmark.py
+
+  metrics:
+    desc: "Langfuse metrics dashboard (usage: task mlops:metrics -- latency)"
+    cmds:
+      - uv run scripts/langfuse-metrics.py {{.CLI_ARGS}}
+
+  metrics-summary:
+    desc: Show Langfuse overview dashboard
+    cmds:
+      - uv run scripts/langfuse-metrics.py summary
+
+  sessions:
+    desc: "Session management (usage: task mlops:sessions -- list --active)"
+    cmds:
+      - uv run scripts/session-archive.py {{.CLI_ARGS}}
+
+  sessions-cleanup:
+    desc: Close sessions older than 24h
+    cmds:
+      - uv run scripts/session-archive.py close-old 24
+
+  promote-all:
+    desc: "Promote workflows to all k8s n8n instances"
+    cmds:
+      - for: ["dev", "stage", "prod"]
+        task: promote
+        vars: { NS: "{{.ITEM}}" }
+
+  seed-models:
+    desc: Seed Langfuse with local Ollama model definitions ($0 cost)
+    cmds:
+      - |
+        LF_URL="http://localhost:${LANGFUSE_PORT:-3100}"
+        LF_PK="${LANGFUSE_PUBLIC_KEY:-lf-pk-local}"
+        LF_SK="${LANGFUSE_SECRET_KEY:-lf-sk-local}"
+        MODELS=$(cat data/langfuse-models.json)
+        COUNT=$(echo "$MODELS" | jq length)
+        CREATED=0
+        for i in $(seq 0 $((COUNT - 1))); do
+          MODEL=$(echo "$MODELS" | jq -c ".[$i]")
+          NAME=$(echo "$MODEL" | jq -r '.modelName')
+          RESP=$(curl -sf --max-time 10 -u "${LF_PK}:${LF_SK}" \
+            -X POST "${LF_URL}/api/public/models" \
+            -H 'Content-Type: application/json' \
+            -d "$MODEL" 2>/dev/null) && ((CREATED++)) || true
+        done
+        echo "  ✓ ${CREATED}/${COUNT} model definitions seeded"
+
+  # ── Benchmark Promotion Pipeline ─────────────────────────────────────────
+
+  benchmark-sync:
+    desc: Sync promoted traces from MLflow datasets to local benchmark JSONL
+    cmds:
+      - uv run scripts/promote.py {{.CLI_ARGS}}
+
+  benchmark-list:
+    desc: List all MLflow datasets (promoted trace data)
+    cmds:
+      - uv run scripts/promote.py --list
+
+  benchmark-stats:
+    desc: Show benchmark case counts per agent
+    silent: true
+    cmds:
+      - |
+        echo "── Benchmark Cases ──"
+        for f in data/benchmarks/*.jsonl; do
+          name=$(basename "$f" .jsonl)
+          count=$(wc -l < "$f" 2>/dev/null | tr -d ' ')
+          printf "  %-30s %s cases\n" "$name" "$count"
+        done
+        echo ""
+        total=$(cat data/benchmarks/*.jsonl 2>/dev/null | wc -l | tr -d ' ')
+        echo "  Total: $total cases"
+
+  benchmark-promote-trace:
+    desc: "Manually promote a trace to benchmarks (usage: task mlops:benchmark-promote-trace -- <trace_id>)"
+    cmds:
+      - |
+        TRACE_ID="{{.CLI_ARGS}}"
+        if [ -z "$TRACE_ID" ]; then
+          echo "Usage: task mlops:benchmark-promote-trace -- <trace_id>"
+          exit 1
+        fi
+        curl -sf -X POST "http://localhost:${N8N_PORT:-5678}/webhook/traces" \
+          -H 'Content-Type: application/json' \
+          -d "{\"action\":\"promote\",\"trace_id\":\"$TRACE_ID\"}" | jq .

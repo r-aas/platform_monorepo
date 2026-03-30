@@ -1,0 +1,67 @@
+[
+  {
+    "label": "evaluate-high-accuracy-high-latency",
+    "variables": {
+      "context": "A text classification model deployed in production shows 95.2% accuracy on the holdout set, but p95 inference latency is 2.3 seconds per request, well above the 500ms SLA.",
+      "criteria": "Evaluate the tradeoff between model accuracy and inference latency. Recommend whether to keep, optimize, or replace the model."
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "latency"},
+      {"type": "expect_contains", "value": "accuracy"},
+      {"type": "expect_min_length", "value": 200}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "evaluate-hallucination-prompt",
+    "variables": {
+      "context": "A summarization prompt tested against 50 documents produces factually incorrect claims in 18% of outputs. The hallucinations include invented statistics and misattributed quotes.",
+      "criteria": "Evaluate the hallucination rate and suggest prompt-level mitigations. Identify which hallucination categories are most dangerous."
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "hallucination"},
+      {"type": "expect_contains", "value": "prompt"},
+      {"type": "expect_min_length", "value": 200}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "evaluate-ab-test-model-versions",
+    "variables": {
+      "context": "A/B test between model-v2.1 (fine-tuned on domain data) and model-v2.0 (base). v2.1 shows +3.8% relevance score improvement but -1.2% factual accuracy on the eval set. Traffic split is 50/50 over 10,000 requests.",
+      "criteria": "Evaluate whether the A/B test results are statistically significant and recommend which model version to promote to production."
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "statistical"},
+      {"type": "expect_contains", "value": "version"},
+      {"type": "expect_min_length", "value": 200}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "evaluate-finetuned-vs-base",
+    "variables": {
+      "context": "Fine-tuned Qwen 2.5 14B on 5,000 domain-specific Q&A pairs for 3 epochs. Base model scores 62% on domain eval set. Fine-tuned model scores 81% on domain eval but dropped from 74% to 68% on general benchmarks (MMLU subset).",
+      "criteria": "Evaluate the fine-tuning outcome. Assess whether the domain accuracy gain justifies the general capability regression. Recommend next steps."
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "fine-tun"},
+      {"type": "expect_contains", "value": "regression"},
+      {"type": "expect_min_length", "value": 200}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "evaluate-rag-retrieval-quality",
+    "variables": {
+      "context": "RAG pipeline using ChromaDB with 12,000 embedded documents. Retrieval recall@5 is 0.72, precision@5 is 0.45. End-to-end answer accuracy is 64%. Embedding model is all-MiniLM-L6-v2. Chunk size is 512 tokens with 50 token overlap.",
+      "criteria": "Evaluate the retrieval quality metrics and identify bottlenecks. Recommend specific improvements to chunking strategy, embedding model, or retrieval parameters."
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "retrieval"},
+      {"type": "expect_contains", "value": "chunk"},
+      {"type": "expect_min_length", "value": 200}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  }
+]

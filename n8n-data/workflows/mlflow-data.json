@@ -1,0 +1,82 @@
+{
+  "id": "mlflow-data-v1",
+  "name": "Dataset Management",
+  "active": true,
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        240,
+        340
+      ],
+      "parameters": {
+        "path": "datasets",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "typeVersion": 2,
+      "webhookId": "mlflow-data-webhook-id"
+    },
+    {
+      "id": "data-handler",
+      "name": "Data Handler",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        480,
+        340
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// fetch-based HTTP helpers (replaces axios to avoid task runner crash)\nasync function _post(url, data, opts) {\n  var headers = {'Content-Type': 'application/json'};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(url, {method:'POST', headers: headers, body: JSON.stringify(data), signal: opts && opts.timeout ? AbortSignal.timeout(opts.timeout) : undefined});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  if (!r.ok) { var err = new Error('HTTP ' + r.status); err.response = {status: r.status, data: json}; throw err; }\n  return {data: json, status: r.status};\n}\nasync function _get(url, opts) {\n  var qurl = url;\n  if (opts && opts.params) { var qs = new URLSearchParams(opts.params).toString(); if (qs) qurl += (url.includes('?') ? '&' : '?') + qs; }\n  var headers = {};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(qurl, {headers: headers, signal: opts && opts.timeout ? AbortSignal.timeout(opts.timeout) : undefined});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  if (!r.ok) { var err = new Error('HTTP ' + r.status); err.response = {status: r.status, data: json}; throw err; }\n  return {data: json, status: r.status};\n}\nasync function _del(url, opts) {\n  var headers = {'Content-Type': 'application/json'};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(url, {method:'DELETE', headers: headers, body: opts && opts.data ? JSON.stringify(opts.data) : undefined});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  if (!r.ok) { var err = new Error('HTTP ' + r.status); err.response = {status: r.status, data: json}; throw err; }\n  return {data: json, status: r.status};\n}\nasync function _put(url, body, opts) {\n  var headers = {};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(url, {method:'PUT', headers: headers, body: typeof body === 'string' ? body : JSON.stringify(body)});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  return {data: json, status: r.status};\n}\nconst M = 'http://mlflow:5050/api/2.0/mlflow';\nconst MA = 'http://mlflow:5050/api/2.0/mlflow-artifacts/artifacts';\nconst body = $input.item.json.body;\nconst action = body.action;\n\ntry {\n\nif (!action) throw new Error('action required: upload, list, get, link');\n\nasync function post(path, data) {\n  var r = await fetch(M + path, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});\n  if (!r.ok) throw new Error('MLflow ' + r.status + ': ' + (await r.text()));\n  return r.json();\n}\n\nasync function apiGet(path) {\n  var r = await fetch(M + path);\n  if (!r.ok) throw new Error('MLflow ' + r.status + ': ' + (await r.text()));\n  return r.json();\n}\n\n// Helper: get or create __datasets experiment\nasync function getDatasetExperiment() {\n  try {\n    var res = await apiGet('/experiments/get-by-name?experiment_name=' + encodeURIComponent('__datasets'));\n    return res.experiment.experiment_id;\n  } catch(e) {\n    var cr = await post('/experiments/create', {name: '__datasets'});\n    return cr.experiment_id;\n  }\n}\n\nif (action === 'upload') {\n  var name = body.name;\n  if (!name) throw new Error('name required');\n  var rows = body.rows || [];\n  var schema = body.schema || [];\n  var format = body.format || 'jsonl';\n  var expId = await getDatasetExperiment();\n  var startTime = Date.now();\n  var runRes = await post('/runs/create', {\n    experiment_id: expId,\n    start_time: startTime,\n    run_name: name\n  });\n  var runId = runRes.run.info.run_id;\n  var preview = rows.slice(0, 5).map(function(r) { return JSON.stringify(r); }).join('\\n');\n  await post('/runs/log-batch', {\n    run_id: runId,\n    params: [\n      {key: 'dataset_name', value: name},\n      {key: 'format', value: format},\n      {key: 'row_count', value: String(rows.length)},\n      {key: 'schema', value: JSON.stringify(schema)}\n    ],\n    tags: [\n      {key: 'mlflow.note.content', value: preview.substring(0, 5000)},\n      {key: 'dataset_name', value: name}\n    ]\n  });\n  // FR-001: Store full rows as JSONL artifact\n  if (rows.length > 0) {\n    var jsonl = rows.map(function(r) { return JSON.stringify(r); }).join('\\n');\n    var artUrl = MA + '/' + expId + '/' + runId + '/artifacts/rows.jsonl';\n    await _put(artUrl, jsonl, {headers: {'Content-Type': 'text/plain'}});\n  }\n  await post('/runs/update', {run_id: runId, status: 'FINISHED', end_time: Date.now()});\n  return {action: 'upload', name: name, run_id: runId, row_count: rows.length, format: format};\n}\n\nif (action === 'list') {\n  var expId;\n  try {\n    var expRes = await apiGet('/experiments/get-by-name?experiment_name=' + encodeURIComponent('__datasets'));\n    expId = expRes.experiment.experiment_id;\n  } catch(e) {\n    return {action: 'list', datasets: [], count: 0};\n  }\n  var limit = body.limit || 50;\n  var searchRes = await post('/runs/search', {\n    experiment_ids: [expId],\n    max_results: limit,\n    order_by: ['start_time DESC']\n  });\n  var datasets = (searchRes.runs || []).map(function(run) {\n    var info = run.info || {};\n    var params = {};\n    (run.data && run.data.params || []).forEach(function(p) { params[p.key] = p.value; });\n    return {\n      run_id: info.run_id,\n      name: params.dataset_name || info.run_name || '',\n      format: params.format || 'jsonl',\n      row_count: Number(params.row_count || 0),\n      schema: params.schema ? JSON.parse(params.schema) : [],\n      created_at: Number(info.start_time)\n    };\n  });\n  return {action: 'list', datasets: datasets, count: datasets.length};\n}\n\nif (action === 'get') {\n  var runId = body.run_id;\n  if (!runId) throw new Error('run_id required');\n  var runResp = await apiGet('/runs/get?run_id=' + encodeURIComponent(runId));\n  var run = runResp.run;\n  var info = run.info || {};\n  var params = {};\n  (run.data && run.data.params || []).forEach(function(p) { params[p.key] = p.value; });\n  var tags = {};\n  (run.data && run.data.tags || []).forEach(function(t) { tags[t.key] = t.value; });\n  var result = {\n    action: 'get',\n    run_id: runId,\n    name: params.dataset_name || info.run_name || '',\n    format: params.format || 'jsonl',\n    row_count: Number(params.row_count || 0),\n    schema: params.schema ? JSON.parse(params.schema) : [],\n    preview: tags['mlflow.note.content'] || '',\n    created_at: Number(info.start_time)\n  };\n  // FR-002: Return full rows when requested\n  if (body.include_rows) {\n    try {\n      var artUrl = MA + '/' + info.experiment_id + '/' + runId + '/artifacts/rows.jsonl';\n      var artResp = await _get(artUrl, {responseType: 'text'});\n      var lines = String(artResp.data).split('\\n').filter(function(l) { return l.trim(); });\n      result.rows = lines.map(function(l) { return JSON.parse(l); });\n      result.rows_available = true;\n    } catch(artErr) {\n      result.rows_available = false;\n    }\n  }\n  return result;\n}\n\nif (action === 'link') {\n  var evalRunId = body.run_id;\n  var datasetName = body.dataset_name;\n  var digest = body.digest || 'n/a';\n  if (!evalRunId || !datasetName) throw new Error('run_id and dataset_name required');\n  await post('/runs/log-inputs', {\n    run_id: evalRunId,\n    datasets: [{\n      dataset: {\n        name: datasetName,\n        digest: digest,\n        source_type: 'local',\n        source: datasetName\n      },\n      tags: body.tags || []\n    }]\n  });\n  return {action: 'link', run_id: evalRunId, dataset_name: datasetName, status: 'linked'};\n}\n\nthrow new Error('Unknown action: ' + action);\n\n} catch(e) {\n  var msg = e.message || String(e);\n  if (e.response && e.response.data) msg += ' | ' + JSON.stringify(e.response.data);\n  var status = 400;\n  if (e.response && e.response.status === 404) status = 404;\n  if (msg.indexOf('RESOURCE_DOES_NOT_EXIST') !== -1) status = 404;\n  return {error: true, message: msg, action: action || 'unknown', _status: status};\n}"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        720,
+        340
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ Object.fromEntries(Object.entries($json).filter(([k]) => k !== '_status')) }}",
+        "options": {
+          "responseCode": "={{ $json._status || 200 }}"
+        }
+      },
+      "typeVersion": 1.2
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Data Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Handler": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

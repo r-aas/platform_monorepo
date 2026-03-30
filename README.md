@@ -147,20 +147,19 @@ charts/              # 35 Helm charts (ArgoCD-managed)
 services/            # Custom services (agent-gateway, datahub-bridge)
 agents/              # Agent YAML definitions (6 agents + shared config)
 skills/              # Skill definitions (21 skills)
-scripts/             # Bootstrap, setup, ingestion, secrets
-specs/               # Feature specs (spec-driven development)
+scripts/             # Bootstrap, setup, ingestion, benchmarks, smoke tests
+specs/               # Feature specs (001-029, spec-driven development)
 taskfiles/           # Taskfile includes
 envs/                # Environment config (global.env, secrets.env)
 manifests/           # Raw k8s manifests + CRDs
-images/              # Custom Docker image builds (13 images)
+images/              # Custom Docker image builds (19 images incl. MCP servers)
 mcp-servers/         # MCP server configs
+n8n-data/workflows/  # 17 n8n workflow JSONs (promoted via Helm hook)
+data/                # Seed data (prompts, benchmarks, training sets)
+docs/                # Architecture docs, environment guide
 helmfile.yaml        # Bootstrap-only (seeds ArgoCD + infra)
 Taskfile.yml         # Root task runner
 ```
-
-## Companion Repo
-
-The n8n workflow definitions, smoke tests, and MLflow prompt seeds live in [genai-mlops](https://github.com/r-aas/genai-mlops). It's automatically imported during `task up`.
 
 ## Hardware
 

@@ -1,0 +1,82 @@
+{
+  "id": "mlflow-experiments-v1",
+  "name": "Experiment Explorer",
+  "active": true,
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        240,
+        340
+      ],
+      "parameters": {
+        "path": "experiments",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "typeVersion": 2,
+      "webhookId": "mlflow-experiments-webhook-id"
+    },
+    {
+      "id": "exp-handler",
+      "name": "Experiment Handler",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        480,
+        340
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const M = 'http://mlflow:5050/api/2.0/mlflow';\nconst body = $input.item.json.body;\nconst action = body.action;\n\ntry {\n\nif (!action) throw new Error('action required: list, get, runs, metrics, delete');\n\nasync function post(path, data) {\n  var r = await fetch(M + path, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});\n  if (!r.ok) throw new Error('MLflow ' + r.status + ': ' + (await r.text()));\n  return r.json();\n}\n\nasync function apiGet(path) {\n  var r = await fetch(M + path);\n  if (!r.ok) throw new Error('MLflow ' + r.status + ': ' + (await r.text()));\n  return r.json();\n}\n\nif (action === 'list') {\n  var searchRes = await post('/experiments/search', {\n    max_results: body.limit || 100\n  });\n  var experiments = (searchRes.experiments || []).map(function(exp) {\n    return {\n      experiment_id: exp.experiment_id,\n      name: exp.name,\n      lifecycle_stage: exp.lifecycle_stage,\n      creation_time: Number(exp.creation_time),\n      last_update_time: Number(exp.last_update_time),\n      artifact_location: exp.artifact_location\n    };\n  });\n  return {action: 'list', experiments: experiments, count: experiments.length};\n}\n\nif (action === 'get') {\n  var expId = body.experiment_id;\n  var expName = body.experiment_name;\n  if (!expId && !expName) throw new Error('experiment_id or experiment_name required');\n  var exp;\n  if (expId) {\n    var expRes = await apiGet('/experiments/get?experiment_id=' + encodeURIComponent(expId));\n    exp = expRes.experiment;\n  } else {\n    var expRes = await apiGet('/experiments/get-by-name?experiment_name=' + encodeURIComponent(expName));\n    exp = expRes.experiment;\n    expId = exp.experiment_id;\n  }\n  var limit = body.limit || 10;\n  var searchRes = await post('/runs/search', {\n    experiment_ids: [expId],\n    max_results: limit,\n    order_by: ['start_time DESC']\n  });\n  var runs = (searchRes.runs || []).map(function(run) {\n    var info = run.info || {};\n    var params = {};\n    (run.data && run.data.params || []).forEach(function(p) { params[p.key] = p.value; });\n    var metrics = {};\n    (run.data && run.data.metrics || []).forEach(function(m) { metrics[m.key] = m.value; });\n    return {\n      run_id: info.run_id,\n      run_name: info.run_name || '',\n      status: info.status,\n      start_time: Number(info.start_time),\n      end_time: Number(info.end_time),\n      params: params,\n      metrics: metrics\n    };\n  });\n  return {\n    action: 'get',\n    experiment_id: expId,\n    name: exp.name,\n    lifecycle_stage: exp.lifecycle_stage,\n    creation_time: Number(exp.creation_time),\n    runs: runs,\n    run_count: runs.length\n  };\n}\n\nif (action === 'runs') {\n  var experimentIds = body.experiment_ids;\n  if (!experimentIds || !Array.isArray(experimentIds)) throw new Error('experiment_ids array required');\n  var searchBody = {\n    experiment_ids: experimentIds,\n    max_results: body.limit || 25\n  };\n  if (body.filter) searchBody.filter = body.filter;\n  if (body.order_by) searchBody.order_by = body.order_by;\n  var searchRes = await post('/runs/search', searchBody);\n  var runs = (searchRes.runs || []).map(function(run) {\n    var info = run.info || {};\n    var params = {};\n    (run.data && run.data.params || []).forEach(function(p) { params[p.key] = p.value; });\n    var metrics = {};\n    (run.data && run.data.metrics || []).forEach(function(m) { metrics[m.key] = m.value; });\n    return {\n      run_id: info.run_id,\n      run_name: info.run_name || '',\n      experiment_id: info.experiment_id,\n      status: info.status,\n      start_time: Number(info.start_time),\n      end_time: Number(info.end_time),\n      params: params,\n      metrics: metrics\n    };\n  });\n  return {action: 'runs', runs: runs, count: runs.length};\n}\n\nif (action === 'metrics') {\n  var runId = body.run_id;\n  var metricKey = body.metric_key;\n  if (!runId || !metricKey) throw new Error('run_id and metric_key required');\n  var histRes = await apiGet('/metrics/get-history?run_id=' + encodeURIComponent(runId) + '&metric_key=' + encodeURIComponent(metricKey));\n  var history = (histRes.metrics || []).map(function(m) {\n    return {value: m.value, timestamp: Number(m.timestamp), step: m.step};\n  });\n  return {action: 'metrics', run_id: runId, metric_key: metricKey, history: history, count: history.length};\n}\n\nif (action === 'delete') {\n  var expId = body.experiment_id;\n  if (!expId) throw new Error('experiment_id required');\n  await post('/experiments/delete', {experiment_id: expId});\n  return {action: 'delete', experiment_id: expId, status: 'deleted'};\n}\n\nthrow new Error('Unknown action: ' + action);\n\n} catch(e) {\n  var msg = e.message || String(e);\n  if (e.response && e.response.data) msg += ' | ' + JSON.stringify(e.response.data);\n  var status = 400;\n  if (e.response && e.response.status === 404) status = 404;\n  if (msg.indexOf('RESOURCE_DOES_NOT_EXIST') !== -1) status = 404;\n  return {error: true, message: msg, action: action || 'unknown', _status: status};\n}"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        720,
+        340
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ Object.fromEntries(Object.entries($json).filter(([k]) => k !== '_status')) }}",
+        "options": {
+          "responseCode": "={{ $json._status || 200 }}"
+        }
+      },
+      "typeVersion": 1.2
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Experiment Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Experiment Handler": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

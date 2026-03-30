@@ -1,0 +1,541 @@
+{
+  "id": "chat-v1",
+  "name": "Chat",
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "Chat Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        240,
+        200
+      ],
+      "webhookId": "chat",
+      "parameters": {
+        "path": "chat",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n2",
+      "name": "Prompt Resolver",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [
+        460,
+        200
+      ],
+      "parameters": {
+        "source": "database",
+        "workflowId": "prompt-resolve-v1",
+        "mode": "each"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "n3",
+      "name": "Error Gate",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        700,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "err1",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "typeVersion": 2.2
+    },
+    {
+      "id": "n11",
+      "name": "Mode Gate",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        940,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "mode1",
+              "leftValue": "={{ $json.config.mcp_tools }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "typeVersion": 2.2
+    },
+    {
+      "id": "n4",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        1200,
+        60
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message }}",
+        "hasOutputParser": false,
+        "options": {
+          "systemMessage": "={{ $json.system_prompt }}",
+          "maxIterations": "={{ $('Prompt Resolver').first().json.config.max_iterations || 10 }}",
+          "returnIntermediateSteps": true
+        },
+        "returnIntermediateSteps": true
+      },
+      "typeVersion": 1.7
+    },
+    {
+      "id": "n5",
+      "name": "Ollama Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "position": [
+        1080,
+        500
+      ],
+      "parameters": {
+        "model": "qwen2.5:14b"
+      },
+      "credentials": {
+        "ollamaApi": {
+          "id": "",
+          "name": "Ollama Local"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "n6",
+      "name": "MCP Client",
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "position": [
+        1240,
+        500
+      ],
+      "parameters": {
+        "endpointUrl": "http://genai-agentgateway-mcp.genai.svc.cluster.local:8080/mcp/all",
+        "serverTransport": "httpStreamable",
+        "authentication": "none",
+        "include": "all",
+        "includeTools": ""
+      },
+      "typeVersion": 1.1
+    },
+    {
+      "id": "n7",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        1400,
+        500
+      ],
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "default",
+        "contextWindowLength": 20
+      },
+      "typeVersion": 1.3
+    },
+    {
+      "id": "n12",
+      "name": "Chat Handler",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [
+        1200,
+        340
+      ],
+      "parameters": {
+        "source": "database",
+        "workflowId": "chat-complete-v1",
+        "mode": "each"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "n8",
+      "name": "Trace Logger",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1480,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "function uuid4() { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); }); }\nconst items = $input.all();\nconst output = items[0].json.output || '';\nconst routerData = $('Prompt Resolver').first().json;\nvar agentName = routerData.agent_name || 'chat';\nvar task = routerData.task || '';\nvar traceId = 'tr_' + agentName + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);\nvar cfg = routerData.config || {};\nvar sessionId = routerData.session_id || '';\nvar userMessage = routerData.message || '';\nvar promptVersions = routerData.prompt_versions || {};\nvar N8N = $env.N8N_INTERNAL_URL || 'http://genai-n8n.genai.svc.cluster.local:5678/webhook';\nvar resolvedModel = cfg.model || $env.INFERENCE_DEFAULT_MODEL || 'qwen2.5:14b';\nvar mode = cfg.mcp_tools ? 'agent' : 'chat';\n\n// Compute latency from webhook timestamp\nvar webhookTs = new Date($('Chat Webhook').first().json.headers['date'] || 0).getTime();\nvar latencyMs = webhookTs > 0 ? Date.now() - webhookTs : null;\n\n// Build trace payload for downstream HTTP Request node\nvar tracePayload = {\n  action: 'log', trace_id: traceId, source: agentName,\n  prompt_name: agentName + '.SYSTEM', prompt_version: promptVersions.system || '1',\n  model: resolvedModel, status: output ? 'ok' : 'error',\n  input: userMessage.substring(0, 5000), output: output.substring(0, 5000),\n  latency_ms: latencyMs,\n  tags: { provider: cfg.provider || 'ollama', model: resolvedModel,\n    temperature: String(cfg.temperature || 0.3), top_p: String(cfg.top_p || 0.9),\n    num_ctx: String(cfg.num_ctx || 32768), max_iterations: String(cfg.max_iterations || 10),\n    mcp_tools: cfg.mcp_tools || '', mode: mode, task: task || '' }\n};\n\nreturn [{json: {\n  output: output, trace_id: traceId,\n  _session_id: sessionId, _user_message: userMessage, _n8n_base: N8N,\n  _trace_payload: tracePayload,\n  agent_name: agentName, task: task || undefined, config: cfg, mode: mode,\n  prompt_versions: Object.keys(promptVersions).length > 0 ? promptVersions : undefined,\n  skills_loaded: routerData.skills_loaded || undefined\n}}];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n14",
+      "name": "Session Gate",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        1700,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "sess1",
+              "leftValue": "={{ $json._session_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "typeVersion": 2.2
+    },
+    {
+      "id": "n15",
+      "name": "Session Append User",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1920,
+        120
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json._n8n_base }}/sessions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({action: 'append', session_id: $json._session_id, role: 'user', content: $json._user_message}) }}",
+        "options": {
+          "timeout": 10000,
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "n16",
+      "name": "Session Append Assistant",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        2140,
+        120
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Trace Logger').first().json._n8n_base }}/sessions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({action: 'append', session_id: $('Trace Logger').first().json._session_id, role: 'assistant', content: $('Trace Logger').first().json.output}) }}",
+        "options": {
+          "timeout": 10000,
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "n9",
+      "name": "Chat Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        2360,
+        200
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ (() => { var d = $(\"Trace Logger\").first().json; var r = { response: d.output, trace_id: d.trace_id, agent: d.agent_name, config: d.config, mode: d.mode }; if (d._session_id) r.session_id = d._session_id; if (d.task) r.task = d.task; if (d.prompt_versions) r.prompt_versions = d.prompt_versions; if (d.skills_loaded) r.skills_loaded = d.skills_loaded; return r; })() }}",
+        "options": {}
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "n10",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        700,
+        480
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: true, message: 'Not found: ' + ($json.agent_name || '') + ($json.task ? '.' + $json.task : ''), detail: $json.error } }}",
+        "options": {
+          "responseCode": 404
+        }
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "n13",
+      "name": "Delegate Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "position": [
+        1560,
+        500
+      ],
+      "parameters": {
+        "name": "delegate_to_agent",
+        "description": "Delegate a task to another specialized agent on the platform. Input must be a JSON object with: agent (required, one of: coder, writer, reasoner, analyst, devops, mlops, mcp), message (required, the task description). Optionally include task (e.g. 'review', 'debug', 'email'). Example: {\"agent\": \"coder\", \"message\": \"Review this code for security issues\"}",
+        "jsCode": "var N8N = $env.N8N_INTERNAL_URL || 'http://genai-n8n.genai.svc.cluster.local:5678/webhook';\nvar WEBHOOK_KEY = $env.WEBHOOK_API_KEY || '';\n\nvar query = $input.first().json.query || '';\n\n// Parse JSON input from the LLM\nvar params;\ntry {\n  params = JSON.parse(query);\n} catch(e) {\n  var m = query.match(/(\\w+)\\s*[:\\-]\\s*(.*)/s);\n  if (m) {\n    params = { agent: m[1], message: m[2].trim() };\n  } else {\n    return 'Error: provide JSON like {\"agent\":\"coder\",\"message\":\"your request\"}. Available agents: coder, writer, reasoner, analyst, devops, mlops, mcp';\n  }\n}\n\nvar targetAgent = params.agent || '';\nvar message = params.message || params.msg || '';\nvar task = params.task || '';\n\nif (!targetAgent) {\n  return 'Error: agent is required. Available: coder, writer, reasoner, analyst, devops, mlops, mcp';\n}\nif (!message) {\n  return 'Error: message is required';\n}\n\ntry {\n  var body = { agent_name: targetAgent, message: message };\n  if (task) body.task = task;\n  var headers = { 'Content-Type': 'application/json' };\n  if (WEBHOOK_KEY) headers['X-API-Key'] = WEBHOOK_KEY;\n  var resp = await fetch(N8N + '/chat', {\n    method: 'POST', headers: headers,\n    body: JSON.stringify(body),\n    signal: AbortSignal.timeout(120000)\n  });\n  var data = await resp.json();\n  if (!resp.ok) return 'Delegation to ' + targetAgent + ' failed: ' + JSON.stringify(data);\n  var result = data.response || '';\n  return 'Response from ' + targetAgent + ' agent:\\n\\n' + result;\n} catch(e) {\n  return 'Delegation to ' + targetAgent + ' failed: ' + (e.message || String(e));\n}"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "n17",
+      "name": "Trace Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1700,
+        400
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json._n8n_base }}/traces",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._trace_payload) }}",
+        "options": {
+          "timeout": 10000,
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Chat Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prompt Resolver",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prompt Resolver": {
+      "main": [
+        [
+          {
+            "node": "Error Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Gate": {
+      "main": [
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mode Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mode Gate": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Chat Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Trace Logger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Handler": {
+      "main": [
+        [
+          {
+            "node": "Trace Logger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trace Logger": {
+      "main": [
+        [
+          {
+            "node": "Session Gate",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Trace Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Session Gate": {
+      "main": [
+        [
+          {
+            "node": "Session Append User",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Chat Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Session Append User": {
+      "main": [
+        [
+          {
+            "node": "Session Append Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Session Append Assistant": {
+      "main": [
+        [
+          {
+            "node": "Chat Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP Client": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delegate Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "active": true,
+  "tags": []
+}

@@ -1,0 +1,286 @@
+{
+  "id": "plane-to-gitlab-v1",
+  "name": "Plane to GitLab Sync",
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [240, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "n2",
+      "name": "Fetch Plane Issues",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.PLANE_API_URL || 'http://genai-plane-api.genai.svc.cluster.local:8000' }}/api/v1/workspaces/r-aas/projects/1b0b93eb-5915-4338-bd16-16a04acdb429/issues/",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "order_by",
+              "value": "-updated_at"
+            },
+            {
+              "name": "per_page",
+              "value": "50"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.PLANE_API_TOKEN || '' }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "typeVersion": 4.2
+    },
+    {
+      "id": "n3",
+      "name": "Filter & Map Issues",
+      "type": "n8n-nodes-base.code",
+      "position": [680, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Filter Plane issues that need syncing to GitLab\n// Skip issues that originated from GitLab (prefixed with [GitLab], [Push], [MR], [Comment])\n// Skip issues already synced (have external_source = 'gitlab')\n// Only sync issues updated in the last 10 minutes\n\nconst results = $input.all();\nconst issues = (results[0]?.json?.results || results[0]?.json || []);\n\nconst SYNC_WINDOW_MS = 10 * 60 * 1000; // 10 minutes\nconst now = Date.now();\nconst GITLAB_PREFIXES = ['[GitLab]', '[Push]', '[MR ', '[Comment]', '[GitLab Closed]'];\n\n// State ID → GitLab label mapping\nconst STATE_MAP = {\n  'cfc8f7cd-daaf-4d5a-819e-f59b5d3b36c9': { label: 'backlog', open: true },\n  '3eaae951-b70c-4b09-8a46-d7094e10ae97': { label: 'todo', open: true },\n  '44c20543-a3f6-4769-90fe-56f93342a71a': { label: 'in-progress', open: true },\n  'cb7fc63e-8e56-4962-90c9-de3054067c4f': { label: 'done', open: false },\n  '0eee9bc5-5cd9-4887-96ff-a77d1e9227ec': { label: 'cancelled', open: false }\n};\n\n// Priority mapping\nconst PRIORITY_MAP = {\n  'urgent': 'priority::critical',\n  'high': 'priority::high',\n  'medium': 'priority::medium',\n  'low': 'priority::low',\n  'none': ''\n};\n\nconst toSync = [];\n\nfor (const issue of issues) {\n  // Skip issues from GitLab\n  const name = issue.name || '';\n  if (GITLAB_PREFIXES.some(p => name.startsWith(p))) continue;\n\n  // Skip already-synced issues\n  if (issue.external_source === 'gitlab') continue;\n\n  // Only sync recently updated issues\n  const updatedAt = new Date(issue.updated_at).getTime();\n  if (now - updatedAt > SYNC_WINDOW_MS) continue;\n\n  const stateInfo = STATE_MAP[issue.state] || { label: 'backlog', open: true };\n  const priorityLabel = PRIORITY_MAP[issue.priority] || '';\n  const labels = ['plane-sync', stateInfo.label].filter(Boolean);\n  if (priorityLabel) labels.push(priorityLabel);\n\n  // Strip HTML tags for description\n  const descHtml = issue.description_html || '';\n  const descText = descHtml.replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ').trim();\n\n  toSync.push({\n    json: {\n      plane_id: issue.id,\n      title: `[Plane] ${name}`,\n      description: `**Source:** Plane issue ${issue.sequence_id || issue.id}\\n\\n${descText}`,\n      labels: labels.join(','),\n      state_action: stateInfo.open ? 'reopen' : 'close',\n      state_label: stateInfo.label,\n      priority: issue.priority,\n      external_id: issue.external_id,\n      has_external_id: !!issue.external_id\n    }\n  });\n}\n\nif (toSync.length === 0) {\n  return [{ json: { _skip: true, message: 'No issues to sync' } }];\n}\n\nreturn toSync;"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n4",
+      "name": "Has Issues?",
+      "type": "n8n-nodes-base.if",
+      "position": [900, 300],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond1",
+              "leftValue": "={{ $json._skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n5",
+      "name": "Already Synced?",
+      "type": "n8n-nodes-base.if",
+      "position": [1120, 200],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond2",
+              "leftValue": "={{ $json.has_external_id }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n6",
+      "name": "Create GitLab Issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1360, 100],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.GITLAB_URL || 'http://gitlab-ce.platform.svc.cluster.local:8181') + '/api/v4/projects/1/issues' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: $json.title, description: $json.description, labels: $json.labels }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "PRIVATE-TOKEN",
+              "value": "={{ $env.GITLAB_PAT || '' }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "typeVersion": 4.2
+    },
+    {
+      "id": "n7",
+      "name": "Write External ID Back",
+      "type": "n8n-nodes-base.code",
+      "position": [1580, 100],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Prepare the PATCH call to write the GitLab issue ID back to Plane\nconst gitlabIssue = $json;\nconst planeId = $('Already Synced?').item.json.plane_id;\nconst gitlabIid = gitlabIssue.iid || gitlabIssue.id;\n\nreturn {\n  json: {\n    _patch_url: ($env.PLANE_API_URL || 'http://genai-plane-api.genai.svc.cluster.local:8000') + '/api/v1/workspaces/r-aas/projects/1b0b93eb-5915-4338-bd16-16a04acdb429/issues/' + planeId + '/',\n    _patch_body: JSON.stringify({\n      external_id: String(gitlabIid),\n      external_source: 'gitlab'\n    }),\n    _plane_token: $env.PLANE_API_TOKEN || '',\n    gitlab_iid: gitlabIid,\n    plane_id: planeId,\n    title: $('Already Synced?').item.json.title\n  }\n};"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n8",
+      "name": "Patch Plane Issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1800, 100],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $json._patch_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json._patch_body }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $json._plane_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "typeVersion": 4.2
+    },
+    {
+      "id": "n9",
+      "name": "Update GitLab Issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1360, 300],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ ($env.GITLAB_URL || 'http://gitlab-ce.platform.svc.cluster.local:8181') + '/api/v4/projects/1/issues/' + $json.external_id }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: $json.title, description: $json.description, labels: $json.labels, state_event: $json.state_action }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "PRIVATE-TOKEN",
+              "value": "={{ $env.GITLAB_PAT || '' }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "typeVersion": 4.2
+    }
+  ],
+  "connections": {
+    "Every 5 Minutes": {
+      "main": [
+        [{ "node": "Fetch Plane Issues", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch Plane Issues": {
+      "main": [
+        [{ "node": "Filter & Map Issues", "type": "main", "index": 0 }]
+      ]
+    },
+    "Filter & Map Issues": {
+      "main": [
+        [{ "node": "Has Issues?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Has Issues?": {
+      "main": [
+        [{ "node": "Already Synced?", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Already Synced?": {
+      "main": [
+        [{ "node": "Update GitLab Issue", "type": "main", "index": 0 }],
+        [{ "node": "Create GitLab Issue", "type": "main", "index": 0 }]
+      ]
+    },
+    "Create GitLab Issue": {
+      "main": [
+        [{ "node": "Write External ID Back", "type": "main", "index": 0 }]
+      ]
+    },
+    "Write External ID Back": {
+      "main": [
+        [{ "node": "Patch Plane Issue", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}

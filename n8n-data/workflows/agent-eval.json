@@ -1,0 +1,313 @@
+{
+  "id": "agent-eval-v1",
+  "name": "Evaluation Engine",
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "Eval Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        200,
+        300
+      ],
+      "parameters": {
+        "path": "agent-eval",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "typeVersion": 2,
+      "webhookId": "agent-eval-webhook"
+    },
+    {
+      "id": "n2",
+      "name": "Eval Planner",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        420,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Parse request \u2014 supports agent eval AND prompt eval\nvar body = $input.first().json.body || $input.first().json;\nvar agent = body.agent || '';\nvar promptName = body.prompt_name || '';\nvar task = body.task || '';\nvar testCases = body.test_cases || [];\nvar judges = body.judges || ['relevance', 'helpfulness'];\nvar model = body.model || $env.INFERENCE_DEFAULT_MODEL || 'qwen2.5:14b';\nvar temperature = body.temperature != null ? body.temperature : 0.3;\nvar lite = body.lite === true || body.lite === 'true';\nvar MLFLOW = $env.MLFLOW_TRACKING_URI || 'http://genai-mlflow.genai.svc.cluster.local';\nvar GATEWAY = $env.AGENT_GATEWAY_URL || 'http://genai-agent-gateway.genai.svc.cluster.local:8000';\nvar LITELLM = $env.LITELLM_URL || 'http://genai-litellm.genai.svc.cluster.local:4000';\nvar LITELLM_KEY = $env.LITELLM_API_KEY || '';\nvar judgeModel = body.judge_model || model;\n\nif (!agent && !promptName) return [{json: {error: 'agent or prompt_name required', _status: 400}}];\nif (!testCases.length) return [{json: {error: 'test_cases required', _status: 400}}];\n\nvar suiteName = agent ? (agent + (task ? '.' + task : '')) : promptName;\n\nvar items = testCases.map(function(tc, i) {\n  var userMsg = '';\n  var vars = tc.variables || {};\n\n  if (promptName) {\n    // Prompt mode: render template variables into a message\n    // Template vars are passed as-is \u2014 LiteLLM gets them as user message\n    var parts = [];\n    for (var k in vars) { parts.push(k + ': ' + vars[k]); }\n    userMsg = parts.join('\\n');\n  } else {\n    // Agent mode: build message from variables\n    var parts = [];\n    for (var k in vars) { parts.push(k + ': ' + vars[k]); }\n    userMsg = parts.join('\\n');\n    if (task) userMsg = '[Task: ' + task + ']\\n' + userMsg;\n  }\n\n  // Determine call URL and body\n  var callUrl, callBody;\n  if (agent && !lite) {\n    // Full agent mode: through agent-gateway\n    callUrl = GATEWAY + '/v1/chat/completions';\n    callBody = JSON.stringify({model: 'agent:' + agent, messages: [{role: 'user', content: userMsg}], stream: false});\n  } else {\n    // Lite mode or prompt mode: direct to LiteLLM\n    callUrl = LITELLM + '/v1/chat/completions';\n    callBody = JSON.stringify({model: model, messages: [{role: 'user', content: userMsg}], temperature: temperature, max_tokens: 2000});\n  }\n\n  return {json: {\n    _index: i,\n    _agent: agent,\n    _prompt_name: promptName,\n    _task: task,\n    _suite: suiteName,\n    _label: tc.label || ('case_' + i),\n    _user_message: userMsg,\n    _variables: vars,\n    _validators: tc.validators || [],\n    _judges: judges,\n    _judge_model: judgeModel,\n    _model: model,\n    _lite: lite,\n    _call_url: callUrl,\n    _call_body: callBody,\n    _litellm_url: LITELLM + '/v1/chat/completions',\n    _litellm_key: LITELLM_KEY,\n    _mlflow_url: MLFLOW + '/api/2.0/mlflow',\n    _experiment_name: suiteName + '-eval',\n    _start_ts: Date.now()\n  }};\n});\n\nreturn items;"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n3",
+      "name": "Error Gate",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        640,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "has-suite",
+              "leftValue": "={{ $json._suite }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ]
+        }
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n4",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        860,
+        200
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({error: $json.error}) }}",
+        "options": {
+          "responseCode": "={{ $json._status || 400 }}"
+        }
+      },
+      "typeVersion": 1.1
+    },
+    {
+      "id": "n5",
+      "name": "Agent Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        860,
+        400
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json._call_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json._call_body }}",
+        "options": {
+          "timeout": 120000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json._litellm_key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "n6",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1080,
+        400
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Parse agent-gateway response \u2014 NO HTTP calls\nvar plan = $('Error Gate').first().json;  // Won't work in loop, use item pairing\nvar item = $input.item.json;\nvar latencyMs = Date.now() - ($json._start_ts || Date.now());\n\n// Get the plan data passed through\nvar allPlans = $('Eval Planner').all();\nvar idx = $itemIndex;\nvar planItem = allPlans[idx] ? allPlans[idx].json : {};\n\nvar responseText = '';\ntry {\n  var choices = item.choices || [];\n  if (choices.length > 0) {\n    var content = choices[0].message.content;\n    try {\n      var inner = JSON.parse(content);\n      responseText = inner.response || content;\n    } catch(e) {\n      responseText = content;\n    }\n  }\n} catch(e) {\n  responseText = JSON.stringify(item).substring(0, 500);\n}\n\n// Run validators\nvar validators = planItem._validators || [];\nvar passed = true;\nvar failReasons = [];\nvar rt = responseText.trim();\nvar rtl = rt.toLowerCase();\n\nfor (var v of validators) {\n  if (v.type === 'expect_contains' && rtl.indexOf(v.value.toLowerCase()) === -1) {\n    passed = false; failReasons.push('missing: ' + v.value);\n  }\n  if (v.type === 'expect_min_length' && rt.length < v.value) {\n    passed = false; failReasons.push(rt.length + ' chars < ' + v.value);\n  }\n  if (v.type === 'expect_max_words' && rt.split(/\\s+/).length > v.value) {\n    passed = false; failReasons.push(rt.split(/\\s+/).length + ' words > ' + v.value);\n  }\n  if (v.type === 'expect_json_keys') {\n    try {\n      var obj = JSON.parse(rt.indexOf('```') >= 0 ? rt.split('```')[1].replace(/^json/, '') : rt);\n      var missing = v.value.filter(function(k) { return !(k in obj); });\n      if (missing.length) { passed = false; failReasons.push('missing keys: ' + missing.join(',')); }\n    } catch(e) { passed = false; failReasons.push('invalid JSON'); }\n  }\n}\n\nreturn {json: {\n  index: idx,\n  label: planItem._label || ('case_' + idx),\n  agent: planItem._agent || '',\n  task: planItem._task || '',\n  response: responseText,\n  latency_ms: latencyMs,\n  passed: passed,\n  fail_reasons: failReasons,\n  status: passed ? 'PASS' : 'FAIL',\n  _judges: planItem._judges || [],\n  _judge_model: planItem._judge_model || '',\n  _litellm_url: planItem._litellm_url || '',\n  _litellm_key: planItem._litellm_key || '',\n  _mlflow_url: planItem._mlflow_url || '',\n  _experiment_name: planItem._experiment_name || '',\n  _user_message: planItem._user_message || '',\n  _judge_body: JSON.stringify({\n    model: planItem._judge_model || 'qwen2.5:14b',\n    messages: [{role: 'user', content: 'Rate this AI response on: ' + (planItem._judges || []).join(', ') + '.\\nQuestion: ' + (planItem._user_message || '').substring(0, 500) + '\\nResponse: ' + responseText.substring(0, 1000) + '\\nReturn JSON only: {\"scores\": {\"criterion\": {\"score\": 0.0-1.0, \"reason\": \"one sentence\"}}}'}],\n    temperature: 0,\n    max_tokens: 1000\n  })\n}};"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n7",
+      "name": "Judge Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1300,
+        400
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json._litellm_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json._litellm_key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json._judge_body }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "n8",
+      "name": "Assemble Results",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1520,
+        400
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Assemble final results from all test cases \u2014 NO HTTP calls\nvar parseResults = $('Parse Response').all();\nvar judgeResults = $input.all();\nvar results = [];\nvar totalLatency = 0;\nvar passCount = 0;\nvar avgScores = {};\nvar scoreCount = 0;\n\nfor (var i = 0; i < parseResults.length; i++) {\n  var pr = parseResults[i].json;\n  var jr = judgeResults[i] ? judgeResults[i].json : {};\n\n  // Parse judge scores\n  var scores = {};\n  try {\n    var judgeContent = jr.choices ? jr.choices[0].message.content : '';\n    var parsed = JSON.parse(judgeContent.indexOf('```') >= 0 ? judgeContent.split('```')[1].replace(/^json/, '') : judgeContent);\n    scores = parsed.scores || parsed;\n    for (var k in scores) {\n      var s = typeof scores[k] === 'object' ? scores[k].score : scores[k];\n      if (!avgScores[k]) avgScores[k] = {total: 0, count: 0};\n      avgScores[k].total += (s || 0);\n      avgScores[k].count += 1;\n    }\n    scoreCount++;\n  } catch(e) {\n    scores = {parse_error: e.message};\n  }\n\n  totalLatency += pr.latency_ms || 0;\n  if (pr.passed) passCount++;\n\n  results.push({\n    label: pr.label,\n    agent: pr.agent,\n    task: pr.task,\n    status: pr.status,\n    response: pr.response.substring(0, 500),\n    latency_ms: pr.latency_ms,\n    scores: scores,\n    fail_reasons: pr.fail_reasons\n  });\n}\n\nvar summary = {\n  total_cases: results.length,\n  passed: passCount,\n  failed: results.length - passCount,\n  avg_latency_ms: results.length > 0 ? Math.round(totalLatency / results.length) : 0,\n  avg_scores: {}\n};\n\nfor (var k in avgScores) {\n  summary.avg_scores[k] = Math.round((avgScores[k].total / avgScores[k].count) * 100) / 100;\n}\n\nreturn [{json: {results: results, summary: summary}}];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n9",
+      "name": "Log to MLflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1740,
+        500
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Eval Planner').first().json._mlflow_url }}/runs/create",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({experiment_id: \"0\", start_time: Date.now(), run_name: $(\"Eval Planner\").first().json._agent + \"-eval-\" + Date.now(), tags: [{key: \"agent\", value: $(\"Eval Planner\").first().json._agent}, {key: \"passed\", value: String($json.summary.passed)}, {key: \"failed\", value: String($json.summary.failed)}, {key: \"avg_latency_ms\", value: String($json.summary.avg_latency_ms)}]}) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "n10",
+      "name": "Eval Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        1740,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($('Assemble Results').first().json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "typeVersion": 1.1
+    }
+  ],
+  "connections": {
+    "Eval Webhook": {
+      "main": [
+        [
+          {
+            "node": "Eval Planner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Eval Planner": {
+      "main": [
+        [
+          {
+            "node": "Error Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Gate": {
+      "main": [
+        [
+          {
+            "node": "Agent Call",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent Call": {
+      "main": [
+        [
+          {
+            "node": "Parse Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Response": {
+      "main": [
+        [
+          {
+            "node": "Judge Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Judge Call": {
+      "main": [
+        [
+          {
+            "node": "Assemble Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble Results": {
+      "main": [
+        [
+          {
+            "node": "Eval Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log to MLflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": true,
+  "tags": []
+}

@@ -1,0 +1,86 @@
+{
+  "id": "sessions-v1",
+  "name": "Agent Sessions",
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        240,
+        340
+      ],
+      "parameters": {
+        "path": "sessions",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "typeVersion": 2,
+      "webhookId": "sessions-webhook-id"
+    },
+    {
+      "id": "session-handler",
+      "name": "Session Handler",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        480,
+        340
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const M = 'http://genai-mlflow.genai.svc.cluster.local/api/2.0/mlflow';\nconst body = $input.item.json.body;\nconst action = body.action;\nvar MAX_MESSAGES = Number($env.SESSION_MAX_MESSAGES || 50);\n\ntry {\n\nif (!action) throw new Error('action required: create, get, append, list, close');\n\nasync function post(path, data) {\n  var r = await fetch(M + path, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});\n  if (!r.ok) throw new Error('MLflow ' + r.status + ': ' + (await r.text()));\n  return r.json();\n}\n\nasync function apiGet(path) {\n  var r = await fetch(M + path);\n  if (!r.ok) throw new Error('MLflow ' + r.status + ': ' + (await r.text()));\n  return r.json();\n}\n\nasync function getOrCreateExperiment(name) {\n  try {\n    var res = await apiGet('/experiments/get-by-name?experiment_name=' + encodeURIComponent(name));\n    return res.experiment.experiment_id;\n  } catch(e) {\n    var cr = await post('/experiments/create', {name: name});\n    return cr.experiment_id;\n  }\n}\n\nasync function findRunByTag(expId, tagKey, tagValue) {\n  var filter = \"tags.`\" + tagKey + \"` = '\" + tagValue.replace(/'/g, \"\\\\'\") + \"'\";\n  var res = await post('/runs/search', {\n    experiment_ids: [expId],\n    filter: filter,\n    max_results: 1\n  });\n  return (res.runs && res.runs.length > 0) ? res.runs[0] : null;\n}\n\n// \u2500\u2500 CREATE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nif (action === 'create') {\n  var sessionId = body.session_id || ('sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6));\n  var expId = await getOrCreateExperiment('__sessions');\n  var ts = Date.now();\n  var runRes = await post('/runs/create', {\n    experiment_id: expId,\n    start_time: ts,\n    run_name: sessionId\n  });\n  var runId = runRes.run.info.run_id;\n  var tags = [\n    {key: 'session_id', value: sessionId},\n    {key: 'status', value: 'active'}\n  ];\n  var params = [\n    {key: 'session_id', value: sessionId}\n  ];\n  if (body.metadata) {\n    tags.push({key: 'metadata', value: JSON.stringify(body.metadata).substring(0, 5000)});\n  }\n  await post('/runs/log-batch', {\n    run_id: runId,\n    params: params,\n    metrics: [{key: 'message_count', value: 0, timestamp: ts, step: 0}],\n    tags: tags\n  });\n  return {action: 'create', session_id: sessionId, run_id: runId, status: 'active'};\n}\n\n// \u2500\u2500 GET \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nif (action === 'get') {\n  var sessionId = body.session_id;\n  if (!sessionId) throw new Error('session_id required');\n  var expId;\n  try {\n    var expRes = await apiGet('/experiments/get-by-name?experiment_name=' + encodeURIComponent('__sessions'));\n    expId = expRes.experiment.experiment_id;\n  } catch(e) {\n    throw new Error('No sessions found');\n  }\n  var run = await findRunByTag(expId, 'session_id', sessionId);\n  if (!run) return {action: 'get', session_id: sessionId, messages: [], message_count: 0, session_exists: false, status: 'not_found'};\n  var info = run.info || {};\n  var tags = {};\n  (run.data && run.data.tags || []).forEach(function(t) { tags[t.key] = t.value; });\n  var metrics = {};\n  (run.data && run.data.metrics || []).forEach(function(m) { metrics[m.key] = m.value; });\n  // Reconstruct messages from indexed tags\n  var msgCount = Number(metrics.message_count || 0);\n  var messages = [];\n  for (var i = 0; i < msgCount; i++) {\n    var role = tags['msg_' + i + '_role'] || '';\n    var content = tags['msg_' + i + '_content'] || '';\n    if (role) messages.push({role: role, content: content});\n  }\n  return {\n    action: 'get',\n    session_id: sessionId,\n    run_id: info.run_id,\n    status: tags.status || (info.status === 'FINISHED' ? 'closed' : 'active'),\n    message_count: msgCount,\n    messages: messages,\n    session_full: msgCount >= MAX_MESSAGES,\n    max_messages: MAX_MESSAGES,\n    created_at: Number(info.start_time)\n  };\n}\n\n// \u2500\u2500 APPEND \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nif (action === 'append') {\n  var sessionId = body.session_id;\n  var role = body.role;\n  var content = body.content;\n  if (!sessionId) throw new Error('session_id required');\n  if (!role || !content) throw new Error('role and content required');\n  var expId;\n  try {\n    var expRes = await apiGet('/experiments/get-by-name?experiment_name=' + encodeURIComponent('__sessions'));\n    expId = expRes.experiment.experiment_id;\n  } catch(e) {\n    throw new Error('No sessions found');\n  }\n  var run = await findRunByTag(expId, 'session_id', sessionId);\n  if (!run) {\n    // Auto-create session if not found (first message race condition)\n    var ts2 = Date.now();\n    var runRes2 = await post('/runs/create', {experiment_id: expId, start_time: ts2, run_name: sessionId});\n    var runId2 = runRes2.run.info.run_id;\n    await post('/runs/log-batch', {run_id: runId2, params: [{key:'session_id',value:sessionId}], metrics:[{key:'message_count',value:0,timestamp:ts2,step:0}], tags:[{key:'session_id',value:sessionId},{key:'status',value:'active'}]});\n    run = {info: {run_id: runId2}, data: {tags: [], metrics: []}};\n  }\n  var runId = run.info.run_id;\n  var metrics = {};\n  (run.data && run.data.metrics || []).forEach(function(m) { metrics[m.key] = m.value; });\n  var msgIdx = Number(metrics.message_count || 0);\n  if (msgIdx >= MAX_MESSAGES) {\n    return {action: 'append', session_id: sessionId, run_id: runId, message_count: msgIdx, session_full: true, max_messages: MAX_MESSAGES, _status: 409};\n  }\n  var ts = Date.now();\n  await post('/runs/log-batch', {\n    run_id: runId,\n    tags: [\n      {key: 'msg_' + msgIdx + '_role', value: role},\n      {key: 'msg_' + msgIdx + '_content', value: String(content).substring(0, 5000)}\n    ],\n    metrics: [{key: 'message_count', value: msgIdx + 1, timestamp: ts, step: msgIdx + 1}]\n  });\n  return {action: 'append', session_id: sessionId, run_id: runId, message_index: msgIdx, message_count: msgIdx + 1, session_full: (msgIdx + 1) >= MAX_MESSAGES, max_messages: MAX_MESSAGES};\n}\n\n// \u2500\u2500 LIST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nif (action === 'list') {\n  var expId;\n  try {\n    var expRes = await apiGet('/experiments/get-by-name?experiment_name=' + encodeURIComponent('__sessions'));\n    expId = expRes.experiment.experiment_id;\n  } catch(e) {\n    return {action: 'list', sessions: [], count: 0};\n  }\n  var filters = [];\n  if (body.status === 'active') filters.push(\"tags.`status` = 'active'\");\n  var searchBody = {\n    experiment_ids: [expId],\n    max_results: body.limit || 25,\n    order_by: ['start_time DESC']\n  };\n  if (filters.length > 0) searchBody.filter = filters.join(' AND ');\n  var searchRes = await post('/runs/search', searchBody);\n  var sessions = (searchRes.runs || []).map(function(run) {\n    var info = run.info || {};\n    var tags = {};\n    (run.data && run.data.tags || []).forEach(function(t) { tags[t.key] = t.value; });\n    var metrics = {};\n    (run.data && run.data.metrics || []).forEach(function(m) { metrics[m.key] = m.value; });\n    return {\n      session_id: tags.session_id || info.run_name || '',\n      run_id: info.run_id,\n      status: tags.status || (info.status === 'FINISHED' ? 'closed' : 'active'),\n      message_count: Number(metrics.message_count || 0),\n      created_at: Number(info.start_time)\n    };\n  });\n  return {action: 'list', sessions: sessions, count: sessions.length};\n}\n\n// \u2500\u2500 CLOSE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nif (action === 'close') {\n  var sessionId = body.session_id;\n  if (!sessionId) throw new Error('session_id required');\n  var expId;\n  try {\n    var expRes = await apiGet('/experiments/get-by-name?experiment_name=' + encodeURIComponent('__sessions'));\n    expId = expRes.experiment.experiment_id;\n  } catch(e) {\n    throw new Error('No sessions found');\n  }\n  var run = await findRunByTag(expId, 'session_id', sessionId);\n  if (!run) {\n    // Auto-create session if not found (first message race condition)\n    var ts2 = Date.now();\n    var runRes2 = await post('/runs/create', {experiment_id: expId, start_time: ts2, run_name: sessionId});\n    var runId2 = runRes2.run.info.run_id;\n    await post('/runs/log-batch', {run_id: runId2, params: [{key:'session_id',value:sessionId}], metrics:[{key:'message_count',value:0,timestamp:ts2,step:0}], tags:[{key:'session_id',value:sessionId},{key:'status',value:'active'}]});\n    run = {info: {run_id: runId2}, data: {tags: [], metrics: []}};\n  }\n  var runId = run.info.run_id;\n  await post('/runs/set-tag', {run_id: runId, key: 'status', value: 'closed'});\n  await post('/runs/update', {run_id: runId, status: 'FINISHED', end_time: Date.now()});\n  return {action: 'close', session_id: sessionId, run_id: runId, status: 'closed'};\n}\n\nthrow new Error('Unknown action: ' + action);\n\n} catch(e) {\n  var msg = e.message || String(e);\n  if (e.response && e.response.data) msg += ' | ' + JSON.stringify(e.response.data);\n  var status = 400;\n  if (e.response && e.response.status === 404) status = 404;\n  if (msg.indexOf('RESOURCE_DOES_NOT_EXIST') !== -1) status = 404;\n  return {error: true, message: msg, action: action || 'unknown', _status: status};\n}"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        720,
+        340
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ Object.fromEntries(Object.entries($json).filter(([k]) => k !== '_status')) }}",
+        "options": {
+          "responseCode": "={{ $json._status || 200 }}"
+        }
+      },
+      "typeVersion": 1.2
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Session Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Session Handler": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "active": true,
+  "tags": []
+}

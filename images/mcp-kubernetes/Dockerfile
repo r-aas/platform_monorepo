@@ -1,23 +1,20 @@
-# Pre-built mcp-server-kubernetes image.
-# Avoids npx downloading ~200MB on every pod start, which races against
-# liveness probes and causes CrashLoopBackOff.
-FROM node:24-alpine
+###############################################################################
+# Kubernetes MCP Server — cluster management, pod ops, deployments
+#
+# Runs mcp-server-kubernetes in stdio mode. The MCP gateway manages container
+# lifecycle, transport (SSE/streaming), and health monitoring.
+#
+# Tools: kubectl_get, kubectl_describe, kubectl_apply, kubectl_delete,
+#        kubectl_logs, kubectl_exec, kubectl_port_forward, kubectl_get_events,
+#        kubectl_patch, kubectl_rollout, context management
+#
+# Requires: KUBECONFIG volume mount
+#
+# Build: docker build -t genai-mcp-kubernetes -f kubernetes.Dockerfile .
+###############################################################################
+FROM node:22-alpine
 
-# Install kubectl — mcp-server-kubernetes shells out to it
-RUN apk add --no-cache curl && \
-    ARCH=$(uname -m) && \
-    case "$ARCH" in \
-      aarch64) KARCH=arm64 ;; \
-      x86_64) KARCH=amd64 ;; \
-      *) KARCH=amd64 ;; \
-    esac && \
-    curl -fsSL "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/${KARCH}/kubectl" -o /usr/local/bin/kubectl && \
-    chmod +x /usr/local/bin/kubectl && \
-    apk del curl
+RUN apk add --no-cache curl \
+    && npm install -g mcp-server-kubernetes
 
-RUN npm install -g mcp-server-kubernetes && \
-    npm cache clean --force
-
-EXPOSE 3000
-
-ENTRYPOINT ["mcp-server-kubernetes"]
+CMD ["mcp-server-kubernetes"]

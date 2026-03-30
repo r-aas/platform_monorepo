@@ -1,0 +1,66 @@
+[
+  {
+    "label": "document-fastapi-router",
+    "variables": {
+      "code": "@router.post(\"/evaluate\", response_model=EvalResponse)\nasync def evaluate_prompt(\n    request: EvalRequest,\n    mlflow: MLflowClient = Depends(get_mlflow),\n    judge: JudgeService = Depends(get_judge),\n):\n    run = mlflow.create_run(request.experiment_id)\n    scores = await judge.score(request.prompt, request.response, request.criteria)\n    for name, value in scores.items():\n        mlflow.log_metric(run.info.run_id, name, value)\n    mlflow.set_terminated(run.info.run_id)\n    return EvalResponse(run_id=run.info.run_id, scores=scores)",
+      "doc_type": "docstring"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "param"},
+      {"type": "expect_min_length", "value": 50}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "document-database-migration",
+    "variables": {
+      "code": "\"\"\"add evaluation_runs table\"\"\"\nfrom alembic import op\nimport sqlalchemy as sa\n\nrevision = \"a3f8b2c1d4e5\"\ndown_revision = \"9e7d6c5b4a3f\"\n\ndef upgrade():\n    op.create_table(\n        \"evaluation_runs\",\n        sa.Column(\"id\", sa.UUID(), primary_key=True),\n        sa.Column(\"experiment_id\", sa.String(64), nullable=False),\n        sa.Column(\"prompt_hash\", sa.String(64), index=True),\n        sa.Column(\"scores\", sa.JSON(), nullable=False),\n        sa.Column(\"created_at\", sa.DateTime(), server_default=sa.func.now()),\n    )\n    op.create_index(\"ix_eval_runs_experiment\", \"evaluation_runs\", [\"experiment_id\", \"created_at\"])\n\ndef downgrade():\n    op.drop_table(\"evaluation_runs\")",
+      "doc_type": "readme"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "migration"},
+      {"type": "expect_contains", "value": "table"},
+      {"type": "expect_min_length", "value": 50}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "document-cli-tool-usage",
+    "variables": {
+      "code": "@click.group()\n@click.option(\"--verbose\", \"-v\", is_flag=True)\n@click.pass_context\ndef cli(ctx, verbose):\n    ctx.ensure_object(dict)\n    ctx.obj[\"verbose\"] = verbose\n\n@cli.command()\n@click.argument(\"experiment_name\")\n@click.option(\"--model\", \"-m\", required=True)\n@click.option(\"--dataset\", \"-d\", type=click.Path(exists=True))\n@click.option(\"--judges\", \"-j\", multiple=True, default=[\"relevance\"])\n@click.option(\"--output\", \"-o\", type=click.Path(), default=\"results.json\")\ndef evaluate(experiment_name, model, dataset, judges, output):\n    \"\"\"Run evaluation pipeline for a prompt experiment.\"\"\"\n    ...",
+      "doc_type": "readme"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "usage"},
+      {"type": "expect_contains", "value": "option"},
+      {"type": "expect_min_length", "value": 50}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "document-auth-middleware",
+    "variables": {
+      "code": "class JWTAuthMiddleware:\n    def __init__(self, app, secret_key: str, algorithm: str = \"HS256\", exclude_paths: list[str] = None):\n        self.app = app\n        self.secret_key = secret_key\n        self.algorithm = algorithm\n        self.exclude_paths = exclude_paths or [\"/health\", \"/docs\", \"/openapi.json\"]\n\n    async def __call__(self, scope, receive, send):\n        if scope[\"type\"] != \"http\":\n            return await self.app(scope, receive, send)\n        path = scope[\"path\"]\n        if any(path.startswith(ep) for ep in self.exclude_paths):\n            return await self.app(scope, receive, send)\n        token = self._extract_token(scope)\n        if not token or not self._validate_token(token):\n            return await self._send_401(send)\n        scope[\"state\"] = {\"user\": self._decode_token(token)}\n        return await self.app(scope, receive, send)",
+      "doc_type": "docstring"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "JWT"},
+      {"type": "expect_contains", "value": "authenticate"},
+      {"type": "expect_min_length", "value": 50}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "document-data-pipeline",
+    "variables": {
+      "code": "class EvalPipeline:\n    def __init__(self, source: DataSource, transforms: list[Transform], sink: DataSink):\n        self.source = source\n        self.transforms = transforms\n        self.sink = sink\n        self._stats = {\"processed\": 0, \"failed\": 0, \"skipped\": 0}\n\n    async def run(self, batch_size: int = 100) -> PipelineResult:\n        async for batch in self.source.read_batches(batch_size):\n            transformed = batch\n            for t in self.transforms:\n                transformed = await t.apply(transformed)\n                transformed = [r for r in transformed if r is not None]\n            self._stats[\"skipped\"] += len(batch) - len(transformed)\n            results = await self.sink.write(transformed)\n            self._stats[\"processed\"] += results.success_count\n            self._stats[\"failed\"] += results.failure_count\n        return PipelineResult(**self._stats)",
+      "doc_type": "api"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "pipeline"},
+      {"type": "expect_contains", "value": "batch"},
+      {"type": "expect_min_length", "value": 50}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  }
+]

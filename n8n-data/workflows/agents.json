@@ -1,0 +1,149 @@
+{
+  "id": "agents-v1",
+  "name": "Agent Catalog",
+  "active": true,
+  "nodes": [
+    {
+      "id": "a1",
+      "name": "Agents Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        240,
+        200
+      ],
+      "webhookId": "agents",
+      "parameters": {
+        "path": "agents",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "a2",
+      "name": "Action Router",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        480,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// fetch-based HTTP helpers (replaces axios to avoid task runner crash)\nasync function _post(url, data, opts) {\n  var headers = {'Content-Type': 'application/json'};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(url, {method:'POST', headers: headers, body: JSON.stringify(data), signal: opts && opts.timeout ? AbortSignal.timeout(opts.timeout) : undefined});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  if (!r.ok) { var err = new Error('HTTP ' + r.status); err.response = {status: r.status, data: json}; throw err; }\n  return {data: json, status: r.status};\n}\nasync function _get(url, opts) {\n  var qurl = url;\n  if (opts && opts.params) { var qs = new URLSearchParams(opts.params).toString(); if (qs) qurl += (url.includes('?') ? '&' : '?') + qs; }\n  var headers = {};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(qurl, {headers: headers, signal: opts && opts.timeout ? AbortSignal.timeout(opts.timeout) : undefined});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  if (!r.ok) { var err = new Error('HTTP ' + r.status); err.response = {status: r.status, data: json}; throw err; }\n  return {data: json, status: r.status};\n}\nasync function _del(url, opts) {\n  var headers = {'Content-Type': 'application/json'};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(url, {method:'DELETE', headers: headers, body: opts && opts.data ? JSON.stringify(opts.data) : undefined});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  if (!r.ok) { var err = new Error('HTTP ' + r.status); err.response = {status: r.status, data: json}; throw err; }\n  return {data: json, status: r.status};\n}\nasync function _put(url, body, opts) {\n  var headers = {};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(url, {method:'PUT', headers: headers, body: typeof body === 'string' ? body : JSON.stringify(body)});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  return {data: json, status: r.status};\n}\nconst body = $('Agents Webhook').first().json.body || {};\nconst MLFLOW = ($env.MLFLOW_TRACKING_URI || 'http://mlflow:5050') + '/api/2.0/mlflow';\n\nvar action = body.action || 'list';\nvar agentName = body.name || '';\n\nfunction parseTags(tagArr) {\n  var m = {};\n  if (!tagArr) return m;\n  for (var i = 0; i < tagArr.length; i++) m[tagArr[i].key] = tagArr[i].value;\n  return m;\n}\n\nasync function getAgentInfo(model) {\n  var name = model.name.replace('.SYSTEM', '');\n  var modelTags = parseTags(model.tags);\n  var cfg = {};\n  try { cfg = JSON.parse(modelTags['agent.config'] || '{}'); } catch(e) {}\n\n  // Determine mode\n  var mode = cfg.mcp_tools ? 'agent' : 'chat';\n\n  // Get latest version info\n  var latestVersions = model.latest_versions || [];\n  var latestVersion = latestVersions.length > 0 ? latestVersions[latestVersions.length - 1] : null;\n  var versionNumber = latestVersion ? latestVersion.version : '0';\n\n  // Resolve production alias\n  var aliases = model.aliases || [];\n  var prodAlias = null;\n  for (var i = 0; i < aliases.length; i++) {\n    if (aliases[i].alias === 'production') { prodAlias = aliases[i].version; break; }\n  }\n\n  // Enumerate tasks\n  var tasks = [];\n  try {\n    var taskResp = await _get(MLFLOW + '/registered-models/search', {\n      params: {\n        filter: \"name LIKE '\" + name + \".%' AND tags.`mlflow.prompt.is_prompt` = 'true'\",\n        max_results: 100\n      },\n      timeout: 10000\n    });\n    var taskModels = taskResp.data.registered_models || [];\n    for (var j = 0; j < taskModels.length; j++) {\n      var tName = taskModels[j].name;\n      if (tName !== model.name) {\n        var taskKey = tName.substring(name.length + 1);\n        var taskTags = parseTags(taskModels[j].tags);\n        tasks.push({\n          name: taskKey,\n          description: taskTags['task.description'] || ''\n        });\n      }\n    }\n  } catch (e) { /* non-fatal */ }\n\n  // Promotion status\n  var promotion = {\n    production_version: prodAlias ? parseInt(prodAlias) : parseInt(versionNumber),\n    staging_version: null,\n    canary_enabled: false,\n    canary_pct: 0,\n    last_benchmark: null,\n    last_promotion: null\n  };\n  // Read canary tags\n  if (modelTags['canary.enabled'] === 'true') {\n    promotion.canary_enabled = true;\n    promotion.staging_version = modelTags['canary.staging_version'] ? parseInt(modelTags['canary.staging_version']) : null;\n    promotion.canary_pct = parseInt(modelTags['canary.traffic_pct'] || '0');\n  }\n  // Check for staging alias\n  for (var ai = 0; ai < aliases.length; ai++) {\n    if (aliases[ai].alias === 'staging') {\n      promotion.staging_version = parseInt(aliases[ai].version);\n      break;\n    }\n  }\n  // Get latest promotion from {name}-promotions experiment\n  try {\n    var promExpRes = await _get(MLFLOW + '/experiments/get-by-name', {\n      params: {experiment_name: name + '-promotions'},\n      timeout: 5000\n    });\n    var promExpId = promExpRes.data.experiment.experiment_id;\n    var promSearch = await _post(MLFLOW + '/runs/search', {\n      experiment_ids: [promExpId],\n      max_results: 1,\n      order_by: ['start_time DESC']\n    }, {timeout: 5000});\n    var promRuns = promSearch.data.runs || [];\n    if (promRuns.length > 0) {\n      var pr = promRuns[0];\n      var prParams = {};\n      (pr.data && pr.data.params || []).forEach(function(p) { prParams[p.key] = p.value; });\n      var prMetrics = {};\n      (pr.data && pr.data.metrics || []).forEach(function(m) { prMetrics[m.key] = m.value; });\n      promotion.last_promotion = {\n        decision: prParams.decision || '',\n        staging_version: prParams.staging_version || '',\n        score: prMetrics.staging_score || 0,\n        timestamp: new Date(Number(pr.info.start_time)).toISOString()\n      };\n      promotion.last_benchmark = {\n        score: prMetrics.staging_score || 0,\n        pass_rate: prMetrics.pass_rate || 0,\n        run_id: pr.info.run_id,\n        timestamp: new Date(Number(pr.info.start_time)).toISOString()\n      };\n    }\n  } catch(promErr) { /* no promotions yet */ }\n\n  return {\n    name: name,\n    description: cfg.description || '',\n    mode: mode,\n    mcp_tools: cfg.mcp_tools ? (cfg.mcp_tools === 'all' ? ['all'] : cfg.mcp_tools.split(',').map(function(t){ return t.trim(); })) : [],\n    skills: cfg.skills || [],\n    tasks: tasks,\n    tags: cfg.tags || [],\n    prompt_version: parseInt(prodAlias || versionNumber),\n    prompt_alias: prodAlias ? 'production' : 'latest',\n    promotion: promotion,\n    config: {\n      provider: cfg.provider || 'ollama',\n      model: cfg.model || '',\n      temperature: cfg.temperature || 0.3,\n      top_p: cfg.top_p || 0.9,\n      num_ctx: cfg.num_ctx || 32768,\n      max_iterations: cfg.max_iterations || 10\n    }\n  };\n}\n\ntry {\n  if (action === 'list') {\n    // Search for all *.SYSTEM models\n    var resp = await _get(MLFLOW + '/registered-models/search', {\n      params: {\n        filter: \"name LIKE '%.SYSTEM' AND tags.`mlflow.prompt.is_prompt` = 'true'\",\n        max_results: 100\n      },\n      timeout: 15000\n    });\n    var models = resp.data.registered_models || [];\n    var agents = [];\n    for (var i = 0; i < models.length; i++) {\n      agents.push(await getAgentInfo(models[i]));\n    }\n    agents.sort(function(a, b) { return a.name.localeCompare(b.name); });\n    return [{ json: { _error: false, agents: agents, count: agents.length } }];\n\n  } else if (action === 'get') {\n    if (!agentName) {\n      return [{ json: { _error: true, error: 'Missing required field: name' } }];\n    }\n    var modelName = agentName + '.SYSTEM';\n    var resp = await _get(MLFLOW + '/registered-models/get', {\n      params: { name: modelName },\n      timeout: 10000\n    });\n    var model = resp.data.registered_model;\n    if (!model) {\n      return [{ json: { _error: true, error: 'Agent not found: ' + agentName } }];\n    }\n    var agent = await getAgentInfo(model);\n\n    // Also fetch the full prompt template for get action\n    try {\n      var versionToFetch = agent.prompt_version;\n      var vResp = await _get(MLFLOW + '/model-versions/get', {\n        params: { name: modelName, version: String(versionToFetch) },\n        timeout: 10000\n      });\n      var version = vResp.data.model_version;\n      var vTags = parseTags(version.tags);\n      agent.template = vTags['mlflow.prompt.text'] || '';\n    } catch (e) { agent.template = ''; }\n\n    return [{ json: { _error: false, agent: agent } }];\n\n  } else if (action === 'create') {\n    if (!agentName) return [{ json: { _error: true, error: 'Missing required field: name' } }];\n\n    var template = body.system_prompt || body.template || 'You are a helpful AI assistant.';\n    var cfg = body.config || {};\n    var description = body.description || cfg.description || '';\n\n    var agentConfig = {\n      provider: cfg.provider || 'ollama',\n      model: cfg.model || '',\n      temperature: cfg.temperature || 0.3,\n      top_p: cfg.top_p || 0.9,\n      num_ctx: cfg.num_ctx || 32768,\n      max_iterations: cfg.max_iterations || 10,\n      mcp_tools: cfg.mcp_tools || '',\n      skills: cfg.skills || [],\n      description: description,\n      tags: cfg.tags || []\n    };\n\n    var modelName = agentName + '.SYSTEM';\n\n    try {\n      await _post(MLFLOW + '/registered-models/create', {\n        name: modelName,\n        tags: [\n          { key: 'mlflow.prompt.is_prompt', value: 'true' },\n          { key: 'use_case', value: 'agent' },\n          { key: 'agent.config', value: JSON.stringify(agentConfig) }\n        ]\n      }, { timeout: 10000 });\n    } catch(createErr) {\n      if (createErr.response && createErr.response.data && String(createErr.response.data.error_code).indexOf('ALREADY_EXISTS') >= 0) {\n        return [{ json: { _error: true, error: 'Agent already exists: ' + agentName } }];\n      }\n      throw createErr;\n    }\n\n    var mvResp = await _post(MLFLOW + '/model-versions/create', {\n      name: modelName,\n      source: 'prompt://agents/' + agentName,\n      tags: [{ key: 'mlflow.prompt.text', value: template }]\n    }, { timeout: 10000 });\n    var newVer = mvResp.data.model_version.version;\n\n    await _post(MLFLOW + '/registered-models/alias', {\n      name: modelName, alias: 'production', version: String(newVer)\n    }, { timeout: 10000 });\n\n    return [{ json: { _error: false, status: 'created', name: agentName, version: parseInt(newVer) } }];\n\n  } else if (action === 'update') {\n    if (!agentName) return [{ json: { _error: true, error: 'Missing required field: name' } }];\n\n    var modelName = agentName + '.SYSTEM';\n    var existing;\n    try {\n      existing = await _get(MLFLOW + '/registered-models/get', {\n        params: { name: modelName }, timeout: 10000\n      });\n    } catch(getErr) {\n      return [{ json: { _error: true, error: 'Agent not found: ' + agentName } }];\n    }\n\n    if (body.config || body.description) {\n      var existingTags = parseTags(existing.data.registered_model.tags);\n      var existingCfg = {};\n      try { existingCfg = JSON.parse(existingTags['agent.config'] || '{}'); } catch(pe) {}\n      var newCfg = Object.assign({}, existingCfg, body.config || {});\n      if (body.description) newCfg.description = body.description;\n\n      await _post(MLFLOW + '/registered-models/set-tag', {\n        name: modelName, key: 'agent.config', value: JSON.stringify(newCfg)\n      }, { timeout: 10000 });\n    }\n\n    var version = null;\n    if (body.system_prompt || body.template) {\n      var tmpl = body.system_prompt || body.template;\n      var mvResp = await _post(MLFLOW + '/model-versions/create', {\n        name: modelName,\n        source: 'prompt://agents/' + agentName,\n        tags: [{ key: 'mlflow.prompt.text', value: tmpl }]\n      }, { timeout: 10000 });\n      version = parseInt(mvResp.data.model_version.version);\n    }\n\n    return [{ json: { _error: false, status: 'updated', name: agentName, version: version } }];\n\n  } else if (action === 'delete') {\n    if (!agentName) return [{ json: { _error: true, error: 'Missing required field: name' } }];\n\n    var seedAgents = ['mlops', 'coder', 'writer', 'reasoner', 'devops', 'analyst', 'mcp'];\n    if (seedAgents.indexOf(agentName) >= 0) {\n      return [{ json: { _error: true, error: 'Cannot delete seed agent: ' + agentName } }];\n    }\n\n    var modelName = agentName + '.SYSTEM';\n    try {\n      await _del(MLFLOW + '/registered-models/delete', {\n        data: { name: modelName }, timeout: 10000\n      });\n    } catch(delErr) {\n      return [{ json: { _error: true, error: 'Agent not found or cannot delete: ' + agentName } }];\n    }\n\n    return [{ json: { _error: false, status: 'deleted', name: agentName } }];\n\n  } else {\n    return [{ json: { _error: true, error: 'Unknown action: ' + action + '. Supported: list, get, create, update, delete' } }];\n  }\n} catch (e) {\n  return [{ json: { _error: true, error: e.message || String(e) } }];\n}"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "a3",
+      "name": "Response Gate",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        720,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "err1",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "typeVersion": 2.2
+    },
+    {
+      "id": "a4",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        960,
+        320
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ (() => { var d = $json; delete d._error; return d; })() }}",
+        "options": {}
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "a5",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        960,
+        80
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: true, message: $json.error } }}",
+        "options": {
+          "responseCode": "={{ $json.error && $json.error.indexOf('not found') >= 0 ? 404 : 400 }}"
+        }
+      },
+      "typeVersion": 1.2
+    }
+  ],
+  "connections": {
+    "Agents Webhook": {
+      "main": [
+        [
+          {
+            "node": "Action Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Action Router": {
+      "main": [
+        [
+          {
+            "node": "Response Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Response Gate": {
+      "main": [
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}

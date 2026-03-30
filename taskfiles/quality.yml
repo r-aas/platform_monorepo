@@ -1,0 +1,66 @@
+# Code quality — lint, format, test, smoke
+version: "3"
+
+tasks:
+  lint:
+    desc: Lint Python files
+    cmds:
+      - uv run --group dev ruff check .
+
+  fmt:
+    desc: Format Python files
+    cmds:
+      - uv run --group dev ruff format .
+
+  test:
+    desc: Run all tests (unit + smoke)
+    cmds:
+      - task: unit
+      - task: smoke
+
+  unit:
+    desc: Run unit tests
+    cmds:
+      - uv run --group dev pytest {{.CLI_ARGS}}
+
+  smoke:
+    desc: Smoke-test all endpoints (stack must be running)
+    cmds:
+      - bash scripts/smoke-test.sh
+
+  scan:
+    desc: Run security scans locally (bandit + pip-audit)
+    cmds:
+      - uv run --group dev bandit -r scripts/ -f screen || true
+      - echo "---"
+      - uv export --no-hashes --frozen > /tmp/genai-requirements.txt && uv run --group dev pip-audit -r /tmp/genai-requirements.txt || true
+
+  bench:
+    desc: Run eval-triad benchmark (stack must be running)
+    cmds:
+      - uv run scripts/eval-triad.py {{.CLI_ARGS}}
+
+  bench-dry:
+    desc: Validate benchmark datasets (no network calls)
+    cmds:
+      - uv run scripts/eval-triad.py --dry-run
+
+  bench-compare:
+    desc: Compare models on all datasets (e.g. task qa:bench-compare -- qwen2.5:7b qwen2.5:14b)
+    cmds:
+      - uv run scripts/eval-triad.py -m {{.CLI_ARGS}}
+
+  spec-check:
+    desc: Validate spec artifacts (status, contracts, sections, FR IDs)
+    cmds:
+      - bash scripts/spec-check.sh
+
+  config-validate:
+    desc: Validate config.yaml (ports, models, schema)
+    cmds:
+      - uv run scripts/config-gen.py --validate
+
+  hooks:
+    desc: Run all pre-commit hooks on all files
+    cmds:
+      - uv run --group dev pre-commit run --all-files

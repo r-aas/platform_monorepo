@@ -1,0 +1,176 @@
+{
+  "id": "gitlab-to-plane-v1",
+  "name": "GitLab to Plane Sync",
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "GitLab Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "webhookId": "gitlab-to-plane",
+      "parameters": {
+        "path": "gitlab-to-plane",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n2",
+      "name": "Route Event",
+      "type": "n8n-nodes-base.code",
+      "position": [460, 300],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Route GitLab webhook events to Plane API calls\nconst body = $input.item.json.body || $input.item.json;\nconst headers = $input.item.json.headers || {};\n\n// Verify webhook token\nconst expectedToken = 'gitlab-plane-webhook-secret';\nconst receivedToken = headers['x-gitlab-token'] || '';\nif (receivedToken !== expectedToken) {\n  return { json: { error: 'Invalid webhook token', _status: 401 } };\n}\n\nconst eventType = headers['x-gitlab-event'] || '';\nconst PLANE_API = 'http://genai-plane-api.genai.svc.cluster.local:8000';\nconst WORKSPACE = 'r-aas';\n// Platform Monorepo project ID in Plane\nconst PLANE_PROJECT = '1b0b93eb-5915-4338-bd16-16a04acdb429';\nconst PLANE_TOKEN = $env.PLANE_API_TOKEN || '';\n\n// State IDs from Plane\nconst STATES = {\n  backlog: 'cfc8f7cd-daaf-4d5a-819e-f59b5d3b36c9',\n  todo: '3eaae951-b70c-4b09-8a46-d7094e10ae97',\n  in_progress: '44c20543-a3f6-4769-90fe-56f93342a71a',\n  done: 'cb7fc63e-8e56-4962-90c9-de3054067c4f',\n  cancelled: '0eee9bc5-5cd9-4887-96ff-a77d1e9227ec'\n};\n\nlet action = 'skip';\nlet call_url = '';\nlet call_method = 'POST';\nlet call_body = {};\nlet summary = '';\n\nif (eventType === 'Push Hook') {\n  // Push events — create a comment on the latest relevant issue or skip\n  const ref = body.ref || '';\n  const branch = ref.replace('refs/heads/', '');\n  const commits = body.commits || [];\n  const totalCommits = body.total_commits_count || commits.length;\n  const repoName = (body.project || {}).name || 'unknown';\n  const commitMessages = commits.slice(0, 5).map(c => `- \\`${c.id.substring(0,8)}\\` ${c.message.split('\\n')[0]}`).join('\\n');\n  \n  summary = `Push to ${repoName}/${branch}: ${totalCommits} commit(s)\\n${commitMessages}`;\n  \n  // Create as a backlog issue tracking the push\n  action = 'create_issue';\n  call_url = `${PLANE_API}/api/v1/workspaces/${WORKSPACE}/projects/${PLANE_PROJECT}/issues/`;\n  call_body = {\n    name: `[Push] ${branch}: ${totalCommits} commit(s) — ${repoName}`,\n    description_html: `<p><strong>Branch:</strong> ${branch}</p><p><strong>Commits:</strong></p><pre>${commitMessages}</pre>`,\n    state_id: STATES.done,\n    priority: 'none'\n  };\n\n} else if (eventType === 'Issue Hook') {\n  const issue = body.object_attributes || {};\n  const issueAction = issue.action || '';\n  const title = issue.title || 'Untitled';\n  const description = issue.description || '';\n  const url = issue.url || '';\n  const author = (body.user || {}).name || 'unknown';\n  const labels = (body.labels || []).map(l => l.title).join(', ');\n  \n  if (issueAction === 'open') {\n    action = 'create_issue';\n    call_url = `${PLANE_API}/api/v1/workspaces/${WORKSPACE}/projects/${PLANE_PROJECT}/issues/`;\n    call_body = {\n      name: `[GitLab] ${title}`,\n      description_html: `<p><strong>From GitLab:</strong> <a href=\"${url}\">${url}</a></p><p><strong>Author:</strong> ${author}</p>${labels ? `<p><strong>Labels:</strong> ${labels}</p>` : ''}<hr/><p>${description}</p>`,\n      state_id: STATES.todo,\n      priority: 'medium'\n    };\n    summary = `GitLab issue opened: ${title} by ${author}`;\n  } else if (issueAction === 'close') {\n    // Can't easily find the Plane issue — log it\n    action = 'create_issue';\n    call_url = `${PLANE_API}/api/v1/workspaces/${WORKSPACE}/projects/${PLANE_PROJECT}/issues/`;\n    call_body = {\n      name: `[GitLab Closed] ${title}`,\n      description_html: `<p>GitLab issue closed: <a href=\"${url}\">${url}</a></p>`,\n      state_id: STATES.done,\n      priority: 'none'\n    };\n    summary = `GitLab issue closed: ${title}`;\n  } else {\n    action = 'skip';\n    summary = `GitLab issue action '${issueAction}' — skipped`;\n  }\n\n} else if (eventType === 'Merge Request Hook') {\n  const mr = body.object_attributes || {};\n  const mrAction = mr.action || '';\n  const title = mr.title || 'Untitled MR';\n  const url = mr.url || '';\n  const author = (body.user || {}).name || 'unknown';\n  const sourceBranch = mr.source_branch || '';\n  const targetBranch = mr.target_branch || '';\n  const state = mr.state || '';\n  \n  let planeState = STATES.todo;\n  let priority = 'medium';\n  if (mrAction === 'merge' || state === 'merged') {\n    planeState = STATES.done;\n    priority = 'none';\n  } else if (mrAction === 'open' || mrAction === 'reopen') {\n    planeState = STATES.in_progress;\n    priority = 'high';\n  } else if (mrAction === 'close') {\n    planeState = STATES.cancelled;\n    priority = 'none';\n  }\n  \n  action = 'create_issue';\n  call_url = `${PLANE_API}/api/v1/workspaces/${WORKSPACE}/projects/${PLANE_PROJECT}/issues/`;\n  call_body = {\n    name: `[MR ${mrAction}] ${title}`,\n    description_html: `<p><strong>MR:</strong> <a href=\"${url}\">${url}</a></p><p><strong>Author:</strong> ${author}</p><p><strong>Branch:</strong> ${sourceBranch} → ${targetBranch}</p>`,\n    state_id: planeState,\n    priority: priority\n  };\n  summary = `MR ${mrAction}: ${title} (${sourceBranch} → ${targetBranch})`;\n\n} else if (eventType === 'Note Hook') {\n  const note = body.object_attributes || {};\n  const noteableType = note.noteable_type || '';\n  const noteBody = note.note || '';\n  const url = note.url || '';\n  const author = (body.user || {}).name || 'unknown';\n  \n  // Only track MR and issue comments\n  if (noteableType === 'MergeRequest' || noteableType === 'Issue') {\n    action = 'create_issue';\n    call_url = `${PLANE_API}/api/v1/workspaces/${WORKSPACE}/projects/${PLANE_PROJECT}/issues/`;\n    call_body = {\n      name: `[Comment] ${noteableType} comment by ${author}`,\n      description_html: `<p><strong>${noteableType} comment by ${author}:</strong></p><p><a href=\"${url}\">${url}</a></p><blockquote>${noteBody.substring(0, 500)}</blockquote>`,\n      state_id: STATES.done,\n      priority: 'none'\n    };\n    summary = `Comment on ${noteableType} by ${author}`;\n  } else {\n    action = 'skip';\n    summary = `Note on ${noteableType} — skipped`;\n  }\n\n} else {\n  action = 'skip';\n  summary = `Unknown event type: ${eventType}`;\n}\n\nreturn {\n  json: {\n    action,\n    call_url,\n    call_method,\n    call_body: JSON.stringify(call_body),\n    summary,\n    event_type: eventType,\n    plane_token: PLANE_TOKEN\n  }\n};"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n3",
+      "name": "Should Call Plane?",
+      "type": "n8n-nodes-base.if",
+      "position": [700, 300],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond1",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "skip",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n4",
+      "name": "Create Plane Issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [940, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.call_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.call_body }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $json.plane_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "typeVersion": 4.2
+    },
+    {
+      "id": "n5",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "position": [1180, 200],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const planeResponse = $input.item.json;\nconst routeData = $('Route Event').item.json;\n\nreturn {\n  json: {\n    ok: true,\n    event_type: routeData.event_type,\n    action: routeData.action,\n    summary: routeData.summary,\n    plane_issue_id: planeResponse.id || null,\n    plane_issue_identifier: planeResponse.project_detail ? `${planeResponse.project_detail.identifier}-${planeResponse.sequence_id}` : null\n  }\n};"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n6",
+      "name": "Skip Response",
+      "type": "n8n-nodes-base.code",
+      "position": [940, 420],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const routeData = $('Route Event').item.json;\n\nreturn {\n  json: {\n    ok: true,\n    event_type: routeData.event_type,\n    action: 'skipped',\n    summary: routeData.summary\n  }\n};"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n7",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [1420, 200],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "typeVersion": 1.1
+    },
+    {
+      "id": "n8",
+      "name": "Respond Skipped",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [1180, 420],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "typeVersion": 1.1
+    }
+  ],
+  "connections": {
+    "GitLab Webhook": {
+      "main": [
+        [{"node": "Route Event", "type": "main", "index": 0}]
+      ]
+    },
+    "Route Event": {
+      "main": [
+        [{"node": "Should Call Plane?", "type": "main", "index": 0}]
+      ]
+    },
+    "Should Call Plane?": {
+      "main": [
+        [{"node": "Create Plane Issue", "type": "main", "index": 0}],
+        [{"node": "Skip Response", "type": "main", "index": 0}]
+      ]
+    },
+    "Create Plane Issue": {
+      "main": [
+        [{"node": "Format Response", "type": "main", "index": 0}]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [{"node": "Respond OK", "type": "main", "index": 0}]
+      ]
+    },
+    "Skip Response": {
+      "main": [
+        [{"node": "Respond Skipped", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": true
+}

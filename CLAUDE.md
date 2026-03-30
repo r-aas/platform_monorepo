@@ -12,13 +12,19 @@ services/
   n8n-datahub-bridge/       # n8n → DataHub event bridge
 agents/              # Agent YAML definitions (6 agents + _shared)
 skills/              # Skill definitions (21 skills)
-scripts/             # Bootstrap, setup, ingestion, lineage, quality, secrets
-specs/               # Spec-driven feature designs (001, 015, 020-029)
-taskfiles/           # Taskfile includes (agents, arch, sandbox, etc.)
+scripts/             # Bootstrap, setup, ingestion, benchmarks, secrets, smoke tests
+specs/               # Spec-driven feature designs (001-029)
+taskfiles/           # Taskfile includes (agents, arch, mcp, mlops, quality, etc.)
 envs/                # Environment config (global.env, secrets.env)
 manifests/           # Raw k8s manifests
-images/              # Custom Docker image builds (13 images)
+images/              # Custom Docker image builds (19 images incl. MCP servers)
 mcp-servers/         # MCP server configs
+n8n-data/
+  workflows/         # 17 n8n workflow JSONs (promoted to k3d via Helm hook)
+data/                # Seed data (prompts, benchmarks, training sets)
+docs/                # Architecture docs, environment guide, checklists
+docker-compose.yml   # Local dev fallback (not used in k3d)
+pyproject.toml       # uv project config (scripts, benchmarks)
 helmfile.yaml        # Bootstrap-only (seeds ArgoCD, ingress, GitLab)
 Taskfile.yml         # Root task runner (symlinked to ~/work/Taskfile.yml)
 RESUME.md            # Session state for /continue
@@ -255,5 +261,9 @@ task doctor                   # Preflight + smoke
 
 Feature specs at `specs/NNN-name/`. Status tracked in frontmatter.
 
-Shipped: 001 (agent-gateway), 015 (DataOps — phases 1-3), 020-027 (various platform features).
+Shipped: 001-008 (webhook auth, workflow minimize, secrets, agent tasks, integration tests, dataset eval, agent routing, streaming), 010-014 (global config, helm, gitlab, argocd, observatory), 015 (DataOps — phases 1-3), 016-020 (MCP gateway, agent executor, promotion pipeline, A2A registry, dashboard enrichment), 020-027 (platform features).
 In-progress: 029 (platform consolidation — kagent + agentgateway + agentregistry integration).
+
+## Monorepo
+
+This repo is the single source of truth for the entire platform. The former `genai-mlops` repo was merged in — workflow JSONs, scripts, benchmarks, specs, and docs all live here now. The n8n workflow promotion Helm hook clones from this repo's `n8n-data/workflows/` path.

@@ -1,0 +1,64 @@
+[
+  {
+    "label": "review-sql-injection",
+    "variables": {
+      "code": "def get_user(db, username):\n    query = f\"SELECT * FROM users WHERE name = '{username}'\"\n    result = db.execute(query)\n    return result.fetchone()\n\ndef delete_user(db, user_id):\n    db.execute(f\"DELETE FROM users WHERE id = {user_id}\")\n    db.commit()\n    return {\"status\": \"deleted\"}",
+      "language": "Python"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "injection"},
+      {"type": "expect_contains", "value": "parameterized"},
+      {"type": "expect_min_length", "value": 100}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "review-async-race-condition",
+    "variables": {
+      "code": "let balance = 0;\n\nasync function deposit(amount) {\n  const current = balance;\n  await processPayment(amount);\n  balance = current + amount;\n  return balance;\n}\n\nasync function withdraw(amount) {\n  const current = balance;\n  if (current >= amount) {\n    await processRefund(amount);\n    balance = current - amount;\n  }\n  return balance;\n}",
+      "language": "JavaScript"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "race"},
+      {"type": "expect_min_length", "value": 100}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "review-go-error-handling",
+    "variables": {
+      "code": "func fetchUserData(id string) (*User, error) {\n\tresp, _ := http.Get(apiURL + \"/users/\" + id)\n\tdefer resp.Body.Close()\n\n\tbody, _ := io.ReadAll(resp.Body)\n\n\tvar user User\n\tjson.Unmarshal(body, &user)\n\n\tdb, _ := sql.Open(\"postgres\", connStr)\n\tdb.Exec(\"INSERT INTO audit_log (user_id) VALUES ($1)\", id)\n\n\treturn &user, nil\n}",
+      "language": "Go"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "error"},
+      {"type": "expect_min_length", "value": 100}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "review-srp-violation",
+    "variables": {
+      "code": "class OrderProcessor:\n    def __init__(self, db_url, smtp_host):\n        self.db = create_engine(db_url)\n        self.mailer = smtplib.SMTP(smtp_host)\n\n    def process(self, order):\n        total = sum(i.price * i.qty for i in order.items)\n        tax = total * 0.08\n        self.db.execute(insert(orders).values(total=total + tax))\n        html = f\"<h1>Order confirmed</h1><p>Total: ${total + tax}</p>\"\n        msg = MIMEText(html, \"html\")\n        msg[\"Subject\"] = \"Order Confirmation\"\n        self.mailer.send_message(msg)\n        if total > 1000:\n            self._flag_for_fraud_review(order)\n        return {\"total\": total + tax}",
+      "language": "Python"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "responsibility"},
+      {"type": "expect_min_length", "value": 100}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "review-missing-input-validation",
+    "variables": {
+      "code": "@app.post(\"/api/users\")\nasync def create_user(request: Request):\n    data = await request.json()\n    user = {\n        \"name\": data[\"name\"],\n        \"email\": data[\"email\"],\n        \"role\": data.get(\"role\", \"admin\"),\n        \"age\": data.get(\"age\")\n    }\n    await db.users.insert_one(user)\n    return {\"id\": str(user[\"_id\"]), \"token\": generate_jwt(user)}",
+      "language": "Python"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "validation"},
+      {"type": "expect_contains", "value": "role"},
+      {"type": "expect_min_length", "value": 100}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  }
+]

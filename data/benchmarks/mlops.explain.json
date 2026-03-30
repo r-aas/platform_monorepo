@@ -1,0 +1,67 @@
+[
+  {
+    "label": "explain-mlflow-experiments",
+    "variables": {
+      "topic": "What do MLflow experiments track? Explain the relationship between experiments, runs, metrics, parameters, and artifacts. Include how model versioning with aliases works."
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "experiment"},
+      {"type": "expect_contains", "value": "run"},
+      {"type": "expect_min_length", "value": 100},
+      {"type": "expect_max_words", "value": 800}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "explain-accuracy-vs-f1",
+    "variables": {
+      "topic": "Explain the difference between accuracy and F1 score for model evaluation. When should you prefer one over the other? Include examples of class imbalance scenarios where accuracy is misleading."
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "precision"},
+      {"type": "expect_contains", "value": "recall"},
+      {"type": "expect_min_length", "value": 100},
+      {"type": "expect_max_words", "value": 800}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "explain-model-versioning-aliases",
+    "variables": {
+      "topic": "Explain model versioning and aliases in MLflow Model Registry. How do you promote a model from staging to production? What is the difference between version numbers and aliases like 'champion' and 'challenger'?"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "version"},
+      {"type": "expect_contains", "value": "alias"},
+      {"type": "expect_min_length", "value": 100},
+      {"type": "expect_max_words", "value": 800}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "explain-prompt-engineering",
+    "variables": {
+      "topic": "Explain prompt engineering best practices for LLMs. Cover system prompts, few-shot examples, chain-of-thought reasoning, and output formatting. Include when each technique is most effective."
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "prompt"},
+      {"type": "expect_contains", "value": "few-shot"},
+      {"type": "expect_min_length", "value": 100},
+      {"type": "expect_max_words", "value": 800}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "explain-ab-testing-llm-prompts",
+    "variables": {
+      "topic": "Explain A/B testing for LLM prompts. How do you design experiments to compare prompt variants? What metrics should you track? How do you determine statistical significance with non-deterministic outputs?"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "A/B"},
+      {"type": "expect_contains", "value": "metric"},
+      {"type": "expect_min_length", "value": 100},
+      {"type": "expect_max_words", "value": 800}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  }
+]

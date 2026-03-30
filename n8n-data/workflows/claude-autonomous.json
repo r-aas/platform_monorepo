@@ -1,0 +1,236 @@
+{
+  "name": "claude-autonomous",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Every 4 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.5.2:7777/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ prompt: '/continue', work_dir: $json.work_dir || '/Users/r/work', model: $json.model || 'sonnet', max_turns: 200, max_budget_usd: 5.0, permission_mode: 'bypassPermissions' }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "trigger-run",
+      "name": "Trigger Claude Run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract run ID from trigger response\nconst triggerResult = $input.first().json;\nconst runId = triggerResult.id;\n\nif (!runId) {\n  throw new Error('No run ID returned from claude-runner');\n}\n\nreturn [{ json: { run_id: runId, status: triggerResult.status } }];"
+      },
+      "id": "extract-run-id",
+      "name": "Extract Run ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://192.168.5.2:7777/run/{{ $json.run_id }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "poll-status",
+      "name": "Poll Run Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nconst status = result.status;\n\n// Still running? Signal to loop back\nif (status === 'running' || status === 'queued') {\n  return [{ json: { ...result, should_poll: true } }];\n}\n\n// Done (completed, failed, cancelled)\nreturn [{ json: { ...result, should_poll: false } }];"
+      },
+      "id": "check-done",
+      "name": "Check If Done",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "poll-check",
+              "leftValue": "={{ $json.should_poll }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-still-running",
+      "name": "Still Running?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1320, 300]
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "wait-30s",
+      "name": "Wait 30s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1540, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format the final result for logging\nconst result = $input.first().json;\n\nconst summary = {\n  run_id: result.id,\n  status: result.status,\n  model: result.model,\n  prompt: result.prompt,\n  exit_code: result.exit_code,\n  duration_seconds: result.duration_seconds,\n  output_length: (result.output || '').length,\n  output_preview: (result.output || '').slice(-2000),\n  error_preview: (result.error || '').slice(-1000),\n  finished_at: result.finished_at\n    ? new Date(result.finished_at * 1000).toISOString()\n    : null,\n};\n\nreturn [{ json: summary }];"
+      },
+      "id": "format-result",
+      "name": "Format Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://genai-mlflow.genai.svc.cluster.local/api/2.0/mlflow/runs/create",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ experiment_id: '0', run_name: 'claude-autonomous-' + $json.run_id, tags: [ { key: 'mlflow.runName', value: 'claude-autonomous-' + $json.run_id }, { key: 'claude.status', value: $json.status }, { key: 'claude.model', value: $json.model || 'sonnet' }, { key: 'claude.duration', value: String($json.duration_seconds || 0) }, { key: 'claude.exit_code', value: String($json.exit_code || -1) }, { key: 'claude.prompt', value: $json.prompt || '/continue' } ] }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "log-to-mlflow",
+      "name": "Log to MLflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.5.2:7777/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ prompt: $json.prompt || '/continue', work_dir: $json.work_dir || '/Users/r/work' }) }}"
+      },
+      "id": "webhook-trigger",
+      "name": "Manual Trigger Run",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 540],
+      "webhookId": "claude-autonomous"
+    }
+  ],
+  "connections": {
+    "Every 4 Hours": {
+      "main": [
+        [{ "node": "Trigger Claude Run", "type": "main", "index": 0 }]
+      ]
+    },
+    "Trigger Claude Run": {
+      "main": [
+        [{ "node": "Extract Run ID", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Run ID": {
+      "main": [
+        [{ "node": "Poll Run Status", "type": "main", "index": 0 }]
+      ]
+    },
+    "Poll Run Status": {
+      "main": [
+        [{ "node": "Check If Done", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check If Done": {
+      "main": [
+        [{ "node": "Still Running?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Still Running?": {
+      "main": [
+        [{ "node": "Wait 30s", "type": "main", "index": 0 }],
+        [{ "node": "Format Result", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait 30s": {
+      "main": [
+        [{ "node": "Poll Run Status", "type": "main", "index": 0 }]
+      ]
+    },
+    "Format Result": {
+      "main": [
+        [{ "node": "Log to MLflow", "type": "main", "index": 0 }]
+      ]
+    },
+    "Manual Trigger Run": {
+      "main": [
+        [{ "node": "Trigger Claude Run", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "autonomous" },
+    { "name": "claude" }
+  ]
+}

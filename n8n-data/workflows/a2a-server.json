@@ -1,0 +1,148 @@
+{
+  "id": "a2a-server-v1",
+  "name": "A2A Server",
+  "active": true,
+  "nodes": [
+    {
+      "id": "a1",
+      "name": "Agent Card Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        240,
+        100
+      ],
+      "webhookId": "a2a-agent-card",
+      "parameters": {
+        "path": "a2a/agent-card",
+        "httpMethod": "GET",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "a2",
+      "name": "Build Agent Card",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        480,
+        100
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// fetch-based HTTP helpers (replaces axios to avoid task runner crash)\nasync function _post(url, data, opts) {\n  var headers = {'Content-Type': 'application/json'};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(url, {method:'POST', headers: headers, body: JSON.stringify(data), signal: opts && opts.timeout ? AbortSignal.timeout(opts.timeout) : undefined});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  if (!r.ok) { var err = new Error('HTTP ' + r.status); err.response = {status: r.status, data: json}; throw err; }\n  return {data: json, status: r.status};\n}\nasync function _get(url, opts) {\n  var qurl = url;\n  if (opts && opts.params) { var qs = new URLSearchParams(opts.params).toString(); if (qs) qurl += (url.includes('?') ? '&' : '?') + qs; }\n  var headers = {};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(qurl, {headers: headers, signal: opts && opts.timeout ? AbortSignal.timeout(opts.timeout) : undefined});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  if (!r.ok) { var err = new Error('HTTP ' + r.status); err.response = {status: r.status, data: json}; throw err; }\n  return {data: json, status: r.status};\n}\nasync function _del(url, opts) {\n  var headers = {'Content-Type': 'application/json'};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(url, {method:'DELETE', headers: headers, body: opts && opts.data ? JSON.stringify(opts.data) : undefined});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  if (!r.ok) { var err = new Error('HTTP ' + r.status); err.response = {status: r.status, data: json}; throw err; }\n  return {data: json, status: r.status};\n}\nasync function _put(url, body, opts) {\n  var headers = {};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(url, {method:'PUT', headers: headers, body: typeof body === 'string' ? body : JSON.stringify(body)});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  return {data: json, status: r.status};\n}\nvar N8N = $env.N8N_INTERNAL_URL || 'http://n8n:5678/webhook';\nvar WEBHOOK_KEY = $env.WEBHOOK_API_KEY || 'dev-webhook-key-genai-mlops';\nvar baseUrl = $env.N8N_WEBHOOK_URL || 'http://localhost:5678/webhook';\n\ntry {\n  // Check for per-agent query param: GET /webhook/a2a/agent-card?agent=coder\n  var webhookData = $('Agent Card Webhook').first().json;\n  var filterAgent = (webhookData.query && webhookData.query.agent) || '';\n\n  if (filterAgent) {\n    // Per-agent card\n    var resp = await _post(N8N + '/agents', {\n      action: 'get', name: filterAgent\n    }, { timeout: 10000, headers: { 'X-API-Key': WEBHOOK_KEY } });\n    var a = resp.data.agent;\n    if (!a) throw new Error('Agent not found');\n    var agentTags = (a.tags || []).map(function(t) { return t.replace('domain:', ''); });\n    (a.tasks || []).forEach(function(t) { agentTags.push(t.name || t); });\n    if (agentTags.length === 0) agentTags = [a.name];\n    var perSkills = (a.tasks || []).map(function(t) {\n      var tn = t.name || t;\n      return { id: a.name + '.' + tn, name: tn.charAt(0).toUpperCase() + tn.slice(1),\n        description: t.description || tn + ' task', tags: [tn, a.name],\n        inputModes: ['text/plain'], outputModes: ['text/plain'] };\n    });\n    if (perSkills.length === 0) {\n      perSkills.push({ id: a.name, name: a.name.charAt(0).toUpperCase() + a.name.slice(1),\n        description: a.description || 'AI agent', tags: agentTags,\n        inputModes: ['text/plain'], outputModes: ['text/plain'] });\n    }\n    return [{ json: {\n      protocolVersion: '0.2.5',\n      name: a.name.charAt(0).toUpperCase() + a.name.slice(1) + ' Agent',\n      description: a.description || 'Specialized AI agent',\n      url: baseUrl + '/a2a',\n      version: '1.0.0',\n      provider: { organization: 'Applied AI Systems', url: 'https://github.com/r-aas' },\n      capabilities: { streaming: false, pushNotifications: false, stateTransitionHistory: false },\n      defaultInputModes: ['text/plain'], defaultOutputModes: ['text/plain'],\n      skills: perSkills,\n      securitySchemes: { apiKey: { type: 'apiKey', in: 'header', name: 'X-API-Key' } },\n      security: [{ apiKey: [] }]\n    }}];\n  }\n\n  // Full platform card\n  var resp = await _post(N8N + '/agents', {\n    action: 'list'\n  }, { timeout: 15000, headers: { 'X-API-Key': WEBHOOK_KEY } });\n\n  var agents = resp.data.agents || [];\n\n  var skills = agents.map(function(a) {\n    var tags = (a.tags || []).map(function(t) { return t.replace('domain:', ''); });\n    (a.tasks || []).forEach(function(t) { tags.push(t.name || t); });\n    if (tags.length === 0) tags = [a.name];\n    return {\n      id: a.name,\n      name: a.name.charAt(0).toUpperCase() + a.name.slice(1) + ' Agent',\n      description: a.description || 'AI agent',\n      tags: tags,\n      examples: ['Help me with ' + a.name + ' tasks'],\n      inputModes: ['text/plain'],\n      outputModes: ['text/plain']\n    };\n  });\n\n  return [{ json: {\n    protocolVersion: '0.2.5',\n    name: 'GenAI MLOps Platform',\n    description: 'Multi-agent platform with ' + agents.length + ' specialized agents',\n    url: baseUrl + '/a2a',\n    version: '1.0.0',\n    provider: {\n      organization: 'Applied AI Systems',\n      url: 'https://github.com/r-aas'\n    },\n    capabilities: {\n      streaming: false,\n      pushNotifications: false,\n      stateTransitionHistory: false\n    },\n    defaultInputModes: ['text/plain'],\n    defaultOutputModes: ['text/plain'],\n    skills: skills,\n    securitySchemes: {\n      apiKey: {\n        type: 'apiKey',\n        in: 'header',\n        name: 'X-API-Key'\n      }\n    },\n    security: [{ apiKey: [] }]\n  }}];\n} catch(e) {\n  return [{ json: {\n    protocolVersion: '0.2.5',\n    name: 'GenAI MLOps Platform',\n    description: 'Multi-agent platform (agent discovery temporarily unavailable)',\n    url: baseUrl + '/a2a',\n    capabilities: { streaming: false, pushNotifications: false },\n    defaultInputModes: ['text/plain'],\n    defaultOutputModes: ['text/plain'],\n    skills: [],\n    security: []\n  }}];\n}"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "a3",
+      "name": "Card Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        720,
+        100
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "a4",
+      "name": "A2A Endpoint",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        240,
+        400
+      ],
+      "webhookId": "a2a-endpoint",
+      "parameters": {
+        "path": "a2a",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "a5",
+      "name": "A2A Handler",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        480,
+        400
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// fetch-based HTTP helpers (replaces axios to avoid task runner crash)\nasync function _post(url, data, opts) {\n  var headers = {'Content-Type': 'application/json'};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(url, {method:'POST', headers: headers, body: JSON.stringify(data), signal: opts && opts.timeout ? AbortSignal.timeout(opts.timeout) : undefined});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  if (!r.ok) { var err = new Error('HTTP ' + r.status); err.response = {status: r.status, data: json}; throw err; }\n  return {data: json, status: r.status};\n}\nasync function _get(url, opts) {\n  var qurl = url;\n  if (opts && opts.params) { var qs = new URLSearchParams(opts.params).toString(); if (qs) qurl += (url.includes('?') ? '&' : '?') + qs; }\n  var headers = {};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(qurl, {headers: headers, signal: opts && opts.timeout ? AbortSignal.timeout(opts.timeout) : undefined});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  if (!r.ok) { var err = new Error('HTTP ' + r.status); err.response = {status: r.status, data: json}; throw err; }\n  return {data: json, status: r.status};\n}\nasync function _del(url, opts) {\n  var headers = {'Content-Type': 'application/json'};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(url, {method:'DELETE', headers: headers, body: opts && opts.data ? JSON.stringify(opts.data) : undefined});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  if (!r.ok) { var err = new Error('HTTP ' + r.status); err.response = {status: r.status, data: json}; throw err; }\n  return {data: json, status: r.status};\n}\nasync function _put(url, body, opts) {\n  var headers = {};\n  if (opts && opts.headers) Object.assign(headers, opts.headers);\n  var r = await fetch(url, {method:'PUT', headers: headers, body: typeof body === 'string' ? body : JSON.stringify(body)});\n  var text = await r.text();\n  var json; try { json = JSON.parse(text); } catch(e) { json = text; }\n  return {data: json, status: r.status};\n}\nvar body = $('A2A Endpoint').first().json.body || {};\n\nif (body.jsonrpc !== '2.0' || !body.method) {\n  return [{ json: {\n    jsonrpc: '2.0',\n    id: body.id || null,\n    error: { code: -32600, message: 'Invalid Request: must be JSON-RPC 2.0 with method field' }\n  }}];\n}\n\nvar method = body.method;\nvar params = body.params || {};\nvar reqId = body.id;\nvar N8N = $env.N8N_INTERNAL_URL || 'http://n8n:5678/webhook';\nvar WEBHOOK_KEY = $env.WEBHOOK_API_KEY || 'dev-webhook-key-genai-mlops';\n\ntry {\n\n  // \u2500\u2500 message/send \u2500\u2500\n  if (method === 'message/send') {\n    var msg = params.message;\n    if (!msg || !msg.parts || msg.parts.length === 0) {\n      return [{ json: { jsonrpc: '2.0', id: reqId,\n        error: { code: -32602, message: 'Invalid params: message with parts required' } } }];\n    }\n    var textPart = msg.parts.find(function(p) { return p.kind === 'text' || p.type === 'text'; });\n    if (!textPart) {\n      return [{ json: { jsonrpc: '2.0', id: reqId,\n        error: { code: -32602, message: 'Invalid params: at least one text part required' } } }];\n    }\n    var userMessage = textPart.text;\n\n    // Determine target agent via skill-based routing or metadata\n    var meta = params.metadata || {};\n    var agentName = '';\n    var taskName = '';\n\n    // Priority 1: metadata.skill (A2A native, e.g. \"coder.review\")\n    if (meta.skill) {\n      var skillParts = meta.skill.split('.');\n      agentName = skillParts[0];\n      if (skillParts.length > 1) taskName = skillParts.slice(1).join('.');\n    }\n    // Priority 2: metadata.agent_name or skill_id (backward compat)\n    if (!agentName) agentName = meta.agent_name || meta.skill_id || 'mcp';\n\n    var contextId = msg.contextId || params.contextId || '';\n\n    var chatBody = { agent_name: agentName, message: userMessage };\n    if (taskName) chatBody.task = taskName;\n    if (contextId) chatBody.session_id = contextId;\n    if (meta.model) chatBody.model = meta.model;\n    if (meta.temperature != null) chatBody.temperature = meta.temperature;\n    if (meta.provider) chatBody.provider = meta.provider;\n\n    var resp = await _post(N8N + '/chat', chatBody, { timeout: 120000, headers: { 'X-API-Key': WEBHOOK_KEY } });\n    var data = resp.data;\n    var taskId = data.trace_id || ('task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4));\n    var resultContextId = contextId || data.session_id || taskId;\n\n    return [{ json: {\n      jsonrpc: '2.0',\n      id: reqId,\n      result: {\n        id: taskId,\n        contextId: resultContextId,\n        status: { state: 'completed', timestamp: new Date().toISOString() },\n        artifacts: [{\n          artifactId: 'art_' + taskId.replace('tr_', ''),\n          name: 'response',\n          parts: [{ kind: 'text', text: data.response || '' }]\n        }],\n        metadata: { agent: data.agent, task: data.task || undefined, config: data.config, trace_id: data.trace_id },\n        kind: 'task'\n      }\n    }}];\n  }\n\n  // \u2500\u2500 tasks/get \u2500\u2500\n  if (method === 'tasks/get') {\n    var taskId = params.id;\n    if (!taskId) {\n      return [{ json: { jsonrpc: '2.0', id: reqId,\n        error: { code: -32602, message: 'Invalid params: id required' } } }];\n    }\n    var trace;\n    try {\n      var trResp = await _post(N8N + '/traces', {\n        action: 'get', trace_id: taskId\n      }, { timeout: 10000, headers: { 'X-API-Key': WEBHOOK_KEY } });\n      trace = trResp.data;\n    } catch(trErr) {\n      return [{ json: { jsonrpc: '2.0', id: reqId,\n        error: { code: -32001, message: 'Task not found', data: { taskId: taskId } } } }];\n    }\n    if (!trace || trace.error) {\n      return [{ json: { jsonrpc: '2.0', id: reqId,\n        error: { code: -32001, message: 'Task not found', data: { taskId: taskId } } } }];\n    }\n    return [{ json: {\n      jsonrpc: '2.0', id: reqId,\n      result: {\n        id: taskId,\n        contextId: trace.session_id || taskId,\n        status: { state: trace.status === 'ok' ? 'completed' : 'failed', timestamp: trace.timestamp || new Date().toISOString() },\n        metadata: trace.tags || {},\n        kind: 'task'\n      }\n    }}];\n  }\n\n  // \u2500\u2500 tasks/cancel \u2500\u2500\n  if (method === 'tasks/cancel') {\n    return [{ json: { jsonrpc: '2.0', id: reqId,\n      error: { code: -32002, message: 'Task not cancelable: synchronous execution model' } } }];\n  }\n\n  // \u2500\u2500 agent/authenticatedExtendedCard \u2500\u2500\n  if (method === 'agent/authenticatedExtendedCard') {\n    var baseUrl = $env.N8N_WEBHOOK_URL || 'http://localhost:5678/webhook';\n    var resp = await _post(N8N + '/agents', { action: 'list' }, { timeout: 15000, headers: { 'X-API-Key': WEBHOOK_KEY } });\n    var agents = resp.data.agents || [];\n    var skills = agents.map(function(a) {\n      var tags = (a.tags || []).map(function(t) { return t.replace('domain:', ''); });\n      (a.tasks || []).forEach(function(t) { tags.push(t.name || t); });\n      if (tags.length === 0) tags = [a.name];\n      return {\n        id: a.name,\n        name: a.name.charAt(0).toUpperCase() + a.name.slice(1) + ' Agent',\n        description: a.description || 'AI agent',\n        tags: tags,\n        inputModes: ['text/plain'],\n        outputModes: ['text/plain']\n      };\n    });\n    return [{ json: {\n      jsonrpc: '2.0', id: reqId,\n      result: {\n        protocolVersion: '0.2.5',\n        name: 'GenAI MLOps Platform',\n        url: baseUrl + '/a2a',\n        capabilities: { streaming: false, pushNotifications: false, stateTransitionHistory: false },\n        defaultInputModes: ['text/plain'],\n        defaultOutputModes: ['text/plain'],\n        skills: skills,\n        securitySchemes: { apiKey: { type: 'apiKey', in: 'header', name: 'X-API-Key' } },\n        security: [{ apiKey: [] }]\n      }\n    }}];\n  }\n\n  // \u2500\u2500 Unknown method \u2500\u2500\n  return [{ json: {\n    jsonrpc: '2.0', id: reqId,\n    error: { code: -32601, message: 'Method not found: ' + method }\n  }}];\n\n} catch(e) {\n  if (e.code && typeof e.code === 'number' && e.message) {\n    return [{ json: { jsonrpc: '2.0', id: reqId, error: e } }];\n  }\n  return [{ json: {\n    jsonrpc: '2.0', id: reqId,\n    error: { code: -32603, message: 'Internal error: ' + (e.message || String(e)) }\n  }}];\n}"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "a6",
+      "name": "A2A Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        720,
+        400
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "typeVersion": 1.2
+    }
+  ],
+  "connections": {
+    "Agent Card Webhook": {
+      "main": [
+        [
+          {
+            "node": "Build Agent Card",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Agent Card": {
+      "main": [
+        [
+          {
+            "node": "Card Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "A2A Endpoint": {
+      "main": [
+        [
+          {
+            "node": "A2A Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "A2A Handler": {
+      "main": [
+        [
+          {
+            "node": "A2A Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

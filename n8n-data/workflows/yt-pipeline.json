@@ -1,0 +1,267 @@
+{
+  "name": "yt-pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Every 12 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.5.2:7778/batch",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"max_videos\": 50, \"use_cookies\": true, \"languages\": [\"en\"]}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "extract",
+      "name": "1. Extract Videos + Transcripts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse extraction results, prepare for DB upsert + LLM analysis\nconst result = $input.first().json;\nconst videos = result.videos || [];\n\n// Create a pipeline run ID\nconst runId = 'yt-' + Date.now().toString(36);\n\n// Output each video as a separate item for batch processing\nconst items = videos.map(v => ({\n  json: {\n    run_id: runId,\n    video_id: v.meta.video_id,\n    title: v.meta.title,\n    channel: v.meta.channel,\n    channel_id: v.meta.channel_id,\n    published_at: v.meta.published_at,\n    duration_seconds: v.meta.duration_seconds,\n    view_count: v.meta.view_count,\n    description: v.meta.description,\n    tags: v.meta.tags || [],\n    url: v.meta.url,\n    playlist: v.meta.playlist,\n    thumbnail: v.meta.thumbnail,\n    transcript: v.transcript,\n    transcript_language: v.transcript_language,\n    has_transcript: !!v.transcript,\n    total_videos: result.total_videos,\n    with_transcript: result.with_transcript\n  }\n}));\n\nreturn items.length > 0 ? items : [{ json: { empty: true, run_id: runId } }];"
+      },
+      "id": "parse-results",
+      "name": "Parse & Split Videos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-data",
+              "leftValue": "={{ $json.empty }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-has-videos",
+      "name": "Has Videos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO yt_videos (video_id, title, channel, channel_id, published_at, duration_seconds, view_count, description, tags, url, playlist, thumbnail)\nVALUES (\n  '{{ $json.video_id }}',\n  {{ $json.title ? \"'\" + $json.title.replace(/'/g, \"''\") + \"'\" : \"NULL\" }},\n  {{ $json.channel ? \"'\" + $json.channel.replace(/'/g, \"''\") + \"'\" : \"NULL\" }},\n  {{ $json.channel_id ? \"'\" + $json.channel_id + \"'\" : \"NULL\" }},\n  {{ $json.published_at ? \"'\" + $json.published_at + \"'\" : \"NULL\" }},\n  {{ $json.duration_seconds || 'NULL' }},\n  {{ $json.view_count || 'NULL' }},\n  {{ $json.description ? \"'\" + $json.description.replace(/'/g, \"''\").substring(0, 500) + \"'\" : \"NULL\" }},\n  ARRAY[{{ ($json.tags || []).map(t => \"'\" + t.replace(/'/g, \"''\") + \"'\").join(',') }}]::TEXT[],\n  '{{ $json.url }}',\n  {{ $json.playlist ? \"'\" + $json.playlist.replace(/'/g, \"''\") + \"'\" : \"NULL\" }},\n  {{ $json.thumbnail ? \"'\" + $json.thumbnail + \"'\" : \"NULL\" }}\n)\nON CONFLICT (video_id) DO UPDATE SET\n  title = EXCLUDED.title,\n  view_count = EXCLUDED.view_count,\n  extracted_at = NOW();",
+        "options": {}
+      },
+      "id": "upsert-video",
+      "name": "2a. Upsert Video",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1100, 200],
+      "credentials": {
+        "postgres": {
+          "id": "yt-pgvector",
+          "name": "YouTube pgvector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO yt_transcripts (video_id, transcript, language)\nVALUES (\n  '{{ $json.video_id }}',\n  {{ $json.transcript ? \"'\" + $json.transcript.replace(/'/g, \"''\").substring(0, 100000) + \"'\" : \"NULL\" }},\n  {{ $json.transcript_language ? \"'\" + $json.transcript_language + \"'\" : \"NULL\" }}\n)\nON CONFLICT (video_id) DO UPDATE SET\n  transcript = EXCLUDED.transcript,\n  language = EXCLUDED.language,\n  fetched_at = NOW();",
+        "options": {}
+      },
+      "id": "upsert-transcript",
+      "name": "2b. Upsert Transcript",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1100, 400],
+      "credentials": {
+        "postgres": {
+          "id": "yt-pgvector",
+          "name": "YouTube pgvector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-transcript",
+              "leftValue": "={{ $json.has_transcript }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-has-transcript",
+      "name": "Has Transcript?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1320, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.LITELLM_BASE_URL || 'http://genai-litellm.genai.svc.cluster.local:4000' }}/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $env.YT_ANALYSIS_MODEL || 'glm-4.7-flash', temperature: 0.1, messages: [ { role: 'system', content: 'You are a technology analyst. Analyze the following YouTube video transcript and extract information about technologies, tools, frameworks, and systems mentioned. Focus on things that could be integrated into an AI/ML platform (agent frameworks, MLOps tools, data engineering, observability, workflow automation, MCP servers, etc).\\n\\nRespond with ONLY valid JSON:\\n{\\n  \"technologies\": [\"list of technologies mentioned\"],\\n  \"tools\": [\"specific tools/products\"],\\n  \"frameworks\": [\"frameworks/libraries\"],\\n  \"relevance_score\": 0.0 to 1.0,\\n  \"integration_potential\": \"high|medium|low|none\",\\n  \"summary\": \"2-3 sentence summary\",\\n  \"key_takeaways\": [\"actionable takeaway 1\", \"takeaway 2\"],\\n  \"platform_relevance\": \"how this relates to our k3d/n8n/MLflow/agent platform\"\\n}' }, { role: 'user', content: 'Video: ' + $json.title + ' by ' + $json.channel + '\\n\\nTranscript (first 8000 chars):\\n' + ($json.transcript || '').substring(0, 4000) } ], max_tokens: 4000 }) }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "llm-analyze",
+      "name": "3. LLM Analyze Transcript",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "litellm-auth",
+          "name": "LiteLLM Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse LLM analysis response and prepare for DB insert\nconst item = $input.first().json;\nconst videoId = $('Has Transcript?').first().json.video_id;\n\nlet analysis = {};\ntry {\n  const content = item.choices?.[0]?.message?.content || '{}';\n  // Try to extract JSON from the response\n  const jsonMatch = content.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    analysis = JSON.parse(jsonMatch[0]);\n  }\n} catch (e) {\n  analysis = {\n    technologies: [],\n    tools: [],\n    frameworks: [],\n    relevance_score: 0,\n    integration_potential: 'none',\n    summary: 'Analysis parse failed: ' + e.message,\n    key_takeaways: [],\n    platform_relevance: ''\n  };\n}\n\nreturn [{\n  json: {\n    video_id: videoId,\n    technologies: analysis.technologies || [],\n    tools: analysis.tools || [],\n    frameworks: analysis.frameworks || [],\n    relevance_score: Math.min(1, Math.max(0, Number(analysis.relevance_score) || 0)),\n    integration_potential: ['high', 'medium', 'low', 'none'].includes(analysis.integration_potential) \n      ? analysis.integration_potential : 'none',\n    summary: (analysis.summary || '').substring(0, 2000),\n    key_takeaways: analysis.key_takeaways || [],\n    platform_relevance: (analysis.platform_relevance || '').substring(0, 1000),\n    model_used: item.model || 'unknown'\n  }\n}];"
+      },
+      "id": "parse-analysis",
+      "name": "Parse LLM Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 200]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO yt_analysis (video_id, technologies, tools, frameworks, relevance_score, integration_potential, summary, key_takeaways, platform_relevance, model_used)\nVALUES (\n  '{{ $json.video_id }}',\n  ARRAY[{{ ($json.technologies || []).map(t => \"'\" + t.replace(/'/g, \"''\") + \"'\").join(',') }}]::TEXT[],\n  ARRAY[{{ ($json.tools || []).map(t => \"'\" + t.replace(/'/g, \"''\") + \"'\").join(',') }}]::TEXT[],\n  ARRAY[{{ ($json.frameworks || []).map(t => \"'\" + t.replace(/'/g, \"''\") + \"'\").join(',') }}]::TEXT[],\n  {{ $json.relevance_score }},\n  '{{ $json.integration_potential }}',\n  '{{ ($json.summary || '').replace(/'/g, \"''\") }}',\n  ARRAY[{{ ($json.key_takeaways || []).map(t => \"'\" + t.replace(/'/g, \"''\") + \"'\").join(',') }}]::TEXT[],\n  '{{ ($json.platform_relevance || '').replace(/'/g, \"''\") }}',\n  '{{ $json.model_used }}'\n)\nON CONFLICT (video_id) DO UPDATE SET\n  technologies = EXCLUDED.technologies,\n  tools = EXCLUDED.tools,\n  frameworks = EXCLUDED.frameworks,\n  relevance_score = EXCLUDED.relevance_score,\n  integration_potential = EXCLUDED.integration_potential,\n  summary = EXCLUDED.summary,\n  key_takeaways = EXCLUDED.key_takeaways,\n  platform_relevance = EXCLUDED.platform_relevance,\n  model_used = EXCLUDED.model_used,\n  analyzed_at = NOW();",
+        "options": {}
+      },
+      "id": "upsert-analysis",
+      "name": "4. Store Analysis",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1980, 200],
+      "credentials": {
+        "postgres": {
+          "id": "yt-pgvector",
+          "name": "YouTube pgvector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "yt-pipeline",
+        "responseMode": "onReceived"
+      },
+      "id": "webhook-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 540],
+      "webhookId": "yt-pipeline"
+    }
+  ],
+  "connections": {
+    "Every 12 Hours": {
+      "main": [
+        [{ "node": "1. Extract Videos + Transcripts", "type": "main", "index": 0 }]
+      ]
+    },
+    "1. Extract Videos + Transcripts": {
+      "main": [
+        [{ "node": "Parse & Split Videos", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse & Split Videos": {
+      "main": [
+        [{ "node": "Has Videos?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Has Videos?": {
+      "main": [
+        [
+          { "node": "2a. Upsert Video", "type": "main", "index": 0 },
+          { "node": "2b. Upsert Transcript", "type": "main", "index": 0 },
+          { "node": "Has Transcript?", "type": "main", "index": 0 }
+        ],
+        []
+      ]
+    },
+    "Has Transcript?": {
+      "main": [
+        [{ "node": "3. LLM Analyze Transcript", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "3. LLM Analyze Transcript": {
+      "main": [
+        [{ "node": "Parse LLM Analysis", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse LLM Analysis": {
+      "main": [
+        [{ "node": "4. Store Analysis", "type": "main", "index": 0 }]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [{ "node": "1. Extract Videos + Transcripts", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

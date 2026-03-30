@@ -1,0 +1,9 @@
+[
+  {"modelName": "qwen2.5:14b", "matchPattern": "(?i)^(qwen2\\.5:14b)$", "inputPrice": 0, "outputPrice": 0, "totalPrice": 0, "unit": "TOKENS", "tokenizerId": "openai"},
+  {"modelName": "qwen2.5:7b", "matchPattern": "(?i)^(qwen2\\.5:7b)$", "inputPrice": 0, "outputPrice": 0, "totalPrice": 0, "unit": "TOKENS", "tokenizerId": "openai"},
+  {"modelName": "qwen3:32b", "matchPattern": "(?i)^(qwen3:32b)$", "inputPrice": 0, "outputPrice": 0, "totalPrice": 0, "unit": "TOKENS", "tokenizerId": "openai"},
+  {"modelName": "qwen3:30b", "matchPattern": "(?i)^(qwen3:30b)$", "inputPrice": 0, "outputPrice": 0, "totalPrice": 0, "unit": "TOKENS", "tokenizerId": "openai"},
+  {"modelName": "mistral:7b-instruct", "matchPattern": "(?i)^(mistral:7b-instruct)$", "inputPrice": 0, "outputPrice": 0, "totalPrice": 0, "unit": "TOKENS", "tokenizerId": "openai"},
+  {"modelName": "llama3.2:latest", "matchPattern": "(?i)^(llama3\\.2:latest)$", "inputPrice": 0, "outputPrice": 0, "totalPrice": 0, "unit": "TOKENS", "tokenizerId": "openai"},
+  {"modelName": "nomic-embed-text:latest", "matchPattern": "(?i)^(nomic-embed-text:latest)$", "inputPrice": 0, "outputPrice": 0, "totalPrice": 0, "unit": "TOKENS", "tokenizerId": "openai"}
+]

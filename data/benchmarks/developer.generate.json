@@ -1,0 +1,67 @@
+[
+  {
+    "label": "generate-rate-limiter-middleware",
+    "variables": {
+      "spec": "Create a rate limiter middleware for FastAPI using a sliding window algorithm. Support per-client rate limiting based on IP address. Allow configurable limits (requests per window) and window size. Return HTTP 429 with Retry-After header when limit is exceeded. Use an in-memory store with automatic cleanup of expired entries.",
+      "language": "Python"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "def "},
+      {"type": "expect_contains", "value": "429"},
+      {"type": "expect_min_length", "value": 50}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "generate-retry-decorator",
+    "variables": {
+      "spec": "Create a retry decorator with exponential backoff for async functions. Support configurable max retries, initial delay, max delay, backoff multiplier, and a list of exception types to retry on. Add jitter to prevent thundering herd. Log each retry attempt with the exception details. Return the last exception if all retries are exhausted.",
+      "language": "Python"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "def "},
+      {"type": "expect_contains", "value": "async"},
+      {"type": "expect_min_length", "value": 50}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "generate-user-crud-endpoint",
+    "variables": {
+      "spec": "Generate a complete REST API for user CRUD operations using FastAPI and Pydantic v2. Include: POST /users (create), GET /users/{id} (read), PUT /users/{id} (update), DELETE /users/{id} (delete), GET /users (list with pagination). Use Pydantic models for request/response validation. Include proper HTTP status codes and error responses. Add type hints throughout.",
+      "language": "Python"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "class "},
+      {"type": "expect_contains", "value": "router"},
+      {"type": "expect_min_length", "value": 50}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "generate-connection-pool-manager",
+    "variables": {
+      "spec": "Generate a database connection pool manager using asyncpg for PostgreSQL. Support configurable min/max pool size, connection timeout, idle timeout, and health checks. Implement acquire/release context manager pattern. Include connection validation on checkout. Handle connection failures gracefully with automatic reconnection. Add pool statistics (active, idle, total connections).",
+      "language": "Python"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "class "},
+      {"type": "expect_contains", "value": "async"},
+      {"type": "expect_min_length", "value": 50}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  },
+  {
+    "label": "generate-cli-argument-parser",
+    "variables": {
+      "spec": "Generate a CLI tool using click that manages MLflow experiments. Subcommands: 'list' (list experiments with optional --status filter), 'create' (create experiment with --name and --tags), 'delete' (delete by name with --confirm flag), 'export' (export run metrics to CSV with --experiment and --output-path). Add --verbose flag for debug logging. Include input validation and helpful error messages.",
+      "language": "Python"
+    },
+    "validators": [
+      {"type": "expect_contains", "value": "def "},
+      {"type": "expect_contains", "value": "click"},
+      {"type": "expect_min_length", "value": 50}
+    ],
+    "judges": ["relevance", "helpfulness"]
+  }
+]

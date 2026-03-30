@@ -1,0 +1,107 @@
+# MCP Gateway — on-demand container management
+# Gateway spawns/destroys MCP server containers via Docker socket.
+# Servers defined in mcp-servers/catalog.yaml, built from mcp-servers/*.Dockerfile.
+version: "3"
+
+vars:
+  MCP_IMAGES: >-
+    n8n-knowledge
+    n8n-manager
+    gitlab
+    mlflow
+    kubernetes
+    claude-code
+
+tasks:
+  build:
+    desc: Build all MCP server Docker images
+    cmds:
+      - |
+        for name in {{.MCP_IMAGES}}; do
+          echo "Building genai-mcp-${name}..."
+          docker build -t "genai-mcp-${name}:latest" \
+            -f "mcp-servers/${name}.Dockerfile" mcp-servers/
+        done
+        echo "  ✓ All MCP images built"
+
+  build-one:
+    desc: "Build a single MCP image (task mcp:build-one -- gitlab)"
+    cmds:
+      - |
+        NAME="{{.CLI_ARGS}}"
+        if [ -z "$NAME" ]; then echo "Usage: task mcp:build-one -- <name>"; exit 1; fi
+        docker build -t "genai-mcp-${NAME}:latest" \
+          -f "mcp-servers/${NAME}.Dockerfile" mcp-servers/
+        echo "  ✓ genai-mcp-${NAME}:latest built"
+
+  secrets:
+    desc: Generate mcp-secrets.env from secret files
+    cmds:
+      - bash scripts/gen-mcp-secrets.sh
+
+  up:
+    desc: Start MCP gateway (servers spawn on-demand)
+    deps: [secrets]
+    cmds:
+      - docker compose up -d mcp-gateway
+      - |
+        echo "Waiting for MCP gateway..."
+        for i in $(seq 1 30); do
+          STATUS=$(docker inspect --format='{{.State.Health.Status}}' genai-mcp-gateway 2>/dev/null)
+          if [ "$STATUS" = "healthy" ]; then
+            echo "  ✓ MCP Gateway healthy (http://localhost:${MCP_GATEWAY_PORT:-8811}/sse)"
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "  ✗ Gateway did not become healthy in time"
+        docker compose logs mcp-gateway --tail=10
+        exit 1
+
+  down:
+    desc: Stop MCP gateway
+    cmds:
+      - docker compose stop mcp-gateway
+
+  restart:
+    desc: Restart MCP gateway
+    cmds:
+      - docker compose restart mcp-gateway
+
+  logs:
+    desc: Tail MCP gateway logs
+    cmds:
+      - docker compose logs -f mcp-gateway
+
+  health:
+    desc: Check MCP gateway health and list managed servers
+    silent: true
+    cmds:
+      - |
+        echo "── MCP Gateway ──"
+        STATUS=$(docker inspect --format='{{.State.Health.Status}}' genai-mcp-gateway 2>/dev/null || echo "not running")
+        if [ "$STATUS" = "healthy" ]; then
+          printf "  ✓ %-20s healthy\n" "mcp-gateway"
+        else
+          printf "  ✗ %-20s %s\n" "mcp-gateway" "$STATUS"
+        fi
+        echo ""
+        echo "── On-Demand Server Images ──"
+        for name in {{.MCP_IMAGES}}; do
+          if docker image inspect "genai-mcp-${name}:latest" &>/dev/null; then
+            SIZE=$(docker image inspect "genai-mcp-${name}:latest" --format='{{.Size}}' | awk '{printf "%.0fMB", $1/1048576}')
+            printf "  ✓ %-24s %s\n" "genai-mcp-${name}" "$SIZE"
+          else
+            printf "  ✗ %-24s not built (run: task mcp:build)\n" "genai-mcp-${name}"
+          fi
+        done
+
+  tools:
+    desc: List available MCP tools through the gateway
+    cmds:
+      - bash scripts/mcp-tools.sh
+
+  setup:
+    desc: Install n8n MCP servers and skills for Claude Code
+    cmds:
+      - bash scripts/setup-mcp.sh

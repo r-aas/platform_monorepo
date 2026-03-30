@@ -1,0 +1,478 @@
+{
+  "id": "prompt-resolve-v1",
+  "name": "Prompt Resolve",
+  "active": false,
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "Start",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        0,
+        200
+      ],
+      "parameters": {},
+      "typeVersion": 1
+    },
+    {
+      "id": "n2",
+      "name": "Init",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        220,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "var item = $input.first().json;\nvar body = item.body || item;\nvar agentName = body.agent_name || 'mlops';\nvar message = body.message || '';\nvar sessionId = body.session_id || '';\nvar explicitSP = body.system_prompt || '';\nvar explicitTask = body.task || '';\nvar reqCfg = body.config || {};\nif (body.provider) reqCfg.provider = body.provider;\nif (body.model) reqCfg.model = body.model;\nif (body.temperature != null) reqCfg.temperature = Number(body.temperature);\nif (body.mcp_tools) reqCfg.mcp_tools = body.mcp_tools;\nvar MLFLOW = ($env.MLFLOW_TRACKING_URI || 'http://genai-mlflow.genai.svc.cluster.local') + '/api/2.0/mlflow';\nvar N8N = $env.N8N_INTERNAL_URL || 'http://genai-n8n.genai.svc.cluster.local:5678/webhook';\nvar INF_BASE = $env.INFERENCE_BASE_URL || 'http://genai-litellm.genai.svc.cluster.local:4000/v1';\nvar INF_KEY = $env.LITELLM_API_KEY || '';\nvar defs = {provider:'ollama',model:'',temperature:0.3,top_p:0.9,num_ctx:32768,max_iterations:10,mcp_tools:''};\nreturn [{json:{\n  S:{agent_name:agentName, message:message, session_id:sessionId, explicit_sp:explicitSP, explicit_task:explicitTask, req_cfg:reqCfg, vars:body.variables||{}},\n  U:{mlflow:MLFLOW, n8n:N8N, inf_base:INF_BASE, inf_key:INF_KEY},\n  R:{system_prompt:'', config:defs, task:'', prompt_versions:{}, skills:[], history:[], tasks:[], task_descs:{}, error:null},\n  _skip_mlflow: explicitSP ? true : false,\n  _get_system_url: MLFLOW + '/registered-models/get?name=' + encodeURIComponent(agentName + '.SYSTEM')\n}}];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n3",
+      "name": "Has Explicit Prompt?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        440,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json._skip_mlflow }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n4",
+      "name": "Set Explicit",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        660,
+        100
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "var d = $input.first().json;\nd.R.system_prompt = d.S.explicit_sp;\nd.R.task = d.S.explicit_task;\nd.R.config = Object.assign({}, d.R.config, d.S.req_cfg);\nreturn [{json: d}];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n5",
+      "name": "Fetch System Prompt",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        660,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json._get_system_url }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "n6",
+      "name": "Parse System",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        880,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "var prev = $('Has Explicit Prompt?').first().json;\nvar resp = $input.first().json;\nvar model = resp.registered_model;\nfunction pt(a){var m={};if(!a)return m;for(var i=0;i<a.length;i++)m[a[i].key]=a[i].value;return m;}\nif (!model) { prev.R.error = 'Agent not found: '+prev.S.agent_name+'.SYSTEM'; return [{json:prev}]; }\nvar mt = pt(model.tags);\nvar storedCfg = {}; try{storedCfg=JSON.parse(mt['agent.config']||'{}')}catch(e){}\nprev.R.config = Object.assign({}, prev.R.config, storedCfg);\n// Get latest version template\nvar lv = model.latest_versions || [];\nvar aliases = model.aliases || [];\nvar targetVer = null;\nfor (var i=0;i<aliases.length;i++){if(aliases[i].alias==='production'){targetVer=aliases[i].version;break;}}\nif (!targetVer && lv.length > 0) {\n  var ver = lv[lv.length-1];\n  var vt = pt(ver.tags);\n  prev.R.system_prompt = vt['mlflow.prompt.text'] || '';\n  prev.R.prompt_versions.system = ver.version;\n} else if (targetVer) {\n  // Need to fetch specific version \u2014 store URL for next step\n  prev._fetch_version_url = prev.U.mlflow + '/model-versions/get?name=' + encodeURIComponent(prev.S.agent_name+'.SYSTEM') + '&version=' + targetVer;\n} else {\n  prev.R.error = 'No versions for '+prev.S.agent_name+'.SYSTEM';\n}\nprev._model_tags = mt;\nreturn [{json:prev}];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n7",
+      "name": "Need Version?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        1100,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json._fetch_version_url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n8",
+      "name": "Fetch Version",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1320,
+        200
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Parse System').first().json._fetch_version_url }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "n9",
+      "name": "Parse Version",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1540,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "var prev = $('Parse System').first().json;\nvar resp = $input.first().json;\nvar ver = resp.model_version;\nfunction pt(a){var m={};if(!a)return m;for(var i=0;i<a.length;i++)m[a[i].key]=a[i].value;return m;}\nif (ver) {\n  var vt = pt(ver.tags);\n  prev.R.system_prompt = vt['mlflow.prompt.text'] || '';\n  prev.R.prompt_versions.system = ver.version;\n}\ndelete prev._fetch_version_url;\nreturn [{json:prev}];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n10",
+      "name": "Search Tasks",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1760,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.U.mlflow }}/registered-models/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filter",
+              "value": "=name LIKE '{{ $json.S.agent_name }}.%' AND tags.`mlflow.prompt.is_prompt` = 'true'"
+            },
+            {
+              "name": "max_results",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "n11",
+      "name": "Process Tasks",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1980,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "var prev;\ntry { prev = $('Parse Version').first().json; } catch(e) {}\nif (!prev) { try { prev = $('Parse System').first().json; } catch(e) {} }\nif (!prev) return [{json:{R:{error:'internal: lost state'}}}];\nif (prev.R.error) return [{json:prev}];\nvar resp = $input.first().json;\nvar models = resp.registered_models || [];\nfunction pt(a){var m={};if(!a)return m;for(var i=0;i<a.length;i++)m[a[i].key]=a[i].value;return m;}\nvar an = prev.S.agent_name, sk = an+'.SYSTEM';\nfor(var i=0;i<models.length;i++){var n=models[i].name||'';if(n!==sk){var t=n.substring(an.length+1);prev.R.tasks.push(t);var tags=pt(models[i].tags);if(tags['task.description'])prev.R.task_descs[t]=tags['task.description'];}}\nif(prev.R.tasks.length>0){prev.R.system_prompt+='\\n\\nYou can perform these tasks:\\n';for(var j=0;j<prev.R.tasks.length;j++){prev.R.system_prompt+='- '+prev.R.tasks[j]+(prev.R.task_descs[prev.R.tasks[j]]?': '+prev.R.task_descs[prev.R.tasks[j]]:'')+'\\n';}}\nreturn [{json:prev}];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n12",
+      "name": "Has Session?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        2200,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.S.session_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n13",
+      "name": "Fetch Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        2420,
+        100
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Has Session?').first().json.U.n8n }}/sessions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({action:'get',session_id:$('Has Session?').first().json.S.session_id}) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "n14",
+      "name": "Parse Session",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2640,
+        100
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "var prev = $('Has Session?').first().json;\nvar resp = $input.first().json;\nprev.R.history = resp.messages || [];\nreturn [{json:prev}];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "n15",
+      "name": "Assemble",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2860,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "var d = $input.first().json;\nif (d.R && d.R.error) return [{json:{_error:true, agent_name:d.S.agent_name, error:d.R.error, message:d.S.message, session_id:d.S.session_id}}];\nvar combined = d.R.system_prompt || '';\nif (d.R.task_prompt) combined = combined ? combined+'\\n\\n'+d.R.task_prompt : d.R.task_prompt;\nvar config = Object.assign({}, d.R.config, d.S.req_cfg||{});\nvar vars = d.S.vars || {};\nif (!vars.message) vars.message = d.S.message;\nfor (var key in vars) { combined = combined.replace(new RegExp('\\\\{\\\\{\\\\s*'+key+'\\\\s*\\\\}\\\\}','g'), String(vars[key])); }\nreturn [{json:{_error:false, agent_name:d.S.agent_name, task:d.R.task||undefined, system_prompt:combined, message:d.S.message, session_id:d.S.session_id, messages_history:d.R.history||[], config:config, prompt_versions:d.R.prompt_versions||{}, skills_loaded:d.R.skills&&d.R.skills.length>0?d.R.skills:undefined}}];"
+      },
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Init",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init": {
+      "main": [
+        [
+          {
+            "node": "Has Explicit Prompt?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Explicit Prompt?": {
+      "main": [
+        [
+          {
+            "node": "Set Explicit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch System Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Explicit": {
+      "main": [
+        [
+          {
+            "node": "Has Session?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch System Prompt": {
+      "main": [
+        [
+          {
+            "node": "Parse System",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse System": {
+      "main": [
+        [
+          {
+            "node": "Need Version?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Need Version?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Version",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Version": {
+      "main": [
+        [
+          {
+            "node": "Parse Version",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Version": {
+      "main": [
+        [
+          {
+            "node": "Search Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Tasks": {
+      "main": [
+        [
+          {
+            "node": "Process Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Tasks": {
+      "main": [
+        [
+          {
+            "node": "Has Session?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Session?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Session",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Assemble",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Session": {
+      "main": [
+        [
+          {
+            "node": "Parse Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Session": {
+      "main": [
+        [
+          {
+            "node": "Assemble",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null
+}

@@ -1,0 +1,162 @@
+# GenAI MLOps — Status & Health tasks
+version: "3"
+
+tasks:
+  ps:
+    desc: Show running containers
+    cmds:
+      - docker compose ps
+
+  health:
+    desc: Health check all services
+    silent: true
+    cmds:
+      - |
+        echo "── MLflow ──"
+        curl -sf http://localhost:${MLFLOW_PORT:-5050}/health && echo " ✓ healthy" || echo " ✗ down"
+        echo "── n8n ──"
+        curl -sf http://localhost:${N8N_PORT:-5678}/healthz && echo " ✓ healthy" || echo " ✗ down"
+        echo "── LiteLLM ──"
+        curl -sf http://localhost:${LITELLM_PORT:-4000}/health/liveliness && echo " ✓ healthy" || echo " ✗ down"
+        echo "── MinIO ──"
+        curl -sf http://localhost:${MINIO_PORT:-9000}/minio/health/live && echo " ✓ healthy" || echo " ✗ down"
+        echo "── Langfuse ──"
+        curl -sf http://localhost:${LANGFUSE_PORT:-3100}/api/public/health >/dev/null 2>&1 && echo " ✓ healthy" || echo " ✗ down"
+        echo "── Streaming Proxy ──"
+        curl -sf http://localhost:${STREAMING_PROXY_PORT:-4010}/health >/dev/null 2>&1 && echo " ✓ healthy" || echo " ✗ down"
+        echo "── MCP Gateway ──"
+        STATUS=$(docker inspect --format='{{.State.Health.Status}}' genai-mcp-gateway 2>/dev/null || echo "not running")
+        if [ "$STATUS" = "healthy" ]; then
+          echo " ✓ mcp-gateway        healthy"
+        else
+          echo " ✗ mcp-gateway        $STATUS"
+        fi
+
+  open:
+    desc: Print all service URLs
+    silent: true
+    cmds:
+      - |
+        echo "MLflow:          http://localhost:${MLFLOW_PORT:-5050}"
+        echo "n8n:             http://localhost:${N8N_PORT:-5678}"
+        echo "LiteLLM:         http://localhost:${LITELLM_PORT:-4000}"
+        echo "Streaming Proxy: http://localhost:${STREAMING_PROXY_PORT:-4010}  (real SSE streaming)"
+        echo "Langfuse:        http://localhost:${LANGFUSE_PORT:-3100}"
+        echo "MCP Gateway:     http://localhost:${MCP_GATEWAY_PORT:-8811}/sse (on-demand containers)"
+        echo "MinIO API:       http://localhost:${MINIO_PORT:-9000}"
+        echo "MinIO Console:   http://localhost:9001"
+
+  doctor:
+    desc: Verify environment health
+    silent: true
+    cmds:
+      - |
+        ok=true
+        check() {
+          if command -v "$1" &>/dev/null; then
+            printf "  ✓ %-18s %s\n" "$1" "$("$@" 2>&1 | head -1)"
+          else
+            printf "  ✗ %-18s MISSING\n" "$1"
+            ok=false
+          fi
+        }
+        echo "── Host Prerequisites ──"
+        check docker --version
+        check docker compose version
+        check task --version
+        check uv --version
+        check curl --version
+        echo ""
+        echo "── Inference Provider ──"
+        if curl -sf http://localhost:11434/v1/models >/dev/null 2>&1; then
+          echo "  ✓ Ollama             http://localhost:11434/v1 (host process)"
+        else
+          echo "  ✗ Ollama             NOT REACHABLE at http://localhost:11434/v1"
+          ok=false
+        fi
+        if curl -sf http://localhost:${LITELLM_PORT:-4000}/health/liveliness >/dev/null 2>&1; then
+          echo "  ✓ LiteLLM            http://localhost:${LITELLM_PORT:-4000} (proxy → Ollama)"
+        else
+          echo "  ⚠ LiteLLM            not running (run: task dev)"
+        fi
+        if curl -sf http://localhost:${STREAMING_PROXY_PORT:-4010}/health >/dev/null 2>&1; then
+          echo "  ✓ Streaming Proxy    http://localhost:${STREAMING_PROXY_PORT:-4010} (real SSE)"
+        else
+          echo "  ⚠ Streaming Proxy    not running (run: task dev)"
+        fi
+        if curl -sf http://localhost:${LANGFUSE_PORT:-3100}/api/public/health >/dev/null 2>&1; then
+          echo "  ✓ Langfuse           http://localhost:${LANGFUSE_PORT:-3100} (LLM observability)"
+        else
+          echo "  ⚠ Langfuse           not running (run: task dev)"
+        fi
+        echo ""
+        echo "── Docker Daemon ──"
+        if docker info &>/dev/null; then
+          echo "  ✓ Docker daemon      running"
+        else
+          echo "  ✗ Docker daemon      NOT RUNNING"
+          ok=false
+        fi
+        echo ""
+        echo "── Secrets ──"
+        if [ -d secrets ] && [ -f secrets/n8n_postgres_password ]; then
+          echo "  ✓ Secrets            initialized"
+        else
+          echo "  ⚠ Secrets            not initialized (run: task init-secrets)"
+        fi
+        echo ""
+        echo "── MCP Gateway ──"
+        STATUS=$(docker inspect --format='{{.State.Health.Status}}' genai-mcp-gateway 2>/dev/null || echo "not running")
+        if [ "$STATUS" = "healthy" ]; then
+          echo "  ✓ mcp-gateway        healthy (on-demand containers via Docker socket)"
+        else
+          echo "  ⚠ mcp-gateway        $STATUS (run: task mcp:up)"
+        fi
+        # Check MCP images are built
+        MISSING=0
+        for name in n8n-knowledge n8n-manager gitlab mlflow kubernetes claude-code; do
+          if ! docker image inspect "genai-mcp-${name}:latest" &>/dev/null; then
+            MISSING=$((MISSING+1))
+          fi
+        done
+        if [ "$MISSING" -eq 0 ]; then
+          echo "  ✓ MCP images         all 6 built"
+        else
+          echo "  ⚠ MCP images         $MISSING of 6 missing (run: task mcp:build)"
+        fi
+        echo ""
+        echo "── n8n Webhooks ──"
+        N8N="http://localhost:${N8N_PORT:-5678}/webhook"
+        for ep in prompts eval datasets experiments chat "a2a/agent-card" a2a traces sessions "v1/models"; do
+          if [ "$ep" = "v1/models" ]; then
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" "${N8N}/${ep}")
+          elif [ "$ep" = "a2a/agent-card" ]; then
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "${N8N}/${ep}")
+          elif [ "$ep" = "chat" ]; then
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 -X POST "${N8N}/${ep}" -H 'Content-Type: application/json' -d '{"message":"ping"}')
+            if [ "$HTTP" = "200" ] || [ "$HTTP" = "500" ]; then HTTP="200"; fi
+          elif [ "$ep" = "a2a" ]; then
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 -X POST "${N8N}/${ep}" -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"message/send","params":{}}')
+            if [ "$HTTP" = "200" ] || [ "$HTTP" = "500" ]; then HTTP="200"; fi
+          elif [ "$ep" = "eval" ]; then
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${N8N}/${ep}" -H 'Content-Type: application/json' -d '{"prompt_name":"assistant","model":"test"}')
+          elif [ "$ep" = "traces" ]; then
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${N8N}/${ep}" -H 'Content-Type: application/json' -d '{"action":"summary"}')
+          elif [ "$ep" = "sessions" ]; then
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${N8N}/${ep}" -H 'Content-Type: application/json' -d '{"action":"list"}')
+          else
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${N8N}/${ep}" -H 'Content-Type: application/json' -d '{"action":"list"}')
+          fi
+          if [ "$HTTP" = "200" ]; then
+            printf "  ✓ %-22s OK\n" "/${ep}"
+          else
+            printf "  ⚠ %-22s HTTP %s (stack may not be running)\n" "/${ep}" "$HTTP"
+          fi
+        done
+        echo ""
+        if [ "$ok" = true ]; then
+          echo "All required tools present. Run 'task dev' to start the stack."
+        else
+          echo "Some tools are missing or unreachable. Fix the issues above."
+          exit 1
+        fi
