@@ -152,7 +152,7 @@ seed → eval + judge → optimize → benchmark → promote → canary → moni
 
 ## Prerequisites
 
-**Minimum**: Apple Silicon Mac with 48 GB RAM (see [Hardware Requirements](#hardware-requirements) for details).
+**Minimum**: Apple Silicon Mac with 64 GB RAM (see [Hardware Requirements](#hardware-requirements) for details).
 
 | Tool | Version | Install |
 |------|---------|---------|
@@ -180,8 +180,9 @@ brew install --cask ollama
 git clone https://github.com/r-aas/platform_monorepo.git
 cd platform_monorepo
 
-# 2. Pull an LLM model
-ollama pull glm-4.7-flash   # fast, good quality — or qwen2.5:14b for more capability
+# 2. Pull the LLM models
+ollama pull glm-4.7-flash
+ollama pull nomic-embed-text
 
 # 3. Create secrets
 cp envs/secrets.env.example envs/secrets.env
@@ -340,29 +341,29 @@ The platform runs 35 Helm charts totaling **9.3 CPU cores** and **12.5 GB memory
 | Component | CPU | RAM | Disk |
 |-----------|-----|-----|------|
 | Colima VM (k3d cluster) | 8 cores | 24-32 GB | 200 GB |
-| Ollama (native, Metal GPU) | shared | 5-20 GB (depends on model) | 5-20 GB (model files) |
+| Ollama (native, Metal GPU) | shared | 19 GB (glm-4.7-flash) | 20 GB (model files) |
 | macOS + apps | shared | ~6 GB | — |
 
 ### Machine tiers
 
+With glm-4.7-flash (19 GB) + Colima VM + macOS:
+
 | Machine | RAM | Works? | Notes |
 |---------|-----|--------|-------|
-| MacBook Air M2/M3 (24 GB) | 24 GB | No | Not enough for VM + model + macOS |
-| MacBook Pro M2/M3/M4 (36 GB) | 36 GB | Tight | 20 GB VM, mistral:7b only, expect memory pressure |
-| MacBook Pro M2/M3/M4 Pro (48 GB) | 48 GB | Yes | 24 GB VM, qwen2.5:14b or glm-4.7-flash, comfortable |
-| MacBook Pro M_-series Max (64 GB) | 64 GB | Yes | 32 GB VM, any model, plenty of headroom |
-| MacBook Pro M_-series Max (96-128 GB) | 96-128 GB | Ideal | Full resource limits, multiple large models loaded |
+| 24 GB | 24 GB | No | Not enough for VM + model + macOS |
+| 36 GB | 36 GB | No | Can't fit 19 GB model + usable VM |
+| 48 GB | 48 GB | Tight | 22 GB VM, expect memory pressure under load |
+| 64 GB | 64 GB | Yes | 32 GB VM, comfortable headroom |
+| 96-128 GB | 96-128 GB | Ideal | Full resource limits, room for larger models |
 
-### Recommended LLM models
+### LLM model
 
-| Model | RAM needed | Quality | Speed | Install |
-|-------|-----------|---------|-------|---------|
-| `mistral:7b-instruct` | 4.4 GB | Good | Fast | `ollama pull mistral:7b-instruct` |
-| `qwen2.5:7b` | 4.7 GB | Good | Fast | `ollama pull qwen2.5:7b` |
-| `qwen2.5:14b` | 9 GB | Better | Medium | `ollama pull qwen2.5:14b` |
-| `glm-4.7-flash` | 19 GB | Best | Medium | `ollama pull glm-4.7-flash` |
+The platform uses `glm-4.7-flash` (19 GB) for inference and `nomic-embed-text` (274 MB) for embeddings:
 
-You also need an embedding model: `ollama pull nomic-embed-text` (274 MB).
+```bash
+ollama pull glm-4.7-flash
+ollama pull nomic-embed-text
+```
 
 ### Adjusting for smaller machines
 
@@ -382,7 +383,7 @@ The cluster will still run — pods will schedule with less headroom and some ma
 | Colima VM disk | 200 GB (thin-provisioned, grows as needed) |
 | Persistent volumes (databases, storage) | ~59 GB |
 | Docker images (all services) | ~25 GB |
-| Ollama models | 5-20 GB per model |
+| Ollama models | ~20 GB (glm-4.7-flash + nomic-embed-text) |
 | Repo + tools | ~2 GB |
 
 Developed on a MacBook Pro M4 Max (128 GB RAM, 16 cores).
