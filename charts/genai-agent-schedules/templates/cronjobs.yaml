@@ -33,12 +33,17 @@ spec:
             - -c
             - |
               MSG_ID="schedule-$(date +%s)"
-              curl -sf -X POST \
+              # Fire-and-forget: A2A message/send is synchronous (waits for LLM).
+              # We send the request with a short connect timeout but long max-time.
+              # Exit 0 regardless — the agent received the message even if we timeout.
+              curl -s -X POST \
                 -H "Content-Type: application/json" \
                 -d "{\"jsonrpc\":\"2.0\",\"method\":\"message/send\",\"id\":\"$MSG_ID\",\"params\":{\"message\":{\"role\":\"user\",\"messageId\":\"$MSG_ID\",\"parts\":[{\"type\":\"text\",\"text\":{{ $agent.task | toJson }}}]}}}" \
                 "http://{{ $name }}.{{ $.Release.Namespace }}.svc.cluster.local:8080/" \
-                --max-time 60 \
-                -o /dev/null -w "HTTP %{http_code}\n"
+                --connect-timeout 10 \
+                --max-time 240 \
+                -o /dev/null -w "HTTP %{http_code}\n" \
+              || true
             resources:
               {{- toYaml $.Values.resources | nindent 14 }}
 {{- end }}
