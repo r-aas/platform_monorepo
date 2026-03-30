@@ -33,12 +33,16 @@ spec:
             - -c
             - |
               MSG_ID="schedule-$(date +%s)"
+              # Build JSON payload via heredoc to avoid shell quoting issues with toJson
+              PAYLOAD=$(cat <<JSONEOF
+              {"jsonrpc":"2.0","method":"message/send","id":"$MSG_ID","params":{"message":{"role":"user","messageId":"$MSG_ID","parts":[{"type":"text","text":{{ $agent.task | toJson }}}]}}}
+              JSONEOF
+              )
               # Fire-and-forget: A2A message/send is synchronous (waits for LLM).
-              # We send the request with a short connect timeout but long max-time.
               # Exit 0 regardless — the agent received the message even if we timeout.
               curl -s -X POST \
                 -H "Content-Type: application/json" \
-                -d "{\"jsonrpc\":\"2.0\",\"method\":\"message/send\",\"id\":\"$MSG_ID\",\"params\":{\"message\":{\"role\":\"user\",\"messageId\":\"$MSG_ID\",\"parts\":[{\"type\":\"text\",\"text\":{{ $agent.task | toJson }}}]}}}" \
+                -d "$PAYLOAD" \
                 "http://{{ $name }}.{{ $.Release.Namespace }}.svc.cluster.local:8080/" \
                 --connect-timeout 10 \
                 --max-time 240 \
