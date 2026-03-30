@@ -28,7 +28,7 @@ MetaMCP was planned as the namespace-scoped MCP aggregation layer but was never 
 - StreamableHTTP transport (SSE fallback for n8n compatibility)
 
 ### R3: Expose via ingress
-- `agentgateway.platform.127.0.0.1.nip.io` → MCP proxy listener
+- `gateway.platform.127.0.0.1.nip.io/mcp` → MCP proxy listener
 - Internal: `genai-agentgateway.genai.svc.cluster.local:<port>`
 
 ### R4: Verify
@@ -59,6 +59,6 @@ n8n / external consumers
 
 ## Verification
 
-1. `curl agentgateway.platform.127.0.0.1.nip.io/mcp -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'` → returns tools from all backends
+1. `curl gateway.platform.127.0.0.1.nip.io/mcp -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'` → returns tools from all backends
 2. `kubectl get agentgatewaybackend -n genai` → 8 backends, all Accepted
 3. No MetaMCP pods, charts, or ArgoCD apps remain

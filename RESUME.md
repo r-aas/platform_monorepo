@@ -24,7 +24,7 @@
 **5. MetaMCP Replacement with agentgateway (Spec 030)**
 - Installed Gateway API CRDs (v1.2.1)
 - Created Gateway + HTTPRoute resources: per-backend routes (/mcp/{name}) + catch-all (/mcp)
-- Added ingress: `agentgateway.platform.127.0.0.1.nip.io`
+- Added ingress: `gateway.platform.127.0.0.1.nip.io/mcp`
 - All 8 MCP backends verified via proxy
 - Deleted MetaMCP artifacts: genai-pg-metamcp chart, metamcp-admin MCP server
 
@@ -50,7 +50,7 @@
 - **6 CronJobs**: All deployed, HTTP 200 verified
 - **agentgateway**: Controller (9978 gRPC) + Proxy (8080 HTTP) running
   - Gateway API: Gateway + 9 HTTPRoutes (8 per-backend + 1 aggregated)
-  - Ingress: agentgateway.platform.127.0.0.1.nip.io
+  - Ingress: gateway.platform.127.0.0.1.nip.io/mcp
   - **243 tools** federated across 8 backends via /mcp/all
 - **agentregistry**: Running (6 agents, 9 servers, 22 skills)
 

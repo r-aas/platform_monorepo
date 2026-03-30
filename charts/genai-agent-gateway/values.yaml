@@ -11,7 +11,7 @@ service:
 
 ingress:
   enabled: true
-  host: agent-gateway.platform.127.0.0.1.nip.io
+  host: gateway.platform.127.0.0.1.nip.io
   annotations:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
     nginx.ingress.kubernetes.io/proxy-buffering: "off"
@@ -24,7 +24,7 @@ env:
   AGW_OLLAMA_BASE_URL: "http://192.168.5.2:11434"
   AGW_OLLAMA_EMBEDDING_MODEL: "nomic-embed-text"
   AGW_EMBEDDING_DIM: "768"
-  AGW_GATEWAY_EXTERNAL_URL: "http://agent-gateway.platform.127.0.0.1.nip.io"
+  AGW_GATEWAY_EXTERNAL_URL: "http://gateway.platform.127.0.0.1.nip.io"
   AGW_AGENTS_DIR: "/app/data/agents"
   AGW_SKILLS_DIR: "/app/data/skills"
   AGW_WORKFLOWS_DIR: "/app/data/workflows"

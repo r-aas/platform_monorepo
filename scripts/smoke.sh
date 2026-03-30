@@ -136,7 +136,7 @@ fi
 
 # agent-gateway e2e (user → agent-gateway → n8n → LiteLLM → Ollama)
 if app_exists "genai-agent-gateway"; then
-  AGENT_RESP=$(curl -s --max-time 60 http://agent-gateway.platform.127.0.0.1.nip.io/v1/chat/completions \
+  AGENT_RESP=$(curl -s --max-time 60 http://gateway.platform.127.0.0.1.nip.io/v1/chat/completions \
     -H "Content-Type: application/json" \
     -d '{"model":"agent:mlops","messages":[{"role":"user","content":"ping"}],"stream":false}' 2>/dev/null)
   if echo "$AGENT_RESP" | grep -q '"choices"'; then

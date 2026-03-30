@@ -2,7 +2,7 @@ environment: local-k3d
 cluster: mewtwo
 
 gateway:
-  url: http://agent-gateway.platform.127.0.0.1.nip.io
+  url: http://gateway.platform.127.0.0.1.nip.io
   internal: http://genai-agent-gateway.genai.svc.cluster.local:8000
 
 llm:

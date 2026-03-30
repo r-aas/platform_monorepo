@@ -202,7 +202,7 @@ Diagram and spec artifacts live in `specs/NNN-name/`.
 - `argocd.platform.127.0.0.1.nip.io`
 - `n8n.platform.127.0.0.1.nip.io`
 - `mlflow.platform.127.0.0.1.nip.io`
-- `agent-gateway.platform.127.0.0.1.nip.io`
+- `gateway.platform.127.0.0.1.nip.io`
 
 Inside k8s pods, use service DNS: `genai-agent-gateway.genai.svc.cluster.local`
 

@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://pgvector:pgvector@genai-pgvector:5432/agent_registry"
 
     # External URL (for A2A agent cards)
-    gateway_external_url: str = "http://agent-gateway.platform.127.0.0.1.nip.io"
+    gateway_external_url: str = "http://gateway.platform.127.0.0.1.nip.io"
 
     # Sandbox runtime
     sandbox_namespace: str = "genai"

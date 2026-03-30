@@ -1,6 +1,6 @@
 # ═══════════════════════════════════════════════════════
-# Ingress — expose MCP proxy data plane externally
-# URL: agentgateway.platform.127.0.0.1.nip.io
+# Ingress — MCP proxy under gateway.platform.127.0.0.1.nip.io/mcp
+# Shares host with agent-gateway; /mcp/* routes to agentgateway proxy.
 # ═══════════════════════════════════════════════════════
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -16,10 +16,10 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: agentgateway.platform.127.0.0.1.nip.io
+  - host: gateway.platform.127.0.0.1.nip.io
     http:
       paths:
-      - path: /
+      - path: /mcp
         pathType: Prefix
         backend:
           service:

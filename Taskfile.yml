@@ -372,11 +372,11 @@ tasks:
       N8N_BASE_URL: "http://n8n.platform.127.0.0.1.nip.io/webhook"
       MLFLOW_TRACKING_URI: "http://mlflow.platform.127.0.0.1.nip.io"
       LANGFUSE_HOST: "http://langfuse.platform.127.0.0.1.nip.io"
-      AGENT_GATEWAY_URL: "http://agent-gateway.platform.127.0.0.1.nip.io"
+      AGENT_GATEWAY_URL: "http://gateway.platform.127.0.0.1.nip.io"
       LITELLM_URL: "http://litellm.platform.127.0.0.1.nip.io"
       LITELLM_API_KEY: "sk-litellm-mewtwo-local"
     preconditions:
-      - sh: curl -sf http://agent-gateway.platform.127.0.0.1.nip.io/health/detail >/dev/null
+      - sh: curl -sf http://gateway.platform.127.0.0.1.nip.io/health/detail >/dev/null
         msg: "agent-gateway not reachable"
       - sh: curl -sf http://mlflow.platform.127.0.0.1.nip.io/health >/dev/null
         msg: "MLflow not reachable"
@@ -389,7 +389,7 @@ tasks:
     env:
       N8N_BASE_URL: "http://n8n.platform.127.0.0.1.nip.io/webhook"
       MLFLOW_TRACKING_URI: "http://mlflow.platform.127.0.0.1.nip.io"
-      AGENT_GATEWAY_URL: "http://agent-gateway.platform.127.0.0.1.nip.io"
+      AGENT_GATEWAY_URL: "http://gateway.platform.127.0.0.1.nip.io"
       LITELLM_URL: "http://litellm.platform.127.0.0.1.nip.io"
       LITELLM_API_KEY: "sk-litellm-mewtwo-local"
     cmds:

@@ -33,7 +33,7 @@ MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow.platform.127.0.0.1.
 DATABASE_URL = os.getenv("AGW_DATABASE_URL", "postgresql+asyncpg://agw:agw@genai-agent-gateway-pg.genai.svc.cluster.local:5432/agw")
 
 # Agent-gateway REST API (easier than direct DB if running locally)
-AGW_URL = os.getenv("AGW_URL", "http://agent-gateway.platform.127.0.0.1.nip.io")
+AGW_URL = os.getenv("AGW_URL", "http://gateway.platform.127.0.0.1.nip.io")
 
 # ---------------------------------------------------------------------------
 # MLflow read helpers
