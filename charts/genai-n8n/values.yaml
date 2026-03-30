@@ -47,3 +47,35 @@ n8n:
     username: n8n
     database: n8n
     existingSecret: "genai-pg-n8n"
+
+# ── Workflow Promotion (GitOps) ─────────────────────────
+# Clones workflow JSONs from GitLab on every deploy,
+# patches URLs, and upserts into n8n via REST API.
+workflowPromotion:
+  enabled: true
+  # In-cluster GitLab repo containing workflow JSONs
+  gitUrl: "http://gitlab-ce.platform.svc.cluster.local:8181/root/genai-mlops.git"
+  gitBranch: main
+  workflowPath: "n8n-data/workflows"
+  # k8s secret containing 'gitlab-pat' key
+  gitSecretName: "gitlab-pat"
+  # k8s secret containing 'api-key' key (created by n8n-setup.sh)
+  apiSecretName: "n8n-api-credentials"
+  # Service URLs for k3d networking (replaces docker-compose URLs)
+  urls:
+    mlflow: "http://genai-mlflow.genai.svc.cluster.local"
+    litellm: "http://genai-litellm.genai.svc.cluster.local:4000"
+    n8n: "http://genai-n8n.genai.svc.cluster.local:5678"
+    ollama: "http://192.168.5.2:11434"
+  # Webhook-bearing workflows to activate (sub-workflows must NOT be activated)
+  activateWorkflows:
+    - prompt-crud-v1
+    - prompt-eval-v1
+    - openai-compat-v1
+    - mlflow-data-v1
+    - mlflow-experiments-v1
+    - chat-v1
+    - a2a-server-v1
+    - trace-v1
+    - sessions-v1
+    - agents-v1

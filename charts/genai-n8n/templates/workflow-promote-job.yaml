@@ -1,0 +1,225 @@
+# ═══════════════════════════════════════════════════════
+# Workflow Promotion Job — GitOps for n8n workflows
+#
+# Runs after every Helm install/upgrade. Clones workflow
+# JSONs from in-cluster GitLab, patches URLs for k3d,
+# and upserts into n8n via REST API.
+#
+# Replaces manual: task n8n-import
+# ═══════════════════════════════════════════════════════
+{{- if .Values.workflowPromotion.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-workflow-promote-{{ .Release.Revision }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/part-of: genai-n8n
+    app.kubernetes.io/component: workflow-promotion
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "10"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: genai-n8n
+        app.kubernetes.io/component: workflow-promotion
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+      - name: clone-workflows
+        image: alpine/git:2.43.0
+        command: ["/bin/sh", "-c"]
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+        args:
+        - |
+          set -e
+          REPO_URL="{{ .Values.workflowPromotion.gitUrl }}"
+          # Inject GitLab PAT if available
+          if [ -f /secrets/gitlab-pat ]; then
+            PAT=$(cat /secrets/gitlab-pat)
+            REPO_URL=$(echo "$REPO_URL" | sed "s|://|://root:${PAT}@|")
+          fi
+          # Retry clone — GitLab may still be booting during first install
+          for attempt in 1 2 3; do
+            if git clone --depth 1 --single-branch --branch {{ .Values.workflowPromotion.gitBranch }} \
+              "$REPO_URL" /repo 2>/dev/null; then
+              break
+            fi
+            echo "Clone attempt $attempt failed, retrying in 15s..."
+            sleep 15
+          done
+          if [ ! -d /repo ]; then
+            echo "ERROR: Could not clone repo after 3 attempts"
+            exit 1
+          fi
+          cp /repo/{{ .Values.workflowPromotion.workflowPath }}/*.json /workflows/ 2>/dev/null || {
+            echo "ERROR: No workflow JSONs found at {{ .Values.workflowPromotion.workflowPath }}/"
+            exit 1
+          }
+          echo "Cloned $(ls /workflows/*.json | wc -l) workflows"
+        volumeMounts:
+        - name: workflows
+          mountPath: /workflows
+        {{- if .Values.workflowPromotion.gitSecretName }}
+        - name: git-secret
+          mountPath: /secrets
+          readOnly: true
+        {{- end }}
+      containers:
+      - name: promote
+        image: python:3.12-alpine
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          set -e
+          apk add --no-cache curl jq > /dev/null 2>&1
+
+          N8N_URL="http://{{ .Values.n8n.fullnameOverride | default "genai-n8n" }}:5678"
+          WORKFLOWS_DIR="/workflows"
+
+          # ── Wait for n8n to be ready (5 min max) ──────────
+          echo "Waiting for n8n..."
+          N8N_READY=false
+          for i in $(seq 1 60); do
+            if curl -sf "$N8N_URL/healthz" > /dev/null 2>&1; then
+              echo "  n8n ready"
+              N8N_READY=true
+              break
+            fi
+            sleep 5
+          done
+          if [ "$N8N_READY" = "false" ]; then
+            echo "ERROR: n8n not ready after 5 minutes"
+            exit 1
+          fi
+
+          # ── Get API key ───────────────────────────────────
+          N8N_KEY=""
+          if [ -f /secrets/api-key ]; then
+            N8N_KEY=$(cat /secrets/api-key)
+          fi
+          if [ -z "$N8N_KEY" ]; then
+            echo "⚠ No API key found in secret — this is expected on first install."
+            echo "  Run: task n8n-setup && task n8n-import"
+            echo "  Subsequent ArgoCD syncs will auto-promote."
+            exit 0
+          fi
+
+          # Verify key works (may be stale after n8n restart)
+          HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
+            "$N8N_URL/api/v1/workflows?limit=1" \
+            -H "X-N8N-API-KEY: $N8N_KEY")
+          if [ "$HTTP" = "401" ]; then
+            echo "⚠ API key is stale (401). Run: task n8n-setup --force"
+            echo "  Then ArgoCD will auto-promote on next sync."
+            exit 0
+          fi
+          if [ "$HTTP" != "200" ]; then
+            echo "⚠ n8n API returned HTTP $HTTP — skipping"
+            exit 0
+          fi
+
+          # ── Patch URLs for k3d ────────────────────────────
+          echo "Patching service URLs..."
+          mkdir -p /patched
+          for f in "$WORKFLOWS_DIR"/*.json; do
+            name=$(basename "$f")
+            sed \
+              -e 's|http://mlflow:5050|{{ .Values.workflowPromotion.urls.mlflow }}|g' \
+              -e 's|http://litellm:4000|{{ .Values.workflowPromotion.urls.litellm }}|g' \
+              -e 's|http://n8n:5678|{{ .Values.workflowPromotion.urls.n8n }}|g' \
+              -e 's|http://localhost:5678|{{ .Values.workflowPromotion.urls.n8n }}|g' \
+              -e 's|http://host.docker.internal:11434|{{ .Values.workflowPromotion.urls.ollama }}|g' \
+              "$f" > "/patched/$name"
+          done
+
+          # ── Upsert workflows via REST API ─────────────────
+          TOTAL=0
+          UPDATED=0
+          for f in /patched/*.json; do
+            name=$(basename "$f")
+            WF_ID=$(python3 -c "import json; print(json.load(open('$f'))['id'])" 2>/dev/null || true)
+            WF_NAME=$(python3 -c "import json; print(json.load(open('$f'))['name'])" 2>/dev/null || true)
+            TOTAL=$((TOTAL + 1))
+
+            if [ -z "$WF_ID" ]; then
+              echo "  ⚠ Skip $name (no id)"
+              continue
+            fi
+
+            # Check if workflow exists
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
+              "$N8N_URL/api/v1/workflows/$WF_ID" \
+              -H "X-N8N-API-KEY: $N8N_KEY")
+
+            if [ "$HTTP" = "200" ]; then
+              # Update existing
+              curl -sf -X PUT "$N8N_URL/api/v1/workflows/$WF_ID" \
+                -H "X-N8N-API-KEY: $N8N_KEY" \
+                -H "Content-Type: application/json" \
+                -d @"$f" > /dev/null 2>&1 && UPDATED=$((UPDATED + 1)) || echo "  ⚠ Failed to update $WF_NAME"
+            else
+              # Create new
+              curl -sf -X POST "$N8N_URL/api/v1/workflows" \
+                -H "X-N8N-API-KEY: $N8N_KEY" \
+                -H "Content-Type: application/json" \
+                -d @"$f" > /dev/null 2>&1 && UPDATED=$((UPDATED + 1)) || echo "  ⚠ Failed to create $WF_NAME"
+            fi
+          done
+          echo "  ✓ $UPDATED/$TOTAL workflows promoted"
+
+          # ── Activate webhook-bearing workflows ────────────
+          echo "Activating webhook workflows..."
+          ACTIVATED=0
+          for wf_id in {{ join " " .Values.workflowPromotion.activateWorkflows }}; do
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X PATCH "$N8N_URL/api/v1/workflows/$wf_id" \
+              -H "X-N8N-API-KEY: $N8N_KEY" \
+              -H "Content-Type: application/json" \
+              -d '{"active":true}')
+            [ "$HTTP" = "200" ] && ACTIVATED=$((ACTIVATED + 1))
+          done
+          echo "  ✓ $ACTIVATED workflows activated"
+
+          echo "Done."
+        volumeMounts:
+        - name: workflows
+          mountPath: /workflows
+          readOnly: true
+        {{- if .Values.workflowPromotion.apiSecretName }}
+        - name: api-secret
+          mountPath: /secrets
+          readOnly: true
+        {{- end }}
+      volumes:
+      - name: workflows
+        emptyDir: {}
+      {{- if .Values.workflowPromotion.gitSecretName }}
+      - name: git-secret
+        secret:
+          secretName: {{ .Values.workflowPromotion.gitSecretName }}
+      {{- end }}
+      {{- if .Values.workflowPromotion.apiSecretName }}
+      - name: api-secret
+        secret:
+          secretName: {{ .Values.workflowPromotion.apiSecretName }}
+      {{- end }}
+{{- end }}
