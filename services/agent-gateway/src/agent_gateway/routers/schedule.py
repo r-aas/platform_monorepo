@@ -10,7 +10,6 @@ continuous improvement tasks). Each scheduled job:
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import uuid
 from typing import Any
@@ -19,9 +18,9 @@ from fastapi import APIRouter, HTTPException
 
 from agent_gateway.composer import compose
 from agent_gateway.config import settings
-from agent_gateway.registry import get_agent
+from agent_gateway.agent_lookup import get_agent
 from agent_gateway.runtimes.adapter import get_adapter
-from agent_gateway.skills_registry import get_skill
+from agent_gateway.skill_lookup import get_skill
 
 logger = logging.getLogger(__name__)
 

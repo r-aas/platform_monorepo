@@ -1,61 +1,58 @@
 # Platform Monorepo — Session Resume
 
-## Session: 2026-03-29 — Mothership Architecture: kagent + agentgateway + agentregistry
+## Session: 2026-03-30 — Stabilize Mothership: Agent Pods + CronJob A2A + CRD Bootstrap
 
-### What Was Built
+### What Was Fixed
 
-**Mothership Agent Platform** — best-of-breed OSS components for each layer:
+**1. Agent CrashLoopBackOff (all 6 custom agents)**
+- **Root cause**: kagent v0.8.0 requires explicit `toolNames` in Agent CRD tool references. Without them, the controller writes `tools: null` to the agent config Secret, and the pod's Pydantic validation crashes with `Input should be a valid list, input_value=None`.
+- **Fix**: Added `toolNames` arrays to every MCP server reference in `custom-agents.yaml`. Tool names sourced from RemoteMCPServer `.status.discoveredTools`.
+- **Result**: All 8 agents Running, 0 restarts, serving A2A cards.
 
-| Layer | Component | Status |
-|-------|-----------|--------|
-| Agent Runtime | kagent (CNCF Sandbox) v0.8.0 | Running, 8 agents (5 Ready, 3 boot-looping) |
-| MCP Proxy | agentgateway (Linux Foundation) v1.0.1 | Running, 8 backend CRs created |
-| Artifact Registry | agentregistry v0.2.1 | Running, pgvector-backed |
-| MCP Scoping | MetaMCP | Already deployed, working |
-| LLM Proxy | LiteLLM | Already deployed, working |
-| Scheduling | k8s CronJobs | 6 CronJobs deployed, A2A format correct |
+**2. CronJob → A2A Failures (HTTP 000)**
+- **Root cause 1**: Shell quoting — Helm's `toJson` output includes literal double quotes that clash with the shell's double-quoted `-d` curl argument, producing malformed args.
+- **Fix**: Build JSON payload via heredoc where toJson quotes are safe.
+- **Root cause 2**: A2A `message/send` is synchronous (waits for full LLM response). Ollama inference takes 60-120s+, causing curl timeouts.
+- **Fix**: Fire-and-forget pattern — `|| true` so job completes regardless. Increased `--max-time` to 240s.
+- **Result**: CronJob curl connects successfully, waits for LLM. Jobs no longer marked Failed.
 
-**New Helm Charts (3)**
-- `genai-agentgateway` — Rust MCP/A2A proxy with AgentgatewayBackend CRs for all MCP servers
-- `genai-agentregistry` — Agent/skill/MCP catalog with pgvector semantic search
-- `genai-agent-schedules` — CronJobs posting to kagent A2A endpoints
+**3. CRD Bootstrap Script**
+- Exported all 10 CRDs (7 kagent + 3 agentgateway) to `manifests/crds/` for reproducible bootstrap.
+- Created `scripts/bootstrap-crds.sh` using `kubectl apply --server-side --force-conflicts` (CRDs exceed 262KB annotation limit).
 
-**kagent Fixes**
-- Added `kagent-tool-server` alias RemoteMCPServer (workaround for upstream naming bug)
-- Registered 7 new RemoteMCPServers: mlflow-tracking, langfuse-observability, minio-storage, ollama-models, plane-project, kagent-tool-server
-- Added 3 new agents: data-engineer-agent, project-coordinator-agent, qa-eval-agent
-- Wired existing agents to new MCP tools (mlops → 5 tools, developer → gitlab, platform-admin → kagent-tool-server + ollama)
-- Fixed `{{ domain }}` unresolved template var
-- Converted tool refs from shorthand to full CRD schema
+### What Was Analyzed
 
-**Research (spec 029-platform-consolidation)**
-- Evaluated 8 agent platforms, 6 MCP gateways, 4 registries
-- C4 Context, Integration, and Scheduling sequence diagrams
-- Every diagram edge has a smoke test command
+**Agent Gateway Slim Scope** — Explored all 12 routers in `services/agent-gateway/`:
 
-### What's Broken / Needs Work
-
-1. **3 agent pods CrashLoopBackOff**: data-engineer, project-coordinator, qa-eval — `http_tools.*.tools` validation error. kagent tries to fetch tool schemas from MCP servers before they respond. Will stabilize once backoff aligns with server readiness. **Fix**: may need startup delay or retry logic in kagent controller.
-
-2. **Updated agents also crashing new replicas**: mlops and platform-admin got new ReplicaSets that reference new MCP tools (not yet cached). Old pods still Running fine.
-
-3. **CronJob scheduling format**: Fixed to use `message/send` method with `messageId`. Need to verify on next CronJob trigger.
-
-4. **agentgateway CRDs**: Installed manually via `kubectl apply --server-side` (exceed 262KB annotation limit for normal apply). Need to add to bootstrap script.
-
-5. **Slim agent-gateway**: Not started yet. Currently both kagent and agent-gateway coexist. Phase 2: remove registry/proxy code from agent-gateway, keep skill catalog + semantic discovery.
+| Keep (UNIQUE) | Delete (OVERLAP) |
+|---------------|-----------------|
+| Hybrid search (keyword + semantic) | registry.py → kagent CRDs |
+| Sandbox execution (ephemeral k8s Jobs) | skills_registry.py → agentregistry |
+| OpenAI chat completions proxy | mcp_proxy.py → agentgateway |
+| Shadow/canary promotions | mcp_server.py → unnecessary layering |
+| CronJob scheduling | store/{agents,skills,mcp_servers} |
+| Benchmarking + gap analysis | routers/{registry,mcp,mcp_proxy} |
+| Agent-to-agent delegation | |
 
 ### Platform State
 
-- **35 ArgoCD apps** (was 29): 31 Synced/Healthy, 1 Unknown (genai-kagent — intermittent), 2 OutOfSync (datahub, lan-ingress)
-- **~74 pods** in genai namespace
-- **8 kagent agents**: developer, mlops, platform-admin, helm, k8s (Ready) + data-engineer, project-coordinator, qa-eval (Accepted, boot-looping)
-- **9 RemoteMCPServers**: All Accepted
-- **6 CronJobs**: All created with correct A2A message format
+- **35 ArgoCD apps**: All Synced
+- **~80 pods** in genai namespace
+- **8 kagent agents**: ALL Running (0 restarts) — developer, mlops, platform-admin, helm, k8s, data-engineer, project-coordinator, qa-eval
+- **9 RemoteMCPServers**: All Accepted, all discoveredTools populated
+- **6 CronJobs**: All deployed, curl connects successfully (waits for LLM response)
 - **agentgateway**: Running (1 pod)
-- **agentregistry**: Running (1 pod), using shared pgvector
+- **agentregistry**: Running (1 pod), UI at :12121
 
 ### Commits This Session
+
+```
+eb2fa04 fix: add toolNames to all kagent agent MCP server references
+257835a feat: add CRD bootstrap script + fix CronJob A2A timeout handling
+e6bd314 fix: CronJob shell quoting — toJson double quotes break -d argument
+```
+
+### Previous Session Commits (2026-03-29)
 
 ```
 50623b2 feat: expand kagent agents + MCP servers, fix tool-server naming bug
@@ -70,9 +67,8 @@ ea437e5 fix: use correct A2A message/send method in CronJobs
 
 ### Next Steps
 
-1. **Stabilize agent pods**: Debug kagent tool fetch timing, consider init container or readiness gate
-2. **Verify CronJob → A2A**: Wait for next platform-admin-agent trigger (*/15m), check it invokes the agent
-3. **Slim agent-gateway**: Remove registry/proxy code, keep skill catalog + semantic discovery
-4. **Wire agentregistry**: Seed with our agent definitions + skill YAMLs + MCP server catalog
-5. **Update ~/work/CLAUDE.md**: Add agentgateway + agentregistry to toolchain section
-6. **Add agentgateway CRDs to bootstrap**: In `scripts/bootstrap-crds.sh` or helmfile pre-sync
+1. **Slim agent-gateway**: Delete overlapping code (registry, MCP proxy, skills registry, store/{agents,skills,mcp_servers}), keep unique features (hybrid search, sandbox, chat proxy, promotions, benchmarking)
+2. **Seed agentregistry**: Populate with agent definitions + skill YAMLs via gRPC/MCP API
+3. **Verify CronJob end-to-end**: Wait for LLM response — job should complete with HTTP 200
+4. **Wire agentgateway to MetaMCP**: Connect agentgateway backends to MetaMCP for namespace-scoped MCP aggregation
+5. **Update ~/work/CLAUDE.md**: Add kagent toolNames gotcha to k3d/Helm section

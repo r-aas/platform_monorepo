@@ -12,9 +12,9 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from agent_gateway.composer import compose
 from agent_gateway.config import settings
-from agent_gateway.registry import get_agent
+from agent_gateway.agent_lookup import get_agent
 from agent_gateway.runtimes import get_runtime
-from agent_gateway.skills_registry import get_skill
+from agent_gateway.skill_lookup import get_skill
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +27,7 @@ async def _run_shadow(agent_name: str, body: dict) -> None:
     Shadow agents ('{name}-shadow' with promotion_stage='shadow') run in parallel
     with the primary. Their output is logged for comparison but never returned.
     """
-    from agent_gateway.store.agents import get_agent as _db_get_agent
-    from agent_gateway.registry import _row_to_agent
+    from agent_gateway.agent_lookup import _db_get_agent, _row_to_agent
     from agent_gateway.store.deployments import insert_eval_run
 
     shadow_name = f"{agent_name}-shadow"

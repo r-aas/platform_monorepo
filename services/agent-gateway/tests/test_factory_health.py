@@ -10,7 +10,7 @@ import pytest
 from agent_gateway.mcp_discovery import DiscoveredTool, ToolIndex
 from agent_gateway.models import AgentDefinition
 from agent_gateway.routers.factory import _scan_eval_datasets, compute_health_status
-from agent_gateway.skills_registry import SkillDefinition
+from agent_gateway.models import SkillDefinition
 
 
 # ---------------------------------------------------------------------------

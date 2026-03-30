@@ -17,7 +17,6 @@ import json
 import textwrap
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from pathlib import Path
 
 from agent_gateway.models import AgentRunConfig
 

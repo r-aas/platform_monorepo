@@ -8,9 +8,9 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from agent_gateway.composer import compose
-from agent_gateway.registry import get_agent
+from agent_gateway.agent_lookup import get_agent
 from agent_gateway.runtimes import get_runtime
-from agent_gateway.skills_registry import get_skill
+from agent_gateway.skill_lookup import get_skill
 
 logger = logging.getLogger(__name__)
 

@@ -4,9 +4,9 @@
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 
-from agent_gateway.embeddings import get_embedding, hybrid_score, cosine_similarity
-from agent_gateway.registry import get_agent, list_agents
-from agent_gateway.skills_registry import get_skill
+from agent_gateway.agent_lookup import get_agent, list_agents
+from agent_gateway.embeddings import cosine_similarity, get_embedding, hybrid_score
+from agent_gateway.skill_lookup import get_skill
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 

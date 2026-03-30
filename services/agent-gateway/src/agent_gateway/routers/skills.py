@@ -1,5 +1,7 @@
 """Skills CRUD API router."""
 
+import asyncio
+
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 
@@ -7,7 +9,7 @@ from agent_gateway.benchmark.runner import run_benchmark_task
 from agent_gateway.config import Settings
 from agent_gateway.embeddings import cosine_similarity, get_embedding, hybrid_score
 from agent_gateway.models import SkillDefinition
-from agent_gateway.skills_registry import create_skill, delete_skill, get_skill, list_skills, update_skill
+from agent_gateway.skill_lookup import create_skill, delete_skill, get_skill, list_skills, update_skill
 
 _settings = Settings()
 

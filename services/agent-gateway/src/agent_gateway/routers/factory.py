@@ -21,8 +21,7 @@ import httpx
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-logger = logging.getLogger(__name__)
-
+from agent_gateway.agent_lookup import list_agents
 from agent_gateway.benchmark.gap_analysis import (
     analyze_skill_gaps,
     find_defined_skills,
@@ -31,8 +30,9 @@ from agent_gateway.benchmark.gap_analysis import (
 from agent_gateway.benchmark.optimizer import optimize_skill_prompt
 from agent_gateway.benchmark.regression import detect_regression, get_run_scores
 from agent_gateway.mcp_discovery import get_tool_index
-from agent_gateway.registry import list_agents
-from agent_gateway.skills_registry import list_skills
+from agent_gateway.skill_lookup import list_skills
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/factory", tags=["factory"])
 
@@ -95,15 +95,11 @@ async def factory_health() -> JSONResponse:
 
     mcp_tools_indexed = 0
     try:
-        from agent_gateway.mcp_proxy import get_proxy_state
-        mcp_tools_indexed = len(get_proxy_state().tools)
+        index = get_tool_index()
+        if index:
+            mcp_tools_indexed = len(index.tools)
     except Exception:
-        try:
-            index = get_tool_index()
-            if index:
-                mcp_tools_indexed = len(index.tools)
-        except Exception:
-            pass
+        pass
 
     skills_eval_dir = Path(settings.skills_dir) / "eval"
     eval_datasets = _scan_eval_datasets(skills_eval_dir)
@@ -246,7 +242,7 @@ async def _benchmark_one_runtime(
     Creates a temporary agent variant '{agent}-bench-{runtime}' with the
     specified runtime, runs cases, then returns aggregate results.
     """
-    from agent_gateway.store.agents import get_agent as _db_get_agent, upsert_agent
+    from agent_gateway.agent_lookup import _db_get_agent, upsert_agent
 
     # Get the base agent spec
     try:
@@ -366,7 +362,7 @@ async def benchmark_compare(data: dict[str, Any]) -> JSONResponse:
             content={"error": "Dataset has no test cases"},
         )
 
-    gateway_url = getattr(settings, "gateway_external_url", "") or f"http://localhost:8000"
+    gateway_url = getattr(settings, "gateway_external_url", "") or "http://localhost:8000"
 
     # Run benchmarks concurrently across runtimes
     tasks = [
