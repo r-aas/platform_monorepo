@@ -1,6 +1,6 @@
 # Platform Monorepo — Session Resume
 
-## Session: 2026-03-30 — MetaMCP Replacement + Agent Gateway Activation
+## Session: 2026-03-30 — MetaMCP Replacement + Agent Gateway + MCP Federation
 
 ### What Was Done
 
@@ -22,20 +22,23 @@
 - Result: -2,679 lines, 204 tests pass, 45 routes
 
 **5. MetaMCP Replacement with agentgateway (Spec 030)**
-- Installed Gateway API CRDs (v1.2.1) — agentgateway controller was failing with retry count 383
+- Installed Gateway API CRDs (v1.2.1)
 - Created Gateway + HTTPRoute resources: per-backend routes (/mcp/{name}) + catch-all (/mcp)
 - Added ingress: `agentgateway.genai.127.0.0.1.nip.io`
-- **All 8 MCP backends verified** via proxy:
-  - /mcp/kubernetes → kubernetes
-  - /mcp/gitlab → gitlab-mcp
-  - /mcp/mlflow → MLflow Experiment Tracking
-  - /mcp/langfuse → Langfuse Observability
-  - /mcp/minio → MinIO Object Storage
-  - /mcp/ollama → Ollama Model Management
-  - /mcp/plane → Plane Project Management
-  - /mcp/kagent-tools → kagent-tools-server
+- All 8 MCP backends verified via proxy
 - Deleted MetaMCP artifacts: genai-pg-metamcp chart, metamcp-admin MCP server
-- Updated CLAUDE.md: MetaMCP → agentgateway in architecture table
+
+**6. Seed agentregistry**
+- 6 agents (raas.{name}), 9 MCP servers (raas/{name}), 21 skills
+- Published via v0 REST API at port 12121
+- Naming conventions: agents=dot-org, servers=slash-org, skills=plain
+
+**7. MCP Tool Federation (mcp-all backend)**
+- Created `mcp-all` AgentgatewayBackend with all 8 MCP servers as targets
+- agentgateway's fanout-and-merge: `tools/list` returns **243 tools** from all backends
+- Tool names prefixed by backend: `kubernetes_kubectl_get`, `gitlab_create_issue`, etc.
+- HTTPRoute at `/mcp/all` for unified access
+- Updated n8n chat.json MCP Client: `genai-agentgateway-mcp:8080/mcp/all`
 
 ### Platform State
 
@@ -43,12 +46,13 @@
 - **~80 pods** in genai namespace
 - **8 kagent agents**: All Running (0 restarts)
 - **9 RemoteMCPServers**: All Accepted
+- **9 AgentgatewayBackends**: 8 per-server + 1 aggregated (mcp-all), all Accepted
 - **6 CronJobs**: All deployed, HTTP 200 verified
 - **agentgateway**: Controller (9978 gRPC) + Proxy (8080 HTTP) running
-  - 8 AgentgatewayBackend CRDs, all Accepted
-  - Gateway API: Gateway + 9 HTTPRoutes (8 per-backend + 1 catch-all)
+  - Gateway API: Gateway + 9 HTTPRoutes (8 per-backend + 1 aggregated)
   - Ingress: agentgateway.genai.127.0.0.1.nip.io
-- **agentregistry**: Running (empty catalog)
+  - **243 tools** federated across 8 backends via /mcp/all
+- **agentregistry**: Running (6 agents, 9 servers, 22 skills)
 
 ### Commits This Session
 
@@ -57,13 +61,16 @@ eb2fa04 fix: add toolNames to all kagent agent MCP server references
 257835a feat: add CRD bootstrap script + fix CronJob A2A timeout handling
 e6bd314 fix: CronJob shell quoting — toJson double quotes break -d argument
 0d88e54 refactor: slim agent-gateway — remove code overlapping with kagent/agentgateway/agentregistry
-<pending> feat: replace MetaMCP with agentgateway MCP proxy — Gateway API, 8 backends, ingress
+59c2ff1 feat: replace MetaMCP with agentgateway MCP proxy
+2a8d6a4 feat: seed agentregistry — 6 agents, 9 MCP servers, 21 skills
+99e86b0 feat: add mcp-all aggregated backend — 243 tools from 8 backends in one session
+6cc04dd feat(genai-mlops): wire MCP Client to agentgateway aggregated proxy
 ```
 
 ### Next Steps
 
-1. **Seed agentregistry**: Populate with agent definitions + skill YAMLs via gRPC/MCP API
-2. **ArgoCD sync**: Ensure ArgoCD picks up the new gateway.yaml + ingress.yaml templates
-3. **CEL policies**: Add AgentgatewayPolicy for per-agent tool filtering (replaces MetaMCP namespace scoping)
+1. **Re-import n8n chat workflow**: `task n8n-import` to activate the updated MCP endpoint in k3d
+2. **CEL policies**: Add AgentgatewayPolicy for per-agent tool filtering (replaces MetaMCP namespace scoping)
+3. **Tailscale integration**: Tunnel platform services for remote access
 4. **n8n MCP Client**: Wire n8n AI Agent to use agentgateway MCP proxy endpoint
-5. **Tailscale integration**: Tunnel platform services for remote access
+5. **Multi-model benchmark**: Compare glm-4.7-flash vs qwen3:32b vs nemotron-cascade-2
