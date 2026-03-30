@@ -32,3 +32,27 @@ spec:
         port: {{ $cfg.port }}
         protocol: StreamableHTTP
 {{- end }}
+---
+# ═══════════════════════════════════════════════════════
+# Aggregated backend — ALL MCP servers as targets
+# Enables tool federation: tools/list returns merged
+# tools from all backends, prefixed by target name.
+# n8n and other clients use this for unified access.
+# ═══════════════════════════════════════════════════════
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: mcp-all
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: genai-agentgateway
+spec:
+  mcp:
+    targets:
+    {{- range $name, $cfg := $servers }}
+    - name: {{ $name }}
+      static:
+        host: {{ $cfg.host }}
+        port: {{ $cfg.port }}
+        protocol: StreamableHTTP
+    {{- end }}

@@ -49,8 +49,9 @@ spec:
       kind: AgentgatewayBackend
 {{- end }}
 ---
-# Catch-all route — round-robins across all backends
-# Useful for tool discovery across the platform
+# Aggregated route — single session with ALL tools from all backends
+# tools/list returns merged tools prefixed by target name (e.g. kubernetes_get_pods)
+# Use /mcp/all for n8n AI Agent and other clients that need unified tool access
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -66,10 +67,8 @@ spec:
   - matches:
     - path:
         type: PathPrefix
-        value: /mcp
+        value: /mcp/all
     backendRefs:
-    {{- range $name := $servers }}
-    - name: mcp-{{ $name }}
+    - name: mcp-all
       group: agentgateway.dev
       kind: AgentgatewayBackend
-    {{- end }}
