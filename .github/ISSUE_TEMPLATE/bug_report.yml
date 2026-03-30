@@ -1,0 +1,49 @@
+name: Bug Report
+description: Something isn't working after running task up
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Run `task doctor` and paste the output below. This gives us everything we need to diagnose.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What did you expect vs what actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: task doctor output
+      description: Run `task doctor` and paste the full output here.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Hardware
+      description: Mac model, chip, RAM
+      placeholder: "MacBook Pro M4 Pro, 48 GB"
+    validations:
+      required: true
+
+  - type: textarea
+    id: pods
+    attributes:
+      label: Unhealthy pods
+      description: "Run: `kubectl get pods -A | grep -v Running | grep -v Completed`"
+      render: shell
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: "Pod logs, error messages, etc."
+      render: shell

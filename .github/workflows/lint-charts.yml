@@ -1,0 +1,57 @@
+name: Lint Helm Charts
+
+on:
+  push:
+    branches: [main]
+    paths: ['charts/**']
+  pull_request:
+    paths: ['charts/**']
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: azure/setup-helm@v4
+
+      - name: Add chart repos
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo add agentgateway https://agentgateway.github.io/charts
+          helm repo add kagent https://kagent-dev.github.io/kagent/
+          helm repo update
+
+      - name: Lint all charts
+        run: |
+          FAILED=0
+          for chart in charts/*/; do
+            [ -f "${chart}Chart.yaml" ] || continue
+            echo "▸ Linting ${chart}..."
+            if helm lint "$chart" --quiet 2>&1; then
+              echo "  ✓ ${chart}"
+            else
+              echo "  ✗ ${chart}"
+              FAILED=1
+            fi
+          done
+          exit $FAILED
+
+      - name: Template validation
+        run: |
+          FAILED=0
+          for chart in charts/*/; do
+            [ -f "${chart}Chart.yaml" ] || continue
+            name=$(basename "$chart")
+            echo "▸ Templating ${name}..."
+            if helm template "$name" "$chart" --namespace genai > /dev/null 2>&1; then
+              echo "  ✓ ${name}"
+            else
+              echo "  ✗ ${name} — template rendering failed"
+              helm template "$name" "$chart" --namespace genai 2>&1 | tail -5
+              FAILED=1
+            fi
+          done
+          exit $FAILED

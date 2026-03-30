@@ -1,0 +1,35 @@
+name: Feature Request
+description: Suggest a new service, workflow, agent, or integration
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: What are you trying to do that the platform doesn't support yet?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How would you add this to the platform?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Which layer does this affect?
+      options:
+        - Agent (new agent or agent capability)
+        - Workflow (new n8n workflow or webhook)
+        - MCP Server (new tool backend)
+        - Helm Chart (new service)
+        - Infrastructure (k3d, Colima, networking)
+        - Documentation
+        - Other
+    validations:
+      required: true

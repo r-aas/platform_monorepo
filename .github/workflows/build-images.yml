@@ -1,0 +1,126 @@
+name: Build and Push Images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'images/**'
+      - 'services/agent-gateway/**'
+      - 'services/n8n-datahub-bridge/**'
+      - '.github/workflows/build-images.yml'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: r-aas
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - id: set-matrix
+        run: |
+          # All images with their build contexts
+          # Format: name|dockerfile|context
+          ALL_IMAGES=(
+            "agent-gateway|services/agent-gateway/Dockerfile|."
+            "datahub-bridge|services/n8n-datahub-bridge/Dockerfile|services/n8n-datahub-bridge"
+            "litellm-mlflow|images/litellm/Dockerfile|images/litellm"
+            "mcp-kubernetes|images/mcp-kubernetes/Dockerfile|images/mcp-kubernetes"
+            "mcp-plane|images/mcp-plane/Dockerfile|images/mcp-plane"
+            "mcp-mlflow|images/mcp-mlflow/Dockerfile|images/mcp-mlflow"
+            "mcp-langfuse|images/mcp-langfuse/Dockerfile|images/mcp-langfuse"
+            "mcp-minio|images/mcp-minio/Dockerfile|images/mcp-minio"
+            "mcp-ollama|images/mcp-ollama/Dockerfile|images/mcp-ollama"
+            "mcp-claude-code|images/mcp-claude-code/Dockerfile|images/mcp-claude-code"
+            "mcp-gitlab|images/mcp-gitlab/Dockerfile|images/mcp-gitlab"
+            "mcp-n8n-knowledge|images/mcp-n8n-knowledge/Dockerfile|images/mcp-n8n-knowledge"
+            "mcp-n8n-manager|images/mcp-n8n-manager/Dockerfile|images/mcp-n8n-manager"
+            "open-ontologies|images/open-ontologies/Dockerfile|images/open-ontologies"
+          )
+
+          # On workflow_dispatch or first push, build all
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            CHANGED_IMAGES=("${ALL_IMAGES[@]}")
+          else
+            CHANGED_IMAGES=()
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+            for img in "${ALL_IMAGES[@]}"; do
+              IFS='|' read -r name dockerfile context <<< "$img"
+              dir=$(dirname "$dockerfile")
+              if echo "$CHANGED_FILES" | grep -q "^${dir}/\|^${context}/"; then
+                CHANGED_IMAGES+=("$img")
+              fi
+            done
+            # If workflow file changed, build all
+            if echo "$CHANGED_FILES" | grep -q ".github/workflows/build-images.yml"; then
+              CHANGED_IMAGES=("${ALL_IMAGES[@]}")
+            fi
+          fi
+
+          # Build JSON matrix
+          JSON="["
+          FIRST=true
+          for img in "${CHANGED_IMAGES[@]}"; do
+            IFS='|' read -r name dockerfile context <<< "$img"
+            [ -f "$dockerfile" ] || continue
+            $FIRST || JSON+=","
+            FIRST=false
+            JSON+="{\"name\":\"${name}\",\"dockerfile\":\"${dockerfile}\",\"context\":\"${context}\"}"
+          done
+          JSON+="]"
+
+          echo "matrix=${JSON}" >> "$GITHUB_OUTPUT"
+          echo "Building: ${JSON}"
+
+  build:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.matrix != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm64
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.image.name }}
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.image.context }}
+          file: ${{ matrix.image.dockerfile }}
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image.name }}

@@ -1,0 +1,154 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: r-aas
+
+jobs:
+  build-all-images:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: agent-gateway
+            dockerfile: services/agent-gateway/Dockerfile
+            context: .
+          - name: datahub-bridge
+            dockerfile: services/n8n-datahub-bridge/Dockerfile
+            context: services/n8n-datahub-bridge
+          - name: litellm-mlflow
+            dockerfile: images/litellm/Dockerfile
+            context: images/litellm
+          - name: mcp-kubernetes
+            dockerfile: images/mcp-kubernetes/Dockerfile
+            context: images/mcp-kubernetes
+          - name: mcp-plane
+            dockerfile: images/mcp-plane/Dockerfile
+            context: images/mcp-plane
+          - name: mcp-mlflow
+            dockerfile: images/mcp-mlflow/Dockerfile
+            context: images/mcp-mlflow
+          - name: mcp-langfuse
+            dockerfile: images/mcp-langfuse/Dockerfile
+            context: images/mcp-langfuse
+          - name: mcp-minio
+            dockerfile: images/mcp-minio/Dockerfile
+            context: images/mcp-minio
+          - name: mcp-ollama
+            dockerfile: images/mcp-ollama/Dockerfile
+            context: images/mcp-ollama
+          - name: mcp-claude-code
+            dockerfile: images/mcp-claude-code/Dockerfile
+            context: images/mcp-claude-code
+          - name: mcp-gitlab
+            dockerfile: images/mcp-gitlab/Dockerfile
+            context: images/mcp-gitlab
+          - name: mcp-n8n-knowledge
+            dockerfile: images/mcp-n8n-knowledge/Dockerfile
+            context: images/mcp-n8n-knowledge
+          - name: mcp-n8n-manager
+            dockerfile: images/mcp-n8n-manager/Dockerfile
+            context: images/mcp-n8n-manager
+          - name: open-ontologies
+            dockerfile: images/open-ontologies/Dockerfile
+            context: images/open-ontologies
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm64
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.name }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+  create-release:
+    needs: build-all-images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          PREV_TAG=$(git tag --sort=-creatordate | head -2 | tail -1)
+
+          cat > notes.md << 'HEADER'
+          ## What's included
+
+          All 14 custom Docker images pre-built for **linux/arm64** (Apple Silicon):
+
+          ```bash
+          # Pull images (task up does this automatically)
+          HEADER
+
+          for img in agent-gateway datahub-bridge litellm-mlflow \
+            mcp-kubernetes mcp-plane mcp-mlflow mcp-langfuse mcp-minio \
+            mcp-ollama mcp-claude-code mcp-gitlab mcp-n8n-knowledge \
+            mcp-n8n-manager open-ontologies; do
+            echo "docker pull ghcr.io/r-aas/${img}:${TAG#v}" >> notes.md
+          done
+
+          cat >> notes.md << 'FOOTER'
+          ```
+
+          ## Quick start
+
+          ```bash
+          git clone https://github.com/r-aas/platform_monorepo.git
+          cd platform_monorepo
+          git checkout TAG_PLACEHOLDER
+          ollama pull glm-4.7-flash && ollama pull nomic-embed-text
+          cp envs/secrets.env.example envs/secrets.env
+          task up
+          ```
+          FOOTER
+
+          sed -i "s/TAG_PLACEHOLDER/${TAG}/" notes.md
+
+          if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "$TAG" ]; then
+            echo "" >> notes.md
+            echo "## Changes since ${PREV_TAG}" >> notes.md
+            echo "" >> notes.md
+            git log "${PREV_TAG}..${TAG}" --pretty=format:"- %s" >> notes.md
+          fi
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: notes.md
+          generate_release_notes: true
