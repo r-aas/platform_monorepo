@@ -32,10 +32,12 @@ jobs:
         run: |
           # All images with their build contexts
           # Format: name|dockerfile|context
+          # Images that can cross-compile on GitHub Actions (ARM64 via QEMU).
+          # Excluded: litellm-mlflow (base image amd64-only), open-ontologies (Rust OOM).
+          # Those two are built locally during task up.
           ALL_IMAGES=(
             "agent-gateway|services/agent-gateway/Dockerfile|."
             "datahub-bridge|services/n8n-datahub-bridge/Dockerfile|services/n8n-datahub-bridge"
-            "litellm-mlflow|images/litellm/Dockerfile|images/litellm"
             "mcp-kubernetes|images/mcp-kubernetes/Dockerfile|images/mcp-kubernetes"
             "mcp-plane|images/mcp-plane/Dockerfile|images/mcp-plane"
             "mcp-mlflow|images/mcp-mlflow/Dockerfile|images/mcp-mlflow"
@@ -46,7 +48,6 @@ jobs:
             "mcp-gitlab|images/mcp-gitlab/Dockerfile|images/mcp-gitlab"
             "mcp-n8n-knowledge|images/mcp-n8n-knowledge/Dockerfile|images/mcp-n8n-knowledge"
             "mcp-n8n-manager|images/mcp-n8n-manager/Dockerfile|images/mcp-n8n-manager"
-            "open-ontologies|images/open-ontologies/Dockerfile|images/open-ontologies"
           )
 
           # On workflow_dispatch or first push, build all

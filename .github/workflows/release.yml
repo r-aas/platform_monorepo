@@ -25,9 +25,8 @@ jobs:
           - name: datahub-bridge
             dockerfile: services/n8n-datahub-bridge/Dockerfile
             context: services/n8n-datahub-bridge
-          - name: litellm-mlflow
-            dockerfile: images/litellm/Dockerfile
-            context: images/litellm
+          # litellm-mlflow excluded: base image amd64-only (built locally)
+          # open-ontologies excluded: Rust cross-compile OOMs on GHA (built locally)
           - name: mcp-kubernetes
             dockerfile: images/mcp-kubernetes/Dockerfile
             context: images/mcp-kubernetes
@@ -58,9 +57,6 @@ jobs:
           - name: mcp-n8n-manager
             dockerfile: images/mcp-n8n-manager/Dockerfile
             context: images/mcp-n8n-manager
-          - name: open-ontologies
-            dockerfile: images/open-ontologies/Dockerfile
-            context: images/open-ontologies
     steps:
       - uses: actions/checkout@v4
 
