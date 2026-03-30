@@ -6,7 +6,7 @@ image:
   # litellm-database provides Prisma — required for MCP registry, virtual keys, A2A
   repository: litellm-mlflow
   tag: "latest"
-  pullPolicy: Never
+  pullPolicy: IfNotPresent
 
 service:
   type: ClusterIP

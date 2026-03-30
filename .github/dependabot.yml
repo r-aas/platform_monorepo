@@ -1,0 +1,69 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /images/mcp-kubernetes
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /images/mcp-mlflow
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /images/mcp-langfuse
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /images/mcp-minio
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /images/mcp-ollama
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /images/mcp-plane
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /images/mcp-claude-code
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /images/mcp-gitlab
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /images/mcp-n8n-knowledge
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /images/mcp-n8n-manager
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /services/agent-gateway
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: pip
+    directory: /services/agent-gateway
+    schedule:
+      interval: weekly

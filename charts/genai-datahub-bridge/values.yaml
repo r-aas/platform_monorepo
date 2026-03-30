@@ -1,7 +1,7 @@
 image:
   repository: datahub-bridge
   tag: latest
-  pullPolicy: Never
+  pullPolicy: IfNotPresent
 
 replicas: 1
 

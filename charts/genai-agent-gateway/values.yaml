@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: agent-gateway
   tag: latest
-  pullPolicy: Never
+  pullPolicy: IfNotPresent
 
 service:
   type: ClusterIP

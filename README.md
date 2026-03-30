@@ -1,5 +1,9 @@
 # Platform Monorepo
 
+[![Build Images](https://github.com/r-aas/platform_monorepo/actions/workflows/build-images.yml/badge.svg)](https://github.com/r-aas/platform_monorepo/actions/workflows/build-images.yml)
+[![Lint Charts](https://github.com/r-aas/platform_monorepo/actions/workflows/lint-charts.yml/badge.svg)](https://github.com/r-aas/platform_monorepo/actions/workflows/lint-charts.yml)
+[![Release](https://github.com/r-aas/platform_monorepo/releases/latest)](https://github.com/r-aas/platform_monorepo/releases)
+
 A reference implementation for **AgentOps end-to-end** — running entirely on a single Mac. No cloud. No API keys. Everything local, reproducible, and observable.
 
 This is what a complete agent operations system looks like when you wire together best-of-breed open-source tools: agent definitions, prompt lifecycle, experiment tracking, tool federation, autonomous scheduling, LLM observability, and GitOps deployment — all in one repo.
