@@ -56,9 +56,8 @@ The platform uses best-of-breed OSS components for each layer:
 | Layer | Component | Role |
 |-------|-----------|------|
 | **Agent Runtime** | kagent (CNCF Sandbox) | K8s CRDs for agents, MCP servers, memory. A2A protocol. Google ADK execution |
-| **MCP Proxy** | agentgateway (Linux Foundation) | Rust, multiplexes MCP servers, policy/RBAC, Streamable HTTP + SSE |
+| **MCP Proxy** | agentgateway (Linux Foundation) | Rust, multiplexes MCP servers, tool federation (243 tools), CEL policies, Gateway API |
 | **Artifact Registry** | agentregistry | Agents, skills, prompts catalog. pgvector semantic search. Blueprints |
-| **MCP Proxy** | agentgateway | Rust MCP proxy with CEL policies, RBAC, Gateway API data plane |
 | **LLM Proxy** | LiteLLM | OpenAI-compatible, routes to Ollama, per-key access control |
 | **Scheduling** | k8s CronJobs | POST to kagent A2A endpoints on cadence |
 | **Orchestration** | agent-gateway (custom, slimmed) | Skill catalog, semantic tool discovery, orchestration glue |
@@ -115,10 +114,11 @@ Python 3.12 + FastAPI. Being reduced to orchestration glue as kagent + agentgate
 Rust-based MCP/A2A proxy from Linux Foundation. Replaces MetaMCP. Multiplexes all platform MCP servers.
 - **Controller** (port 9978 gRPC): Watches CRDs, manages xDS config, auto-deploys proxy pods
 - **Proxy** (port 8080 HTTP): MCP data plane — handles `initialize`, `tools/list`, `tools/call`
-- AgentgatewayBackend CRs define MCP server targets (8 configured)
+- AgentgatewayBackend CRs define MCP server targets (8 per-server + 1 aggregated)
 - Gateway API: Gateway + HTTPRoute resources create the proxy data plane
 - Per-backend routes: `/mcp/{backend}` (kubernetes, gitlab, mlflow, langfuse, minio, ollama, plane, kagent-tools)
-- Catch-all route: `/mcp` round-robins across all backends
+- **Aggregated route: `/mcp/all`** — `mcp-all` backend with all 8 servers as targets, **243 tools** federated in one session (tool names prefixed by backend: `kubernetes_kubectl_get`, `gitlab_create_issue`, etc.)
+- n8n MCP Client endpoint: `http://genai-agentgateway-mcp.genai.svc.cluster.local:8080/mcp/all`
 - Supports StreamableHTTP + SSE transports
 - Policy engine via CEL expressions (AgentgatewayPolicy CRD)
 - ARM64 native, images from `cr.agentgateway.dev`
