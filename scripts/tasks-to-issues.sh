@@ -5,7 +5,7 @@ set -euo pipefail
 
 SPEC_NUM="${1:?Usage: tasks-to-issues.sh <spec-number> [--dry-run]}"
 DRY_RUN="${2:-}"
-GITLAB_URL="${GITLAB_URL:-http://gitlab.mewtwo.127.0.0.1.nip.io}"
+GITLAB_URL="${GITLAB_URL:-http://gitlab.platform.127.0.0.1.nip.io}"
 GITLAB_TOKEN="${GITLAB_TOKEN:-${GITLAB_PAT:-}}"
 PROJECT_PATH="${GITLAB_PROJECT:-root/platform_monorepo}"
 

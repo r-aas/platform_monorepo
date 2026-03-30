@@ -1,8 +1,8 @@
 version: "3"
 
 vars:
-  GITLAB_URL: '{{.GITLAB_URL | default "http://gitlab.mewtwo.127.0.0.1.nip.io"}}'
-  REGISTRY_URL: '{{.REGISTRY_URL | default "registry.mewtwo.127.0.0.1.nip.io"}}'
+  GITLAB_URL: '{{.GITLAB_URL | default "http://gitlab.platform.127.0.0.1.nip.io"}}'
+  REGISTRY_URL: '{{.REGISTRY_URL | default "registry.platform.127.0.0.1.nip.io"}}'
   GITLAB_NS: '{{.GITLAB_NS | default "platform"}}'
   CHARTS_DIR: '{{.ROOT_DIR}}/charts'
 

@@ -63,7 +63,7 @@ charts/
 ├── genai-datahub/               # Wrapper chart — datahub v0.8.24
 │   ├── Chart.yaml               # dep: datahub from datahub Helm repo
 │   ├── values.yaml              # GMS 2Gi, frontend 1Gi, ingestion-cron enabled, MLflow recipe
-│   └── values-k3d.yaml          # nip.io ingress for frontend (datahub.genai.127.0.0.1.nip.io)
+│   └── values-k3d.yaml          # nip.io ingress for frontend (datahub.platform.127.0.0.1.nip.io)
 ├── genai-datahub-bridge/        # Wrapper chart — n8n-datahub bridge FastAPI service
 │   ├── Chart.yaml
 │   ├── values.yaml              # image: datahub-bridge:latest, pullPolicy: Never

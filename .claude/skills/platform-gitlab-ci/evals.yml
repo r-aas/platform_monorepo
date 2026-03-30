@@ -11,10 +11,10 @@ scenarios:
     prompt: "My deploy stage uses bitnami/kubectl:latest but fails with 'kubectl: command not found' even though the image has kubectl. What's wrong?"
 
   - name: fix-smoke-test
-    prompt: "My CI smoke test curls http://myapp.dev.127.0.0.1.nip.io but gets connection refused. The app works fine from my Mac browser. Why?"
+    prompt: "My CI smoke test curls http://myapp.platform.127.0.0.1.nip.io but gets connection refused. The app works fine from my Mac browser. Why?"
 
   - name: kaniko-push-fails
-    prompt: "Kaniko build succeeds but push to registry.mewtwo.127.0.0.1.nip.io fails with TLS handshake error. How do I fix it?"
+    prompt: "Kaniko build succeeds but push to registry.platform.127.0.0.1.nip.io fails with TLS handshake error. How do I fix it?"
 
 criteria:
   - id: kaniko-not-dind

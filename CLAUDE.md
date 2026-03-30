@@ -197,12 +197,12 @@ Diagram and spec artifacts live in `specs/NNN-name/`.
 
 ## DNS Convention
 
-`{app}.{namespace-short}.127.0.0.1.nip.io` — resolves to localhost via nip.io.
+`{app}.platform.127.0.0.1.nip.io` — resolves to localhost via nip.io. All services use `platform` subdomain.
 
-- `argocd.mewtwo.127.0.0.1.nip.io`
-- `n8n.mewtwo.127.0.0.1.nip.io`
-- `mlflow.genai.127.0.0.1.nip.io`
-- `agent-gateway.genai.127.0.0.1.nip.io`
+- `argocd.platform.127.0.0.1.nip.io`
+- `n8n.platform.127.0.0.1.nip.io`
+- `mlflow.platform.127.0.0.1.nip.io`
+- `agent-gateway.platform.127.0.0.1.nip.io`
 
 Inside k8s pods, use service DNS: `genai-agent-gateway.genai.svc.cluster.local`
 

@@ -5,7 +5,7 @@ set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-genai}"
 SECRET_NAME="langfuse-api-keys"
-LANGFUSE_URL="${LANGFUSE_URL:-http://langfuse.genai.127.0.0.1.nip.io}"
+LANGFUSE_URL="${LANGFUSE_URL:-http://langfuse.platform.127.0.0.1.nip.io}"
 ADMIN_EMAIL="admin@local.dev"
 ADMIN_PASS="Admin-langfuse-1ocal!"
 COOKIE_JAR="/tmp/langfuse-cookies.txt"

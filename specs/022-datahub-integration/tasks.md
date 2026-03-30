@@ -29,7 +29,7 @@
 
 - [x] Impl: `charts/genai-datahub/Chart.yaml` — dep on `datahub` v0.8.24 from `https://helm.datahubproject.io/`
 - [x] Impl: `charts/genai-datahub/values.yaml` — point at prerequisites services; GMS 2Gi, frontend 1Gi, actions 512Mi; service type ClusterIP; ingestion-cron enabled with MLflow recipe
-- [x] Impl: `charts/genai-datahub/values-k3d.yaml` — ingress: `datahub.genai.127.0.0.1.nip.io` for frontend; GMS ingress `datahub-gms.genai.127.0.0.1.nip.io`
+- [x] Impl: `charts/genai-datahub/values-k3d.yaml` — ingress: `datahub.platform.127.0.0.1.nip.io` for frontend; GMS ingress `datahub-gms.platform.127.0.0.1.nip.io`
 - [x] Impl: `charts/genai-datahub/templates/mysql-secret.yaml` — MySQL root password for DataHub
 - **Files**: `charts/genai-datahub/`
 - **Depends on**: T002
@@ -37,8 +37,8 @@
 ### T004 Verify DataHub deploys and reaches healthy state
 
 - [x] Test: After git push to in-cluster GitLab, ArgoCD syncs both apps. `kubectl get pods -n genai | grep datahub` → all Running
-- [x] Test: `curl -s http://datahub-gms.genai.127.0.0.1.nip.io/health` → 200
-- [x] Test: `curl -s http://datahub.genai.127.0.0.1.nip.io` → 200
+- [x] Test: `curl -s http://datahub-gms.platform.127.0.0.1.nip.io/health` → 200
+- [x] Test: `curl -s http://datahub.platform.127.0.0.1.nip.io` → 200
 - **Depends on**: T003
 - [P] Post-deploy verification — blocked until ArgoCD syncs charts
 

@@ -34,7 +34,7 @@ volumes:
       - all
 
 # --- Networking ---
-# nip.io wildcard DNS: {app}.{ns}.127.0.0.1.nip.io → 127.0.0.1
+# nip.io wildcard DNS: {app}.platform.127.0.0.1.nip.io → 127.0.0.1
 ports:
   - port: 80:80
     nodeFilters:
@@ -51,6 +51,6 @@ registries:
   config: |
     mirrors: {}
     configs:
-      "registry.mewtwo.127.0.0.1.nip.io":
+      "registry.platform.127.0.0.1.nip.io":
         tls:
           insecure_skip_verify: true

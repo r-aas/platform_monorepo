@@ -1,6 +1,6 @@
 # ═══════════════════════════════════════════════════════
 # Ingress — expose MCP proxy data plane externally
-# URL: agentgateway.genai.127.0.0.1.nip.io
+# URL: agentgateway.platform.127.0.0.1.nip.io
 # ═══════════════════════════════════════════════════════
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -16,7 +16,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: agentgateway.genai.127.0.0.1.nip.io
+  - host: agentgateway.platform.127.0.0.1.nip.io
     http:
       paths:
       - path: /

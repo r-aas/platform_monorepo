@@ -18,7 +18,7 @@ import httpx
 from mcp.server.fastmcp import FastMCP
 
 # Config
-PLANE_API_URL = os.environ.get("PLANE_API_URL", "http://plane.genai.127.0.0.1.nip.io")
+PLANE_API_URL = os.environ.get("PLANE_API_URL", "http://plane.platform.127.0.0.1.nip.io")
 PLANE_API_TOKEN = os.environ.get("PLANE_API_TOKEN", "")
 PLANE_WORKSPACE = os.environ.get("PLANE_WORKSPACE_SLUG", "r-aas")
 

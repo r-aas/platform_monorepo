@@ -8,7 +8,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: kagent.genai.127.0.0.1.nip.io
+    - host: kagent.platform.127.0.0.1.nip.io
       http:
         paths:
           - path: /

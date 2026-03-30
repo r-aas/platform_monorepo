@@ -28,7 +28,7 @@ Create isolated k8s sandboxes pre-loaded with git repos for development tasks.
 ## Workflow
 
 1. **Init**: `init_dev_sandbox` with repo name/URL and branch
-   - Short names resolve to local GitLab: `genai-mlops` → `http://gitlab.mewtwo.127.0.0.1.nip.io/root/genai-mlops.git`
+   - Short names resolve to local GitLab: `genai-mlops` → `http://gitlab.platform.127.0.0.1.nip.io/root/genai-mlops.git`
    - Optionally specify `setup_command` (e.g. `uv sync`, `npm install`) and `message` (task for the agent)
 2. **Monitor**: `sandbox_status` to check job progress and view logs
 3. **Explore**: `sandbox_files` to list/read workspace files

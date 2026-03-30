@@ -203,7 +203,7 @@ resources:
 ingress:
   enabled: true
   className: nginx
-  host: litellm.genai.127.0.0.1.nip.io
+  host: litellm.platform.127.0.0.1.nip.io
   annotations: {}
 
 livenessProbe:

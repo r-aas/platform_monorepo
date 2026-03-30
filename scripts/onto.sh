@@ -9,7 +9,7 @@ set -euo pipefail
 
 TOOL="${1:?Usage: onto.sh <tool_name> [json_args]}"
 ARGS="${2:-{}}"
-URL="${ONTO_URL:-http://open-ontologies.genai.127.0.0.1.nip.io/mcp}"
+URL="${ONTO_URL:-http://open-ontologies.platform.127.0.0.1.nip.io/mcp}"
 
 # Initialize session
 INIT_RESP=$(curl -s -X POST "$URL" \

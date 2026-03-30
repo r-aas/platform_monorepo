@@ -52,8 +52,8 @@ Key `config.toml` settings:
     pull_policy = ["if-not-present"]            # fast CI with local cache
     extra_hosts = [
       "host.docker.internal:host-gateway",                          # k3d API access
-      "gitlab.mewtwo.127.0.0.1.nip.io:<gitlab-container-ip>",      # GitLab HTTP
-      "registry.mewtwo.127.0.0.1.nip.io:<gitlab-container-ip>"     # Registry
+      "gitlab.platform.127.0.0.1.nip.io:<gitlab-container-ip>",      # GitLab HTTP
+      "registry.platform.127.0.0.1.nip.io:<gitlab-container-ip>"     # Registry
     ]
   url = "http://gitlab:80"        # Docker service name (NOT nip.io)
   clone_url = "http://gitlab:80"  # Same
@@ -91,7 +91,7 @@ nip.io resolves to 127.0.0.1 (pod-local inside CI containers).
 **Fix**: Use host.docker.internal with Host header:
 ```bash
 curl -f http://host.docker.internal \
-  -H "Host: app.dev.127.0.0.1.nip.io" \
+  -H "Host: app.platform.127.0.0.1.nip.io" \
   --max-time 10
 ```
 
@@ -191,7 +191,7 @@ deploy:
 smoke:
   image: curlimages/curl:latest
   script:
-    - curl -f http://host.docker.internal -H "Host: app.dev.127.0.0.1.nip.io" --max-time 30
+    - curl -f http://host.docker.internal -H "Host: app.platform.127.0.0.1.nip.io" --max-time 30
 ```
 
 ## Rationalizations to Reject

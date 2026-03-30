@@ -202,7 +202,7 @@ environment: local-k3d
 cluster: mewtwo
 
 gateway:
-  url: http://agent-gateway.genai.127.0.0.1.nip.io
+  url: http://agent-gateway.platform.127.0.0.1.nip.io
   internal: http://genai-agent-gateway.genai.svc.cluster.local:8000
 
 llm:
@@ -737,7 +737,7 @@ Add to `platform-instances.ttl`:
     :port 8001 ;
     :protocol "http" ;
     :address "genai-agent-registry.genai.svc.cluster.local" ;
-    :ingressHost "agent-registry.genai.127.0.0.1.nip.io" ;
+    :ingressHost "agent-registry.platform.127.0.0.1.nip.io" ;
     :dependsOn :pgvector .
 ```
 

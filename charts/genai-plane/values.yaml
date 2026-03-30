@@ -9,7 +9,7 @@ planeVersion: stable
 
 ingress:
   enabled: true
-  appHost: "plane.genai.127.0.0.1.nip.io"
+  appHost: "plane.platform.127.0.0.1.nip.io"
   ingressClass: "nginx"
   ingress_annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
@@ -136,7 +136,7 @@ env:
   aws_access_key: "minio"
   aws_secret_access_key: "minio123"
   aws_region: ""
-  aws_s3_endpoint_url: "http://plane.genai.127.0.0.1.nip.io"
+  aws_s3_endpoint_url: "http://plane.platform.127.0.0.1.nip.io"
 
   # Secrets (generate real ones for prod)
   secret_key: "plane-k3d-dev-secret-key-change-in-prod"

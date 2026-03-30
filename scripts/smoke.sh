@@ -58,24 +58,24 @@ echo ""
 # ── Ingress endpoints ───────────────────────────────────────
 echo "Ingress (HTTP):"
 # Always check platform services
-http_check "http://argocd.mewtwo.127.0.0.1.nip.io"           "ArgoCD"
+http_check "http://argocd.platform.127.0.0.1.nip.io"           "ArgoCD"
 app_exists "gitlab-ce" && \
-  http_check "http://gitlab.mewtwo.127.0.0.1.nip.io"         "GitLab"         302
+  http_check "http://gitlab.platform.127.0.0.1.nip.io"         "GitLab"         302
 # genai services — only if deployed
 app_exists "genai-n8n" && \
-  http_check "http://n8n.mewtwo.127.0.0.1.nip.io"            "n8n"
+  http_check "http://n8n.platform.127.0.0.1.nip.io"            "n8n"
 app_exists "genai-mlflow" && \
-  http_check "http://mlflow.genai.127.0.0.1.nip.io/health"   "MLflow"
+  http_check "http://mlflow.platform.127.0.0.1.nip.io/health"   "MLflow"
 app_exists "genai-litellm" && \
-  http_check "http://litellm.genai.127.0.0.1.nip.io/v1/models" "LiteLLM" 200 "Authorization: Bearer ${LITELLM_API_KEY:-sk-litellm-mewtwo-local}"
+  http_check "http://litellm.platform.127.0.0.1.nip.io/v1/models" "LiteLLM" 200 "Authorization: Bearer ${LITELLM_API_KEY:-sk-litellm-mewtwo-local}"
 app_exists "genai-minio" && \
-  http_check "http://minio.genai.127.0.0.1.nip.io/minio/health/live" "MinIO"
+  http_check "http://minio.platform.127.0.0.1.nip.io/minio/health/live" "MinIO"
 app_exists "genai-minio" && \
-  http_check "http://minio-console.genai.127.0.0.1.nip.io"   "MinIO Console"
+  http_check "http://minio-console.platform.127.0.0.1.nip.io"   "MinIO Console"
 app_exists "genai-datahub" && \
-  http_check "http://datahub.genai.127.0.0.1.nip.io"         "DataHub Frontend"
+  http_check "http://datahub.platform.127.0.0.1.nip.io"         "DataHub Frontend"
 app_exists "genai-datahub" && \
-  http_check "http://datahub-gms.genai.127.0.0.1.nip.io/health" "DataHub GMS"
+  http_check "http://datahub-gms.platform.127.0.0.1.nip.io/health" "DataHub GMS"
 echo ""
 
 # ── Internal services (via kubectl) ───────────────────────
@@ -84,7 +84,7 @@ if app_exists "genai-litellm"; then
   if kubectl get pod -n genai -l app.kubernetes.io/instance=genai-litellm --no-headers 2>/dev/null | grep -q "Running"; then
     ok "LiteLLM (pod running)"
     # Test LiteLLM → Ollama chat
-    CHAT_RESP=$(curl -s --max-time 30 http://litellm.genai.127.0.0.1.nip.io/v1/chat/completions \
+    CHAT_RESP=$(curl -s --max-time 30 http://litellm.platform.127.0.0.1.nip.io/v1/chat/completions \
       -H "Content-Type: application/json" \
       -H "Authorization: Bearer ${LITELLM_API_KEY:-sk-litellm-mewtwo-local}" \
       -d '{"model":"qwen2.5:14b","messages":[{"role":"user","content":"Reply OK"}],"max_tokens":5}' 2>/dev/null)
@@ -136,7 +136,7 @@ fi
 
 # agent-gateway e2e (user → agent-gateway → n8n → LiteLLM → Ollama)
 if app_exists "genai-agent-gateway"; then
-  AGENT_RESP=$(curl -s --max-time 60 http://agent-gateway.genai.127.0.0.1.nip.io/v1/chat/completions \
+  AGENT_RESP=$(curl -s --max-time 60 http://agent-gateway.platform.127.0.0.1.nip.io/v1/chat/completions \
     -H "Content-Type: application/json" \
     -d '{"model":"agent:mlops","messages":[{"role":"user","content":"ping"}],"stream":false}' 2>/dev/null)
   if echo "$AGENT_RESP" | grep -q '"choices"'; then

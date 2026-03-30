@@ -11,7 +11,7 @@ scenarios:
     prompt: "My k3d cluster is broken — pods are in CrashLoopBackOff and I'm getting disk pressure taints. How do I recover without losing data?"
 
   - name: gitlab-unreachable
-    prompt: "After running task up, GitLab isn't responding at http://gitlab.mewtwo.127.0.0.1.nip.io. ArgoCD also can't sync. How do I debug this?"
+    prompt: "After running task up, GitLab isn't responding at http://gitlab.platform.127.0.0.1.nip.io. ArgoCD also can't sync. How do I debug this?"
 
   - name: resume-after-reboot
     prompt: "I rebooted my Mac. How do I get the platform back up? What needs to be re-applied?"

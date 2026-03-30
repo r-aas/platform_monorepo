@@ -3,7 +3,7 @@ mlflow:
     enabled: true
     className: nginx
     hosts:
-      - host: mlflow.genai.127.0.0.1.nip.io
+      - host: mlflow.platform.127.0.0.1.nip.io
         paths:
           - path: /
             pathType: Prefix

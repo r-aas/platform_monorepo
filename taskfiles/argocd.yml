@@ -2,7 +2,7 @@ version: "3"
 
 vars:
   ARGOCD_NS: '{{.ARGOCD_NS | default "platform"}}'
-  ARGOCD_URL: '{{.ARGOCD_URL | default "http://argocd.mewtwo.127.0.0.1.nip.io"}}'
+  ARGOCD_URL: '{{.ARGOCD_URL | default "http://argocd.platform.127.0.0.1.nip.io"}}'
   CHARTS_DIR: '{{.ROOT_DIR}}/charts'
   MANIFESTS_DIR: '{{.ROOT_DIR}}/manifests'
 

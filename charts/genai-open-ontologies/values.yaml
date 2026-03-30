@@ -15,7 +15,7 @@ service:
 ingress:
   enabled: true
   className: nginx
-  host: open-ontologies.genai.127.0.0.1.nip.io
+  host: open-ontologies.platform.127.0.0.1.nip.io
 
 # Ontology files mounted as ConfigMap.
 # Populated by: task ontology-sync (copies from ontology/*.ttl)

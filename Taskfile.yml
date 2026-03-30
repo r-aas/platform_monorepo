@@ -194,17 +194,17 @@ tasks:
         echo ""
         echo "  Platform URLs:"
         echo "  ─────────────────────────────────────────"
-        echo "  ArgoCD:       http://argocd.mewtwo.127.0.0.1.nip.io"
-        echo "  GitLab:       http://gitlab.mewtwo.127.0.0.1.nip.io"
-        echo "  n8n:          http://n8n.mewtwo.127.0.0.1.nip.io"
-        echo "  MLflow:       http://mlflow.genai.127.0.0.1.nip.io"
-        echo "  LiteLLM:      http://litellm.genai.127.0.0.1.nip.io"
-        echo "  MinIO:        http://minio-console.genai.127.0.0.1.nip.io"
-        echo "  DataHub:      http://datahub.genai.127.0.0.1.nip.io"
-        echo "  DataHub GMS:  http://datahub-gms.genai.127.0.0.1.nip.io"
-        echo "  Agent Reg:   http://agent-registry.genai.127.0.0.1.nip.io"
-        echo "  Langfuse:     http://langfuse.genai.127.0.0.1.nip.io"
-        echo "  kagent:       http://kagent.genai.127.0.0.1.nip.io"
+        echo "  ArgoCD:       http://argocd.platform.127.0.0.1.nip.io"
+        echo "  GitLab:       http://gitlab.platform.127.0.0.1.nip.io"
+        echo "  n8n:          http://n8n.platform.127.0.0.1.nip.io"
+        echo "  MLflow:       http://mlflow.platform.127.0.0.1.nip.io"
+        echo "  LiteLLM:      http://litellm.platform.127.0.0.1.nip.io"
+        echo "  MinIO:        http://minio-console.platform.127.0.0.1.nip.io"
+        echo "  DataHub:      http://datahub.platform.127.0.0.1.nip.io"
+        echo "  DataHub GMS:  http://datahub-gms.platform.127.0.0.1.nip.io"
+        echo "  Agent Reg:   http://agent-registry.platform.127.0.0.1.nip.io"
+        echo "  Langfuse:     http://langfuse.platform.127.0.0.1.nip.io"
+        echo "  kagent:       http://kagent.platform.127.0.0.1.nip.io"
         echo ""
         echo "  Credentials:"
         echo "  ─────────────────────────────────────────"
@@ -287,7 +287,7 @@ tasks:
       PROJECT_NAME: "{{.CLI_ARGS}}"
       REPOS_DIR: "${HOME}/work/repos"
       TEMPLATE_DIR: "{{.PLATFORM_DIR}}/repo-template"
-      GITLAB_URL: '{{.GITLAB_URL | default "http://gitlab.mewtwo.127.0.0.1.nip.io"}}'
+      GITLAB_URL: '{{.GITLAB_URL | default "http://gitlab.platform.127.0.0.1.nip.io"}}'
       GITLAB_PAT: '{{.GITLAB_PAT | default ""}}'
     preconditions:
       - sh: '[ -n "{{.CLI_ARGS}}" ]'
@@ -323,7 +323,7 @@ tasks:
     desc: "Sync agent YAML definitions to MLflow prompt registry (retries until MLflow ready)"
     cmds:
       - |
-        MLFLOW_URL="${MLFLOW_TRACKING_URI:-http://mlflow.genai.127.0.0.1.nip.io}"
+        MLFLOW_URL="${MLFLOW_TRACKING_URI:-http://mlflow.platform.127.0.0.1.nip.io}"
         echo "  Waiting for MLflow..."
         for i in $(seq 1 20); do
           HTTP=$(curl -sf -o /dev/null -w '%{http_code}' --max-time 3 "${MLFLOW_URL}/health" 2>/dev/null || echo "000")
@@ -335,7 +335,7 @@ tasks:
         from pathlib import Path
         from agent_gateway.agentspec.sync import sync_all
         import mlflow, os
-        mlflow.set_tracking_uri(os.environ.get('MLFLOW_TRACKING_URI', 'http://mlflow.genai.127.0.0.1.nip.io'))
+        mlflow.set_tracking_uri(os.environ.get('MLFLOW_TRACKING_URI', 'http://mlflow.platform.127.0.0.1.nip.io'))
         synced = sync_all(Path('../../agents'))
         print('  ✓ Synced ' + str(len(synced)) + ' agents: ' + ', '.join(synced))
         "
@@ -369,16 +369,16 @@ tasks:
     desc: "End-to-end agent benchmarks with LLM-as-judge (k3d mode)"
     dir: "${HOME}/work/repos/genai-mlops"
     env:
-      N8N_BASE_URL: "http://n8n.mewtwo.127.0.0.1.nip.io/webhook"
-      MLFLOW_TRACKING_URI: "http://mlflow.genai.127.0.0.1.nip.io"
-      LANGFUSE_HOST: "http://langfuse.genai.127.0.0.1.nip.io"
-      AGENT_GATEWAY_URL: "http://agent-gateway.genai.127.0.0.1.nip.io"
-      LITELLM_URL: "http://litellm.genai.127.0.0.1.nip.io"
+      N8N_BASE_URL: "http://n8n.platform.127.0.0.1.nip.io/webhook"
+      MLFLOW_TRACKING_URI: "http://mlflow.platform.127.0.0.1.nip.io"
+      LANGFUSE_HOST: "http://langfuse.platform.127.0.0.1.nip.io"
+      AGENT_GATEWAY_URL: "http://agent-gateway.platform.127.0.0.1.nip.io"
+      LITELLM_URL: "http://litellm.platform.127.0.0.1.nip.io"
       LITELLM_API_KEY: "sk-litellm-mewtwo-local"
     preconditions:
-      - sh: curl -sf http://agent-gateway.genai.127.0.0.1.nip.io/health/detail >/dev/null
+      - sh: curl -sf http://agent-gateway.platform.127.0.0.1.nip.io/health/detail >/dev/null
         msg: "agent-gateway not reachable"
-      - sh: curl -sf http://mlflow.genai.127.0.0.1.nip.io/health >/dev/null
+      - sh: curl -sf http://mlflow.platform.127.0.0.1.nip.io/health >/dev/null
         msg: "MLflow not reachable"
     cmds:
       - uv run python scripts/agent-benchmark.py {{.CLI_ARGS}}
@@ -387,10 +387,10 @@ tasks:
     desc: "Quick benchmark smoke test — 1 agent, 3 cases"
     dir: "${HOME}/work/repos/genai-mlops"
     env:
-      N8N_BASE_URL: "http://n8n.mewtwo.127.0.0.1.nip.io/webhook"
-      MLFLOW_TRACKING_URI: "http://mlflow.genai.127.0.0.1.nip.io"
-      AGENT_GATEWAY_URL: "http://agent-gateway.genai.127.0.0.1.nip.io"
-      LITELLM_URL: "http://litellm.genai.127.0.0.1.nip.io"
+      N8N_BASE_URL: "http://n8n.platform.127.0.0.1.nip.io/webhook"
+      MLFLOW_TRACKING_URI: "http://mlflow.platform.127.0.0.1.nip.io"
+      AGENT_GATEWAY_URL: "http://agent-gateway.platform.127.0.0.1.nip.io"
+      LITELLM_URL: "http://litellm.platform.127.0.0.1.nip.io"
       LITELLM_API_KEY: "sk-litellm-mewtwo-local"
     cmds:
       - uv run python scripts/agent-benchmark.py --agent mlops --limit 3

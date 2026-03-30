@@ -13,7 +13,7 @@
 set -euo pipefail
 
 PROJECT="${1:?Usage: setup-ci-kubeconfig.sh <namespace/project>}"
-GITLAB_URL="${GITLAB_URL:-http://gitlab.mewtwo.127.0.0.1.nip.io}"
+GITLAB_URL="${GITLAB_URL:-http://gitlab.platform.127.0.0.1.nip.io}"
 GITLAB_PAT="${GITLAB_PAT:?Set GITLAB_PAT with api-scope token}"
 
 # URL-encode the project path (e.g., root/myproject → root%2Fmyproject)

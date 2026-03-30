@@ -12,7 +12,7 @@ OWNER_FIRST="Platform"
 OWNER_LAST="Admin"
 
 for NS in $NAMESPACES; do
-  HOST="n8n.$NS.127.0.0.1.nip.io"
+  HOST="n8n.platform.127.0.0.1.nip.io"
   # Password: PlatformN8n<Ns>2024 (no special chars — n8n body parser chokes on !)
   NS_CAP="$(echo "${NS:0:1}" | tr '[:lower:]' '[:upper:]')${NS:1}"
   PASS="PlatformN8n${NS_CAP}2024"

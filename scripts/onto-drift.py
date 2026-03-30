@@ -12,7 +12,7 @@ Compares what the ontology declares vs what kubectl reports. Catches:
 import json, subprocess, http.client, sys
 from urllib.parse import urlparse
 
-URL = "http://open-ontologies.genai.127.0.0.1.nip.io/mcp"
+URL = "http://open-ontologies.platform.127.0.0.1.nip.io/mcp"
 NAMESPACES = ["genai", "platform"]
 
 

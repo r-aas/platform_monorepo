@@ -6,9 +6,9 @@ minio:
     enabled: true
     ingressClassName: nginx
     hosts:
-      - minio-console.genai.127.0.0.1.nip.io
+      - minio-console.platform.127.0.0.1.nip.io
   ingress:
     enabled: true
     ingressClassName: nginx
     hosts:
-      - minio.genai.127.0.0.1.nip.io
+      - minio.platform.127.0.0.1.nip.io

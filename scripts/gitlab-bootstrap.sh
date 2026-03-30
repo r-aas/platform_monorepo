@@ -15,7 +15,7 @@ set -euo pipefail
 NAMESPACE="${NAMESPACE:-platform}"
 GITLAB_POD="gitlab-ce-0"
 GITLAB_SVC="http://gitlab-ce.${NAMESPACE}.svc.cluster.local"
-GITLAB_EXTERNAL="${GITLAB_EXTERNAL_URL:-http://gitlab.mewtwo.127.0.0.1.nip.io}"
+GITLAB_EXTERNAL="${GITLAB_EXTERNAL_URL:-http://gitlab.platform.127.0.0.1.nip.io}"
 REPO_DIR="${PLATFORM_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 PAT_NAME="platform-automation"
 RUNNER_SECRET="gitlab-runner-token"
@@ -144,7 +144,7 @@ fi
 
 # Push via git (from the host, through ingress)
 cd "$REPO_DIR"
-REMOTE_URL="http://root:${PAT}@gitlab.mewtwo.127.0.0.1.nip.io/root/platform_monorepo.git"
+REMOTE_URL="http://root:${PAT}@gitlab.platform.127.0.0.1.nip.io/root/platform_monorepo.git"
 
 if git remote get-url gitlab >/dev/null 2>&1; then
   git remote set-url gitlab "$REMOTE_URL"
@@ -159,7 +159,7 @@ log ""
 log "Bootstrap complete."
 log ""
 log "  GitLab:     $GITLAB_EXTERNAL"
-log "  ArgoCD:     http://argocd.mewtwo.127.0.0.1.nip.io"
+log "  ArgoCD:     http://argocd.platform.127.0.0.1.nip.io"
 log "  GitLab root password: $(kubectl -n "$NAMESPACE" get secret gitlab-ce-initial-password -o jsonpath='{.data.initial_root_password}' 2>/dev/null | base64 -d 2>/dev/null || echo '(check with: task gitlab-password)')"
 log "  ArgoCD admin password: $(kubectl -n "$NAMESPACE" get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null || echo '(check with: task argocd-password)')"
 log ""

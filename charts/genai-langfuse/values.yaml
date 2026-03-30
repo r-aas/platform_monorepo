@@ -10,7 +10,7 @@ langfuse:
       value: "3783e3a23f06d9d0fd74c3255cf4f3c4aadf61b674d53f0ef8de68952f61df29"
 
     nextauth:
-      url: http://langfuse.genai.127.0.0.1.nip.io
+      url: http://langfuse.platform.127.0.0.1.nip.io
       secret:
         value: "E7Nt6J/dPwUQUCqyH56Bom4yudMzNpbFtsescvXGE3E="
 
@@ -27,7 +27,7 @@ langfuse:
       enabled: true
       className: nginx
       hosts:
-        - host: langfuse.genai.127.0.0.1.nip.io
+        - host: langfuse.platform.127.0.0.1.nip.io
           paths:
             - path: /
               pathType: Prefix

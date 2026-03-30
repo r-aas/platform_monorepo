@@ -86,7 +86,7 @@ kubectl get ingress -A                               # ingress-nginx active
 
 ### After Phase 2 (GitLab setup)
 ```bash
-curl -sf http://gitlab.mewtwo.127.0.0.1.nip.io/-/health  # GitLab healthy
+curl -sf http://gitlab.platform.127.0.0.1.nip.io/-/health  # GitLab healthy
 task gitlab-password                                      # root password works
 ```
 
@@ -215,10 +215,10 @@ helmfile -l tier=platform sync
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| GitLab | http://gitlab.mewtwo.127.0.0.1.nip.io | root / `task gitlab-password` |
+| GitLab | http://gitlab.platform.127.0.0.1.nip.io | root / `task gitlab-password` |
 | ArgoCD | http://argocd.platform.127.0.0.1.nip.io | admin / `task argocd-password` |
-| n8n (dev) | http://n8n.dev.127.0.0.1.nip.io | set during setup |
-| LiteLLM | http://litellm.genai.127.0.0.1.nip.io | API key in secrets |
+| n8n (dev) | http://n8n.platform.127.0.0.1.nip.io | set during setup |
+| LiteLLM | http://litellm.platform.127.0.0.1.nip.io | API key in secrets |
 | Ollama | http://localhost:11434 | none (host-native) |
 
 ## Helmfile Architecture Pattern

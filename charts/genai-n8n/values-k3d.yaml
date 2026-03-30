@@ -6,7 +6,7 @@ n8n:
       nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
       nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
     hosts:
-      - host: n8n.mewtwo.127.0.0.1.nip.io
+      - host: n8n.platform.127.0.0.1.nip.io
         paths:
           - path: /
             pathType: Prefix

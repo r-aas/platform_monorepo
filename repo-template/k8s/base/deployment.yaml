@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: registry.mewtwo.127.0.0.1.nip.io/root/APP_NAME:latest
+          image: registry.platform.127.0.0.1.nip.io/root/APP_NAME:latest
           ports:
             - containerPort: 8000
           env:

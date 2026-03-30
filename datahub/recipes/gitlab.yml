@@ -4,7 +4,7 @@
 source:
   type: git
   config:
-    repo: "http://gitlab.mewtwo.127.0.0.1.nip.io/root/platform_monorepo.git"
+    repo: "http://gitlab.platform.127.0.0.1.nip.io/root/platform_monorepo.git"
     deploy_key: ""  # Not needed for public repos; set if private
     branch: "main"
 

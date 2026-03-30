@@ -4,7 +4,7 @@ datahub:
       enabled: true
       className: nginx
       hosts:
-        - host: datahub.genai.127.0.0.1.nip.io
+        - host: datahub.platform.127.0.0.1.nip.io
           paths:
             - /
 
@@ -13,6 +13,6 @@ datahub:
       enabled: true
       className: nginx
       hosts:
-        - host: datahub-gms.genai.127.0.0.1.nip.io
+        - host: datahub-gms.platform.127.0.0.1.nip.io
           paths:
             - /

@@ -9,7 +9,7 @@
 version: "3"
 
 vars:
-  GATEWAY_URL: '{{.GATEWAY_URL | default "http://agent-gateway.genai.127.0.0.1.nip.io"}}'
+  GATEWAY_URL: '{{.GATEWAY_URL | default "http://agent-gateway.platform.127.0.0.1.nip.io"}}'
 
 tasks:
   init:

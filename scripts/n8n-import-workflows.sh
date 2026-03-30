@@ -205,7 +205,7 @@ fi
 
 # ── Create __sessions MLflow experiment ──────────────────────────────────────
 # Required for sessions-v1 workflow to store chat history. Idempotent.
-MLFLOW_URL="http://mlflow.genai.127.0.0.1.nip.io"
+MLFLOW_URL="http://mlflow.platform.127.0.0.1.nip.io"
 echo -n "  Ensuring __sessions MLflow experiment..."
 HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
   "${MLFLOW_URL}/api/2.0/mlflow/experiments/get-by-name?experiment_name=__sessions" 2>/dev/null || echo "000")
@@ -229,4 +229,4 @@ kubectl exec -n ${NAMESPACE} "${N8N_POD_NEW:-$N8N_POD}" -- rm -rf /tmp/workflows
 
 echo ""
 echo "Done. Workflows imported and activated."
-echo "  Webhooks will be available at: http://n8n.mewtwo.127.0.0.1.nip.io/webhook/*"
+echo "  Webhooks will be available at: http://n8n.platform.127.0.0.1.nip.io/webhook/*"

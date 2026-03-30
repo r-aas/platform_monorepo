@@ -45,7 +45,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: gitlab.mewtwo.127.0.0.1.nip.io
+    - host: gitlab.platform.127.0.0.1.nip.io
       http:
         paths:
           - path: /
@@ -55,7 +55,7 @@ spec:
                 name: gitlab-external
                 port:
                   number: 8929
-    - host: registry.mewtwo.127.0.0.1.nip.io
+    - host: registry.platform.127.0.0.1.nip.io
       http:
         paths:
           - path: /

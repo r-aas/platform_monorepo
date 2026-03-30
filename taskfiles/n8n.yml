@@ -89,9 +89,9 @@ tasks:
     cmds:
       - |
         echo "n8n URLs:"
-        echo "  dev:   http://n8n.dev.127.0.0.1.nip.io"
-        echo "  stage: http://n8n.stage.127.0.0.1.nip.io"
-        echo "  prod:  http://n8n.prod.127.0.0.1.nip.io"
+        echo "  dev:   http://n8n.platform.127.0.0.1.nip.io"
+        echo "  stage: http://n8n.platform.127.0.0.1.nip.io"
+        echo "  prod:  http://n8n.platform.127.0.0.1.nip.io"
 
   restart:
     desc: "Restart n8n in a namespace (NS=dev|stage|prod)"

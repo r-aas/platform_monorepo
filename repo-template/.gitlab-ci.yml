@@ -20,7 +20,7 @@ stages:
   - smoke
 
 variables:
-  REGISTRY: registry.mewtwo.127.0.0.1.nip.io
+  REGISTRY: registry.platform.127.0.0.1.nip.io
   IMAGE: $REGISTRY/$CI_PROJECT_PATH
 
 # ── Stage 1: TEST ─────────────────────────────────────────────
@@ -169,7 +169,7 @@ deploy-dev:
     - kubectl --insecure-skip-tls-verify rollout status -n dev deployment/$CI_PROJECT_NAME --timeout=120s
   environment:
     name: dev
-    url: http://$CI_PROJECT_NAME.dev.127.0.0.1.nip.io
+    url: http://$CI_PROJECT_NAME.platform.127.0.0.1.nip.io
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
@@ -186,7 +186,7 @@ deploy-stage:
     - kubectl --insecure-skip-tls-verify rollout status -n stage deployment/$CI_PROJECT_NAME --timeout=120s
   environment:
     name: stage
-    url: http://$CI_PROJECT_NAME.stage.127.0.0.1.nip.io
+    url: http://$CI_PROJECT_NAME.platform.127.0.0.1.nip.io
   when: manual
   allow_failure: false
   rules:
@@ -205,7 +205,7 @@ deploy-prod:
     - kubectl --insecure-skip-tls-verify rollout status -n prod deployment/$CI_PROJECT_NAME --timeout=120s
   environment:
     name: prod
-    url: http://$CI_PROJECT_NAME.prod.127.0.0.1.nip.io
+    url: http://$CI_PROJECT_NAME.platform.127.0.0.1.nip.io
   needs: [deploy-stage]
   when: manual
   allow_failure: false
@@ -230,7 +230,7 @@ deploy-prod:
 smoke-dev:
   <<: *smoke-template
   variables:
-    APP_HOST: $CI_PROJECT_NAME.dev.127.0.0.1.nip.io
+    APP_HOST: $CI_PROJECT_NAME.platform.127.0.0.1.nip.io
     DEPLOY_ENV: dev
   needs: [deploy-dev]
   rules:
@@ -239,7 +239,7 @@ smoke-dev:
 smoke-stage:
   <<: *smoke-template
   variables:
-    APP_HOST: $CI_PROJECT_NAME.stage.127.0.0.1.nip.io
+    APP_HOST: $CI_PROJECT_NAME.platform.127.0.0.1.nip.io
     DEPLOY_ENV: stage
   needs: [deploy-stage]
   rules:
@@ -249,7 +249,7 @@ smoke-stage:
 smoke-prod:
   <<: *smoke-template
   variables:
-    APP_HOST: $CI_PROJECT_NAME.prod.127.0.0.1.nip.io
+    APP_HOST: $CI_PROJECT_NAME.platform.127.0.0.1.nip.io
     DEPLOY_ENV: prod
   needs: [deploy-prod]
   rules:

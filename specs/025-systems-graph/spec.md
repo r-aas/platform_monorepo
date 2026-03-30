@@ -88,7 +88,7 @@ As a platform engineer, I can view a visual graph of my entire platform — from
 - **FR-007**: DataHub MUST be included in `task up` bootstrap and `task smoke` health checks
 - **FR-008**: DataHub lineage graph MUST show agent → prompt → model → dataset chains
 - **FR-009**: All DataHub deployment MUST be ArgoCD-managed via GitOps
-- **FR-010**: The systems graph MUST be browsable via DataHub's native UI at `datahub.genai.127.0.0.1.nip.io`
+- **FR-010**: The systems graph MUST be browsable via DataHub's native UI at `datahub.platform.127.0.0.1.nip.io`
 
 ### Key Entities
 

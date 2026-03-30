@@ -14,7 +14,7 @@ Multiple tools (maintains session):
 import json, sys, http.client
 from urllib.parse import urlparse
 
-URL = "http://open-ontologies.genai.127.0.0.1.nip.io/mcp"
+URL = "http://open-ontologies.platform.127.0.0.1.nip.io/mcp"
 
 
 def mcp_session(url, tool_calls):

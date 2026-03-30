@@ -12,7 +12,7 @@ version: 1.0.0
 
 ## The nip.io Trap
 
-nip.io encodes the IP in the hostname: `app.dev.127.0.0.1.nip.io` → resolves to `127.0.0.1`.
+nip.io encodes the IP in the hostname: `app.platform.127.0.0.1.nip.io` → resolves to `127.0.0.1`.
 
 **On the Mac**: Works perfectly. 127.0.0.1 is your machine.
 **Inside a container/pod**: 127.0.0.1 is the container itself. Every nip.io lookup returns
@@ -22,9 +22,9 @@ the WRONG address inside containers.
 
 | Scenario | Why It Breaks | Fix |
 |----------|--------------|-----|
-| Pod curling `app.dev.127.0.0.1.nip.io` | Resolves to pod-local 127.0.0.1 | Use k8s service DNS: `app.dev.svc.cluster.local` |
-| CI job smoke-testing via ingress | Same — 127.0.0.1 is job container | Use `http://host.docker.internal` + `-H Host:app.dev.127.0.0.1.nip.io` |
-| k3d node pulling from registry | `registry.mewtwo.127.0.0.1.nip.io` → 127.0.0.1 → node-local | Add `/etc/hosts` entry on each k3d node (see below) |
+| Pod curling `app.platform.127.0.0.1.nip.io` | Resolves to pod-local 127.0.0.1 | Use k8s service DNS: `app.dev.svc.cluster.local` |
+| CI job smoke-testing via ingress | Same — 127.0.0.1 is job container | Use `http://host.docker.internal` + `-H Host:app.platform.127.0.0.1.nip.io` |
+| k3d node pulling from registry | `registry.platform.127.0.0.1.nip.io` → 127.0.0.1 → node-local | Add `/etc/hosts` entry on each k3d node (see below) |
 | ExternalName service to GitLab | ingress-nginx resolves via CoreDNS → 127.0.0.1 | Use ClusterIP + static Endpoints instead |
 
 ## Registry Access from k3d Nodes
@@ -43,7 +43,7 @@ docker network inspect platform_monorepo_gitlab --format '{{(index .IPAM.Config 
 ```bash
 GATEWAY_IP=172.23.0.1
 for node in $(docker ps --filter name=k3d-mewtwo --format '{{.Names}}'); do
-  docker exec $node sh -c "echo '$GATEWAY_IP registry.mewtwo.127.0.0.1.nip.io' >> /etc/hosts"
+  docker exec $node sh -c "echo '$GATEWAY_IP registry.platform.127.0.0.1.nip.io' >> /etc/hosts"
 done
 ```
 
@@ -52,7 +52,7 @@ done
 # /etc/rancher/k3s/registries.yaml (on k3s data volume — survives restart)
 mirrors: {}
 configs:
-  "registry.mewtwo.127.0.0.1.nip.io":
+  "registry.platform.127.0.0.1.nip.io":
     tls:
       insecure_skip_verify: true
 ```
@@ -104,8 +104,8 @@ Within the cluster, always use service DNS instead of nip.io:
 
 | External (Mac browser) | Internal (pod-to-pod) |
 |------------------------|----------------------|
-| `http://gitlab.mewtwo.127.0.0.1.nip.io` | `http://gitlab-ce.platform.svc.cluster.local` |
-| `http://app.dev.127.0.0.1.nip.io` | `http://app.dev.svc.cluster.local` |
+| `http://gitlab.platform.127.0.0.1.nip.io` | `http://gitlab-ce.platform.svc.cluster.local` |
+| `http://app.platform.127.0.0.1.nip.io` | `http://app.dev.svc.cluster.local` |
 | `http://argocd.platform.127.0.0.1.nip.io` | `http://argocd-server.platform.svc.cluster.local` |
 
 ## Colima Disk Pressure Cascade

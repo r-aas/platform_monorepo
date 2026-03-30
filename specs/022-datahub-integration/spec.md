@@ -91,8 +91,8 @@ As a platform engineer, `task up` brings up DataHub automatically with no manual
 
 - **FR-001**: System MUST deploy DataHub prerequisites (Elasticsearch, Kafka, MySQL) as `genai-datahub-prereqs` Helm release in the `genai` namespace
 - **FR-002**: System MUST deploy DataHub GMS and frontend as `genai-datahub` Helm release in the `genai` namespace
-- **FR-003**: DataHub GMS MUST be reachable at `http://datahub-gms.genai.127.0.0.1.nip.io` and respond `{"status":"UP"}` at `/health`
-- **FR-004**: DataHub frontend MUST be reachable at `http://datahub.genai.127.0.0.1.nip.io`
+- **FR-003**: DataHub GMS MUST be reachable at `http://datahub-gms.platform.127.0.0.1.nip.io` and respond `{"status":"UP"}` at `/health`
+- **FR-004**: DataHub frontend MUST be reachable at `http://datahub.platform.127.0.0.1.nip.io`
 - **FR-005**: System MUST ingest MLflow experiments, runs, and registered models into DataHub on an hourly schedule via `datahub-ingestion-cron` subchart
 - **FR-006**: Ingestion MUST use a custom image (`datahub-ingestion-mlflow:latest`) with `datahub[mlflow]` installed, built via `build-images.sh` and imported into k3d
 - **FR-007**: System MUST provide a FastAPI bridge service (`n8n-datahub-bridge`) that accepts n8n execution webhook events and emits DataHub DataJob/DataProcessInstance MCPs
@@ -140,7 +140,7 @@ As a platform engineer, `task up` brings up DataHub automatically with no manual
 ## Acceptance Criteria
 
 1. `kubectl get pods -n genai | grep datahub` shows all pods Running after ArgoCD sync
-2. `curl -s http://datahub-gms.genai.127.0.0.1.nip.io/health` returns `{"status":"UP"}`
+2. `curl -s http://datahub-gms.platform.127.0.0.1.nip.io/health` returns `{"status":"UP"}`
 3. `kubectl create job --from=cronjob/datahub-ingestion-cron-mlflow datahub-ingest-manual -n genai` completes with exit 0
 4. DataHub GMS search query for "mlflow" returns non-empty results
 5. POST to `http://genai-datahub-bridge.genai.svc.cluster.local:8000/webhook/n8n` with a synthetic execution event → DataProcessInstance entity queryable from GMS

@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-GMS_URL="${DATAHUB_GMS_URL:-http://datahub-gms.genai.127.0.0.1.nip.io}"
+GMS_URL="${DATAHUB_GMS_URL:-http://datahub-gms.platform.127.0.0.1.nip.io}"
 GMS_INTERNAL="http://genai-datahub-datahub-gms.genai.svc.cluster.local:8080"
 
 echo "DataHub Ingestion Setup"
@@ -115,4 +115,4 @@ create_source "postgres-n8n"      "genai-pg-n8n.genai.svc.cluster.local:5432"   
 create_source "postgres-mlflow"   "genai-pg-mlflow.genai.svc.cluster.local:5432"           "mlflow"   "mlflow"   "mlflow"
 create_source "postgres-langfuse" "genai-langfuse-postgresql.genai.svc.cluster.local:5432" "langfuse" "langfuse" "langfuse"
 echo ""
-echo "Done. View at: http://datahub.genai.127.0.0.1.nip.io/ingestion"
+echo "Done. View at: http://datahub.platform.127.0.0.1.nip.io/ingestion"

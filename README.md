@@ -111,20 +111,20 @@ task down            # Destroy cluster (PV data preserved)
 
 | Service | URL |
 |---------|-----|
-| ArgoCD | http://argocd.mewtwo.127.0.0.1.nip.io |
-| n8n | http://n8n.mewtwo.127.0.0.1.nip.io |
-| MLflow | http://mlflow.genai.127.0.0.1.nip.io |
-| GitLab | http://gitlab.mewtwo.127.0.0.1.nip.io |
-| Langfuse | http://langfuse.genai.127.0.0.1.nip.io |
-| Plane | http://plane.genai.127.0.0.1.nip.io |
-| DataHub | http://datahub.genai.127.0.0.1.nip.io |
-| MCP Proxy | http://agentgateway.genai.127.0.0.1.nip.io |
-| LiteLLM | http://litellm.genai.127.0.0.1.nip.io |
+| ArgoCD | http://argocd.platform.127.0.0.1.nip.io |
+| n8n | http://n8n.platform.127.0.0.1.nip.io |
+| MLflow | http://mlflow.platform.127.0.0.1.nip.io |
+| GitLab | http://gitlab.platform.127.0.0.1.nip.io |
+| Langfuse | http://langfuse.platform.127.0.0.1.nip.io |
+| Plane | http://plane.platform.127.0.0.1.nip.io |
+| DataHub | http://datahub.platform.127.0.0.1.nip.io |
+| MCP Proxy | http://agentgateway.platform.127.0.0.1.nip.io |
+| LiteLLM | http://litellm.platform.127.0.0.1.nip.io |
 
 ### Chat with MCP Tools
 
 ```bash
-curl -X POST http://n8n.mewtwo.127.0.0.1.nip.io/webhook/chat \
+curl -X POST http://n8n.platform.127.0.0.1.nip.io/webhook/chat \
   -H 'Content-Type: application/json' \
   -d '{"message":"list namespaces in the cluster","config":{"mcp_tools":"all"}}'
 ```
@@ -133,7 +133,7 @@ curl -X POST http://n8n.mewtwo.127.0.0.1.nip.io/webhook/chat \
 
 ```bash
 # Initialize MCP session (all 243 tools from 8 backends)
-curl -X POST http://agentgateway.genai.127.0.0.1.nip.io/mcp/all \
+curl -X POST http://agentgateway.platform.127.0.0.1.nip.io/mcp/all \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'

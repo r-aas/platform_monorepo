@@ -41,9 +41,9 @@ Uses nip.io wildcard DNS — no /etc/hosts needed.
 Pattern: `http://{app}.{namespace}.127.0.0.1.nip.io`
 
 Examples:
-- `http://myapp.dev.127.0.0.1.nip.io`
-- `http://gitlab.mewtwo.127.0.0.1.nip.io` (GitLab, platform namespace uses cluster name)
-- `http://registry.mewtwo.127.0.0.1.nip.io` (container registry)
+- `http://myapp.platform.127.0.0.1.nip.io`
+- `http://gitlab.platform.127.0.0.1.nip.io` (GitLab, platform namespace uses cluster name)
+- `http://registry.platform.127.0.0.1.nip.io` (container registry)
 
 ## GitLab CE (Platform Namespace)
 
@@ -52,7 +52,7 @@ GitLab CE runs in the `platform` namespace for local CI/CD.
 - Manifests: `~/work/platform/gitlab-ce.yaml`, `~/work/platform/gitlab-runner.yaml`
 - Deploy: `task gitlab:deploy` (from ~/work)
 - Root password: `task gitlab:password`
-- Registry: built-in, at `http://registry.mewtwo.127.0.0.1.nip.io`
+- Registry: built-in, at `http://registry.platform.127.0.0.1.nip.io`
 - CI builds: Kaniko (no Docker-in-Docker, no privileged containers)
 
 ## Deployment Conventions
@@ -92,7 +92,7 @@ spec:
 Push to the local GitLab registry:
 
 ```
-registry.mewtwo.127.0.0.1.nip.io/{project-path}:{tag}
+registry.platform.127.0.0.1.nip.io/{project-path}:{tag}
 ```
 
 Use `--insecure` and `--skip-tls-verify` flags with Kaniko (no TLS locally).

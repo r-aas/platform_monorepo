@@ -108,7 +108,7 @@ agent-eval:
     - apt-get update -qq && apt-get install -y -qq curl > /dev/null
   script:
     - |
-      GATEWAY_URL="${AGENT_GATEWAY_URL:-http://agent-gateway.genai.127.0.0.1.nip.io}"
+      GATEWAY_URL="${AGENT_GATEWAY_URL:-http://agent-gateway.platform.127.0.0.1.nip.io}"
       echo "Running eval against $GATEWAY_URL"
       curl -sf "$GATEWAY_URL/factory/health" || { echo "Gateway unreachable — skipping"; exit 0; }
       echo "=== Factory Health ==="

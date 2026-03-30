@@ -17,7 +17,7 @@ import sys
 import time
 import urllib.request
 
-GMS_URL_DEFAULT = "http://datahub-gms.genai.127.0.0.1.nip.io"
+GMS_URL_DEFAULT = "http://datahub-gms.platform.127.0.0.1.nip.io"
 PLATFORM_INSTANCE = "k3d-mewtwo"
 
 

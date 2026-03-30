@@ -9,7 +9,7 @@ Idempotent — uses upsert (ON CONFLICT DO UPDATE).
 Usage:
     # From inside k3d cluster (port-forward or kubectl exec):
     AGW_DATABASE_URL=postgresql+asyncpg://agw:agw@localhost:5432/agw \
-    MLFLOW_TRACKING_URI=http://mlflow.genai.127.0.0.1.nip.io \
+    MLFLOW_TRACKING_URI=http://mlflow.platform.127.0.0.1.nip.io \
     python scripts/migrate-mlflow-to-pg.py
 
     # Or via task:
@@ -29,11 +29,11 @@ import httpx
 # Config
 # ---------------------------------------------------------------------------
 
-MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow.genai.127.0.0.1.nip.io")
+MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow.platform.127.0.0.1.nip.io")
 DATABASE_URL = os.getenv("AGW_DATABASE_URL", "postgresql+asyncpg://agw:agw@genai-agent-gateway-pg.genai.svc.cluster.local:5432/agw")
 
 # Agent-gateway REST API (easier than direct DB if running locally)
-AGW_URL = os.getenv("AGW_URL", "http://agent-gateway.genai.127.0.0.1.nip.io")
+AGW_URL = os.getenv("AGW_URL", "http://agent-gateway.platform.127.0.0.1.nip.io")
 
 # ---------------------------------------------------------------------------
 # MLflow read helpers

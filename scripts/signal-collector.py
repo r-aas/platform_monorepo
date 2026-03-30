@@ -166,12 +166,12 @@ def collect_health_signals() -> list[Signal]:
     """Check key service health endpoints."""
     signals = []
     checks = [
-        ("n8n", "http://n8n.mewtwo.127.0.0.1.nip.io/healthz"),
-        ("mlflow", "http://mlflow.genai.127.0.0.1.nip.io/health"),
-        ("litellm", "http://litellm.genai.127.0.0.1.nip.io/health"),
-        ("langfuse", "http://langfuse.genai.127.0.0.1.nip.io/api/public/health"),
-        ("agent-gateway", "http://agent-gateway.genai.127.0.0.1.nip.io/health"),
-        ("datahub", "http://datahub-gms.genai.127.0.0.1.nip.io/health"),
+        ("n8n", "http://n8n.platform.127.0.0.1.nip.io/healthz"),
+        ("mlflow", "http://mlflow.platform.127.0.0.1.nip.io/health"),
+        ("litellm", "http://litellm.platform.127.0.0.1.nip.io/health"),
+        ("langfuse", "http://langfuse.platform.127.0.0.1.nip.io/api/public/health"),
+        ("agent-gateway", "http://agent-gateway.platform.127.0.0.1.nip.io/health"),
+        ("datahub", "http://datahub-gms.platform.127.0.0.1.nip.io/health"),
     ]
 
     with httpx.Client(timeout=5) as client:
