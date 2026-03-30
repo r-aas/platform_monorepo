@@ -1,0 +1,28 @@
+# ═══════════════════════════════════════════════════════
+# Ingress — expose MCP proxy data plane externally
+# URL: agentgateway.genai.127.0.0.1.nip.io
+# ═══════════════════════════════════════════════════════
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "agentgateway.fullname" .Subcharts.agentgateway }}-mcp
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/part-of: genai-agentgateway
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: agentgateway.genai.127.0.0.1.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "agentgateway.fullname" .Subcharts.agentgateway }}-mcp
+            port:
+              number: 8080

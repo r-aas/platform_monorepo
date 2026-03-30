@@ -58,7 +58,7 @@ The platform uses best-of-breed OSS components for each layer:
 | **Agent Runtime** | kagent (CNCF Sandbox) | K8s CRDs for agents, MCP servers, memory. A2A protocol. Google ADK execution |
 | **MCP Proxy** | agentgateway (Linux Foundation) | Rust, multiplexes MCP servers, policy/RBAC, Streamable HTTP + SSE |
 | **Artifact Registry** | agentregistry | Agents, skills, prompts catalog. pgvector semantic search. Blueprints |
-| **MCP Scoping** | MetaMCP | Namespace-scoped MCP aggregation, tool filtering, middleware |
+| **MCP Proxy** | agentgateway | Rust MCP proxy with CEL policies, RBAC, Gateway API data plane |
 | **LLM Proxy** | LiteLLM | OpenAI-compatible, routes to Ollama, per-key access control |
 | **Scheduling** | k8s CronJobs | POST to kagent A2A endpoints on cadence |
 | **Orchestration** | agent-gateway (custom, slimmed) | Skill catalog, semantic tool discovery, orchestration glue |
@@ -112,11 +112,17 @@ Python 3.12 + FastAPI. Being reduced to orchestration glue as kagent + agentgate
 
 ## Agentgateway (`charts/genai-agentgateway/`)
 
-Rust-based MCP/A2A proxy from Linux Foundation. Multiplexes all platform MCP servers.
-- AgentgatewayBackend CRs define MCP server targets
+Rust-based MCP/A2A proxy from Linux Foundation. Replaces MetaMCP. Multiplexes all platform MCP servers.
+- **Controller** (port 9978 gRPC): Watches CRDs, manages xDS config, auto-deploys proxy pods
+- **Proxy** (port 8080 HTTP): MCP data plane — handles `initialize`, `tools/list`, `tools/call`
+- AgentgatewayBackend CRs define MCP server targets (8 configured)
+- Gateway API: Gateway + HTTPRoute resources create the proxy data plane
+- Per-backend routes: `/mcp/{backend}` (kubernetes, gitlab, mlflow, langfuse, minio, ollama, plane, kagent-tools)
+- Catch-all route: `/mcp` round-robins across all backends
 - Supports StreamableHTTP + SSE transports
-- Policy engine via CEL expressions
+- Policy engine via CEL expressions (AgentgatewayPolicy CRD)
 - ARM64 native, images from `cr.agentgateway.dev`
+- Requires Gateway API CRDs: `kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml`
 
 ## Agent Registry (`charts/genai-agentregistry/`)
 
@@ -164,7 +170,7 @@ kubectl rollout restart deployment/genai-agent-gateway -n genai
 | `genai-agentregistry` | genai | Agent/skill/MCP catalog + semantic search |
 | `genai-agent-schedules` | genai | CronJobs → kagent A2A scheduling |
 | `genai-mcp-*` | genai | MCP servers (9 total) |
-| `genai-pg-*` | genai | PostgreSQL instances (n8n, mlflow, plane, metamcp) |
+| `genai-pg-*` | genai | PostgreSQL instances (n8n, mlflow, plane) |
 | `gitlab-ce` | platform | Source control |
 | `argocd` | platform | GitOps controller |
 | `ingress-nginx` | ingress-nginx | Ingress controller |

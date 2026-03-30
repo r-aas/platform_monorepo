@@ -1,0 +1,75 @@
+# ═══════════════════════════════════════════════════════
+# Gateway + HTTPRoutes — MCP proxy data plane
+# The controller auto-deploys proxy pods from the
+# agentgateway image when it sees this Gateway resource.
+# ═══════════════════════════════════════════════════════
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ include "agentgateway.fullname" .Subcharts.agentgateway }}-mcp
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/part-of: genai-agentgateway
+spec:
+  gatewayClassName: agentgateway
+  listeners:
+  - name: mcp-http
+    protocol: HTTP
+    port: 8080
+    allowedRoutes:
+      namespaces:
+        from: Same
+---
+# Per-backend routes — clients connect to one MCP server per session
+# Path: /mcp/{backend-name} (or default / for round-robin)
+{{- $gwName := printf "%s-mcp" (include "agentgateway.fullname" .Subcharts.agentgateway) }}
+{{- $ns := .Release.Namespace }}
+{{- $servers := list "kubernetes" "gitlab" "mlflow" "langfuse" "minio" "ollama" "plane" "kagent-tools" }}
+{{- range $name := $servers }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: mcp-route-{{ $name }}
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: genai-agentgateway
+spec:
+  parentRefs:
+  - name: {{ $gwName }}
+    namespace: {{ $ns }}
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /mcp/{{ $name }}
+    backendRefs:
+    - name: mcp-{{ $name }}
+      group: agentgateway.dev
+      kind: AgentgatewayBackend
+{{- end }}
+---
+# Catch-all route — round-robins across all backends
+# Useful for tool discovery across the platform
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: mcp-route-all
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: genai-agentgateway
+spec:
+  parentRefs:
+  - name: {{ $gwName }}
+    namespace: {{ $ns }}
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /mcp
+    backendRefs:
+    {{- range $name := $servers }}
+    - name: mcp-{{ $name }}
+      group: agentgateway.dev
+      kind: AgentgatewayBackend
+    {{- end }}

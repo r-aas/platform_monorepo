@@ -16,9 +16,9 @@ P0 = blocking/broken, P1 = high value, P2 = planned, P3 = nice-to-have
 - [x] P0 Fix kagent agent CrashLoopBackOff — added toolNames to all Agent CRD tool refs (2026-03-30)
 - [x] P0 Fix CronJob→A2A failures — shell quoting fix + fire-and-forget, HTTP 200 verified (2026-03-30)
 - [x] P1 CRD bootstrap script — manifests/crds/ + scripts/bootstrap-crds.sh (2026-03-30)
-- [ ] P1 Slim agent-gateway — delete overlapping registry/MCP proxy/skills code (in progress)
+- [x] P1 Slim agent-gateway — deleted registry, MCP proxy, skills registry; -2679 lines (2026-03-30)
+- [x] P1 Replace MetaMCP with agentgateway — Gateway API + HTTPRoutes, 8/8 backends verified, ingress live (2026-03-30)
 - [ ] P2 Seed agentregistry — publish agent blueprints via MCP tools/call
-- [ ] P2 Wire agentgateway ↔ MetaMCP — namespace-scoped MCP aggregation
 - [x] P1 Activate autonomous loop — runner on :7777, claude-autonomous workflow active (4h cron), MLflow logging (2026-03-29)
 - [x] P2 Benchmark tuning — smoke 100% (3/3), glm-4.7-flash judge, scoring guide, relaxed criteria (2026-03-29)
 - [x] P2 DataOps Phase 4: domain tags — 5 domains, 22 datasets tagged (agent, eval, trace, workflow, research) (2026-03-29)

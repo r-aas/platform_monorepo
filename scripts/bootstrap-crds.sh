@@ -6,6 +6,7 @@
 # CRD sources:
 #   kagent v0.8.0: https://github.com/kagent-dev/kagent
 #   agentgateway v1.0.1: https://github.com/agentgateway/agentgateway
+#   Gateway API v1.2.1: https://github.com/kubernetes-sigs/gateway-api
 #
 # Usage: ./scripts/bootstrap-crds.sh
 
@@ -28,5 +29,9 @@ for crd_file in "$CRD_DIR"/*.yaml; do
 done
 
 echo ""
+echo "=== Installing Gateway API CRDs (required by agentgateway) ==="
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml 2>&1 | tail -5
+
+echo ""
 echo "=== CRD bootstrap complete ==="
-kubectl get crds | grep -E 'kagent|agentgateway'
+kubectl get crds | grep -E 'kagent|agentgateway|gateway.networking'
