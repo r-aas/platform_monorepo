@@ -1,75 +1,196 @@
 #!/usr/bin/env bash
-# Seed the agent registry with agents, environment bindings, and verify
+# Seed agentregistry with platform agents, MCP servers, and skills.
+# Uses the agentregistry v0 REST API.
+#
+# Usage: ./scripts/seed-registry.sh [URL]
+#   Default: http://localhost:12121 (via port-forward)
+#   k3d:     REGISTRY_URL=http://genai-agentregistry.genai.svc.cluster.local:12121
+
 set -euo pipefail
 
-REGISTRY_URL="${REGISTRY_URL:-http://agent-registry.genai.127.0.0.1.nip.io}"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+API="${REGISTRY_URL:-${1:-http://localhost:12121}}/v0"
 
-echo "=== Seeding Agent Registry at $REGISTRY_URL ==="
+echo "=== Seeding agentregistry at ${API} ==="
 
-# Check health
-if ! curl -sf "$REGISTRY_URL/health" > /dev/null 2>&1; then
-    echo "ERROR: Agent registry not reachable at $REGISTRY_URL"
-    exit 1
+# Health check
+if ! curl -sf "${API}/health" > /dev/null 2>&1; then
+  echo "ERROR: Registry not reachable at ${API}"
+  echo "Hint: kubectl port-forward -n genai svc/genai-agentregistry 12121:12121"
+  exit 1
 fi
 
-# Register agents
-echo ""
-echo "── Registering agents ──"
-for agent_dir in "$REPO_ROOT"/agents/*/; do
-    [ -f "$agent_dir/agent.yaml" ] || continue
-    name=$(basename "$agent_dir")
-    [ "$name" = "_shared" ] && continue
+# ── Helper ──────────────────────────────────────────────
+post() {
+  local endpoint="$1"
+  local data="$2"
+  local name
+  name=$(echo "$data" | python3 -c "import sys,json; print(json.load(sys.stdin).get('name','?'))" 2>/dev/null)
+  local resp
+  resp=$(curl -s -w "\n%{http_code}" -X POST "${API}${endpoint}" \
+    -H "Content-Type: application/json" -d "$data" 2>/dev/null)
+  local code
+  code=$(echo "$resp" | tail -1)
+  if [ "$code" = "200" ] || [ "$code" = "201" ] || [ "$code" = "400" ] || [ "$code" = "409" ]; then
+    echo "  ✓ ${name} (${code})"
+  else
+    echo "  ✗ ${name} (${code})"
+  fi
+}
 
-    echo -n "  $name... "
-    python3 -c "
-import yaml, json, sys
-with open('$agent_dir/agent.yaml') as f:
-    spec = yaml.safe_load(f)
-print(json.dumps(spec))
-" | curl -sf -X POST "$REGISTRY_URL/agents" \
-        -H 'Content-Type: application/json' \
-        -d @- | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])"
+# ── Agents ──────────────────────────────────────────────
+echo ""
+echo "--- Agents (6) ---"
+
+# MCP URL helper
+MCP="http://genai-mcp-{}.genai.svc.cluster.local:3000/mcp"
+mcp() { echo "{\"type\":\"url\",\"name\":\"mcp-$1\",\"url\":\"http://genai-mcp-$1.genai.svc.cluster.local:3000/mcp\"}"; }
+kagent_mcp() { echo "{\"type\":\"url\",\"name\":\"kagent-tools\",\"url\":\"http://genai-kagent-tools.genai.svc.cluster.local:8084/mcp\"}"; }
+
+post /agents "{
+  \"name\": \"raas.mlops\",
+  \"version\": \"0.1.0\",
+  \"title\": \"MLOps Agent\",
+  \"description\": \"MLOps engineer — experiment tracking, model lifecycle, monitoring\",
+  \"framework\": \"kagent\",
+  \"image\": \"ghcr.io/kagent-dev/kagent:v0.8.0\",
+  \"language\": \"python\",
+  \"modelProvider\": \"ollama\",
+  \"modelName\": \"qwen2.5:14b\",
+  \"mcpServers\": [$(mcp kubernetes),$(mcp mlflow),$(mcp langfuse),$(mcp minio),$(mcp ollama)]
+}"
+
+post /agents "{
+  \"name\": \"raas.developer\",
+  \"version\": \"0.1.0\",
+  \"title\": \"Developer Agent\",
+  \"description\": \"Software developer — code generation, review, security scanning, CI/CD\",
+  \"framework\": \"kagent\",
+  \"image\": \"ghcr.io/kagent-dev/kagent:v0.8.0\",
+  \"language\": \"python\",
+  \"modelProvider\": \"ollama\",
+  \"modelName\": \"qwen2.5:14b\",
+  \"mcpServers\": [$(mcp kubernetes),$(mcp gitlab)]
+}"
+
+post /agents "{
+  \"name\": \"raas.platform-admin\",
+  \"version\": \"0.1.0\",
+  \"title\": \"Platform Admin Agent\",
+  \"description\": \"Infrastructure watchdog — k8s health, incident response, capacity management\",
+  \"framework\": \"kagent\",
+  \"image\": \"ghcr.io/kagent-dev/kagent:v0.8.0\",
+  \"language\": \"python\",
+  \"modelProvider\": \"ollama\",
+  \"modelName\": \"qwen2.5:14b\",
+  \"mcpServers\": [$(mcp kubernetes),$(mcp gitlab),$(mcp ollama)]
+}"
+
+post /agents "{
+  \"name\": \"raas.data-engineer\",
+  \"version\": \"0.1.0\",
+  \"title\": \"Data Engineer Agent\",
+  \"description\": \"Data catalog, lineage, quality checks, ingestion pipelines\",
+  \"framework\": \"kagent\",
+  \"image\": \"ghcr.io/kagent-dev/kagent:v0.8.0\",
+  \"language\": \"python\",
+  \"modelProvider\": \"ollama\",
+  \"modelName\": \"qwen2.5:14b\",
+  \"mcpServers\": [$(mcp kubernetes),$(mcp minio),$(mcp mlflow)]
+}"
+
+post /agents "{
+  \"name\": \"raas.project-coordinator\",
+  \"version\": \"0.1.0\",
+  \"title\": \"Project Coordinator Agent\",
+  \"description\": \"Backlog triage, sprint management, status reporting, issue tracking\",
+  \"framework\": \"kagent\",
+  \"image\": \"ghcr.io/kagent-dev/kagent:v0.8.0\",
+  \"language\": \"python\",
+  \"modelProvider\": \"ollama\",
+  \"modelName\": \"qwen2.5:14b\",
+  \"mcpServers\": [$(mcp kubernetes),$(mcp plane),$(mcp gitlab)]
+}"
+
+post /agents "{
+  \"name\": \"raas.qa-eval\",
+  \"version\": \"0.1.0\",
+  \"title\": \"QA & Eval Agent\",
+  \"description\": \"Benchmarks, regression detection, prompt evaluation, quality gates\",
+  \"framework\": \"kagent\",
+  \"image\": \"ghcr.io/kagent-dev/kagent:v0.8.0\",
+  \"language\": \"python\",
+  \"modelProvider\": \"ollama\",
+  \"modelName\": \"qwen2.5:14b\",
+  \"mcpServers\": [$(mcp kubernetes),$(mcp mlflow),$(mcp langfuse)]
+}"
+
+# ── MCP Servers ─────────────────────────────────────────
+echo ""
+echo "--- MCP Servers (9) ---"
+
+for server in \
+  "mcp-kubernetes|Kubernetes MCP Server|kubectl operations, pod logs, exec, resource management" \
+  "mcp-gitlab|GitLab MCP Server|GitLab repos, merge requests, pipelines, issues" \
+  "mcp-mlflow|MLflow MCP Server|Experiment tracking, runs, metrics, model registry" \
+  "mcp-langfuse|Langfuse MCP Server|LLM observability — traces, scores, usage, cost" \
+  "mcp-minio|MinIO MCP Server|S3-compatible object storage — buckets, objects, artifacts" \
+  "mcp-ollama|Ollama MCP Server|Model management — pull, delete, VRAM info, inference" \
+  "mcp-plane|Plane MCP Server|Project management — issues, labels, cycles, sprints" \
+  "mcp-n8n|n8n MCP Server|Workflow automation — workflow CRUD, execution, node docs" \
+  "mcp-datahub|DataHub MCP Server|Data catalog — entity search, lineage, quality"; do
+
+  IFS='|' read -r name title desc <<< "$server"
+
+  post /servers "{
+    \"\$schema\": \"2025-10-17\",
+    \"name\": \"raas/${name}\",
+    \"version\": \"0.1.0\",
+    \"title\": \"${title}\",
+    \"description\": \"${desc}\"
+  }"
 done
 
-# Register environment bindings
+# ── Skills ──────────────────────────────────────────────
 echo ""
-echo "── Registering environments ──"
-for env_file in "$REPO_ROOT"/agents/envs/*.yaml; do
-    [ -f "$env_file" ] || continue
-    name=$(basename "$env_file" .yaml)
+echo "--- Skills (21) ---"
 
-    echo -n "  $name... "
-    python3 -c "
-import yaml, json, sys
-with open('$env_file') as f:
-    spec = yaml.safe_load(f)
-print(json.dumps(spec))
-" | curl -sf -X POST "$REGISTRY_URL/envs" \
-        -H 'Content-Type: application/json' \
-        -d @- | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])"
+for skill in \
+  "kubernetes-ops|Kubernetes Operations" \
+  "mlflow-tracking|MLflow Tracking" \
+  "langfuse-ops|Langfuse Operations" \
+  "artifact-ops|Artifact Operations" \
+  "model-management|Model Management" \
+  "n8n-workflow-ops|n8n Workflow Operations" \
+  "code-generation|Code Generation" \
+  "documentation|Documentation" \
+  "security-audit|Security Audit" \
+  "benchmark-runner|Benchmark Runner" \
+  "data-ingestion|Data Ingestion" \
+  "prompt-engineering|Prompt Engineering" \
+  "agent-management|Agent Management" \
+  "skill-management|Skill Management" \
+  "vector-store-ops|Vector Store Operations" \
+  "dev-sandbox|Dev Sandbox" \
+  "datahub-ops|DataHub Operations" \
+  "gitlab-pipeline-ops|GitLab Pipeline Operations" \
+  "issue-triage|Issue Triage" \
+  "sprint-management|Sprint Management" \
+  "test-generation|Test Generation"; do
+
+  IFS='|' read -r name title <<< "$skill"
+
+  post /skills "{
+    \"name\": \"${name}\",
+    \"version\": \"0.1.0\",
+    \"title\": \"${title}\",
+    \"description\": \"Platform skill: ${title}\",
+    \"category\": \"platform\"
+  }"
 done
 
-# Summary
+# ── Summary ─────────────────────────────────────────────
 echo ""
-echo "── Registry status ──"
-curl -sf "$REGISTRY_URL/health/detail" | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-print(f\"  Agents:       {d['agents']}\")
-print(f\"  Skills:       {d['skills']}\")
-print(f\"  Environments: {d['environments']}\")
-"
-
-echo ""
-echo "── Registered agents ──"
-curl -sf "$REGISTRY_URL/agents" | python3 -c "
-import sys, json
-for a in json.load(sys.stdin):
-    caps = ', '.join(a.get('capabilities', []))
-    print(f\"  {a['name']:20s} v{a['version']}  [{caps}]\")
-"
-
-echo ""
-echo "Done."
+echo "=== Registry seeded ==="
+curl -s "${API}/agents" 2>/dev/null | python3 -c "import sys,json; print(f'  Agents:  {json.load(sys.stdin)[\"metadata\"][\"count\"]}')" 2>/dev/null
+curl -s "${API}/servers" 2>/dev/null | python3 -c "import sys,json; print(f'  Servers: {json.load(sys.stdin)[\"metadata\"][\"count\"]}')" 2>/dev/null
+curl -s "${API}/skills" 2>/dev/null | python3 -c "import sys,json; print(f'  Skills:  {json.load(sys.stdin)[\"metadata\"][\"count\"]}')" 2>/dev/null
