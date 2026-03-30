@@ -152,6 +152,8 @@ seed → eval + judge → optimize → benchmark → promote → canary → moni
 
 ## Prerequisites
 
+**Minimum**: Apple Silicon Mac with 48 GB RAM (see [Hardware Requirements](#hardware-requirements) for details).
+
 | Tool | Version | Install |
 |------|---------|---------|
 | macOS | 14+ (Apple Silicon) | — |
@@ -329,11 +331,61 @@ kubectl logs deploy/genai-mlflow -n genai      # MLflow logs
 
 Change anything in `charts/` → push to GitLab → ArgoCD syncs automatically. That's it.
 
-## Hardware
+## Hardware Requirements
 
-Developed on a MacBook Pro M4 Max (128 GB RAM, 16 cores). The Colima VM is configured for 8 CPU / 32 GB RAM / 200 GB disk.
+The platform runs 35 Helm charts totaling **9.3 CPU cores** and **12.5 GB memory** in requests (26.5 GB limits), plus Ollama running natively on the Mac for GPU inference. Here's what you actually need:
 
-**Minimum recommended**: Apple Silicon Mac with 32 GB RAM. Reduce resource limits in chart values for smaller machines. Ollama runs natively on macOS for Metal GPU access — never containerized.
+### Resource breakdown
+
+| Component | CPU | RAM | Disk |
+|-----------|-----|-----|------|
+| Colima VM (k3d cluster) | 8 cores | 24-32 GB | 200 GB |
+| Ollama (native, Metal GPU) | shared | 5-20 GB (depends on model) | 5-20 GB (model files) |
+| macOS + apps | shared | ~6 GB | — |
+
+### Machine tiers
+
+| Machine | RAM | Works? | Notes |
+|---------|-----|--------|-------|
+| MacBook Air M2/M3 (24 GB) | 24 GB | No | Not enough for VM + model + macOS |
+| MacBook Pro M2/M3/M4 (36 GB) | 36 GB | Tight | 20 GB VM, mistral:7b only, expect memory pressure |
+| MacBook Pro M2/M3/M4 Pro (48 GB) | 48 GB | Yes | 24 GB VM, qwen2.5:14b or glm-4.7-flash, comfortable |
+| MacBook Pro M_-series Max (64 GB) | 64 GB | Yes | 32 GB VM, any model, plenty of headroom |
+| MacBook Pro M_-series Max (96-128 GB) | 96-128 GB | Ideal | Full resource limits, multiple large models loaded |
+
+### Recommended LLM models
+
+| Model | RAM needed | Quality | Speed | Install |
+|-------|-----------|---------|-------|---------|
+| `mistral:7b-instruct` | 4.4 GB | Good | Fast | `ollama pull mistral:7b-instruct` |
+| `qwen2.5:7b` | 4.7 GB | Good | Fast | `ollama pull qwen2.5:7b` |
+| `qwen2.5:14b` | 9 GB | Better | Medium | `ollama pull qwen2.5:14b` |
+| `glm-4.7-flash` | 19 GB | Best | Medium | `ollama pull glm-4.7-flash` |
+
+You also need an embedding model: `ollama pull nomic-embed-text` (274 MB).
+
+### Adjusting for smaller machines
+
+If you have 36-48 GB RAM, reduce the Colima VM size:
+
+```bash
+# In task up, or manually:
+colima start --cpu 6 --memory 20 --disk 150
+```
+
+The cluster will still run — pods will schedule with less headroom and some may restart under memory pressure. DataHub is the heaviest optional service (8 GB limits, 19 GB storage). To skip it, remove `genai-datahub` from ArgoCD.
+
+### Disk space
+
+| What | Size |
+|------|------|
+| Colima VM disk | 200 GB (thin-provisioned, grows as needed) |
+| Persistent volumes (databases, storage) | ~59 GB |
+| Docker images (all services) | ~25 GB |
+| Ollama models | 5-20 GB per model |
+| Repo + tools | ~2 GB |
+
+Developed on a MacBook Pro M4 Max (128 GB RAM, 16 cores).
 
 ## License
 
