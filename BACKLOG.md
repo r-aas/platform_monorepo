@@ -20,6 +20,17 @@ P0 = blocking/broken, P1 = high value, P2 = planned, P3 = nice-to-have
 - [x] P1 Replace MetaMCP with agentgateway — Gateway API + HTTPRoutes, 8/8 backends verified, ingress live (2026-03-30)
 - [x] P2 Seed agentregistry — 6 agents, 9 MCP servers, 21 skills published via v0 API (2026-03-30)
 - [x] P1 Wire n8n MCP Client to agentgateway — mcp-all backend, 243 tools aggregated, chat.json updated (2026-03-30)
+- [x] P1 Merge genai-mlops into platform_monorepo — single repo, 139 files, genai-mlops deleted (2026-03-30)
+- [x] P1 Unify ingress to *.platform.127.0.0.1.nip.io — ~90 files across repos (2026-03-30)
+- [x] P1 Unify gateway — single hostname, path-based routing for MCP proxy (2026-03-30)
+- [x] P1 GitHub Actions CI — 12/14 images on ghcr.io, chart linting, release workflow (2026-03-30)
+- [x] P1 v0.1.0 release — tagged images, GitHub Release with install instructions (2026-03-30)
+- [x] P2 README rewrite — AgentOps reference framing, full system docs (2026-03-30)
+- [ ] P1 CEL policies — per-agent tool filtering via AgentgatewayPolicy
+- [ ] P1 DataHub hook fix — datahub-system-update crashes, blocks ArgoCD sync
+- [ ] P1 task up clean bootstrap test — verify ghcr.io pulls work end-to-end from zero
+- [ ] P2 Tailscale integration — tunnel platform services for remote access
+- [ ] P2 Multi-model benchmark — compare glm-4.7-flash vs qwen3:32b
 - [x] P1 Activate autonomous loop — runner on :7777, claude-autonomous workflow active (4h cron), MLflow logging (2026-03-29)
 - [x] P2 Benchmark tuning — smoke 100% (3/3), glm-4.7-flash judge, scoring guide, relaxed criteria (2026-03-29)
 - [x] P2 DataOps Phase 4: domain tags — 5 domains, 22 datasets tagged (agent, eval, trace, workflow, research) (2026-03-29)
