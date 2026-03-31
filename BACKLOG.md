@@ -28,7 +28,7 @@ P0 = blocking/broken, P1 = high value, P2 = planned, P3 = nice-to-have
 - [x] P2 README rewrite — AgentOps reference framing, full system docs (2026-03-30)
 - [x] P1 Replace DataHub with ODD Platform — removed 8-container stack, added 1-container ODD Platform + mcp-odd-platform MCP server (2026-03-31)
 - [x] P1 Agent tool count gate — agent-lint.py --strict blocks >20 tools per agent, trimmed all 6 agents (374→103 tools) (2026-03-31)
-- [ ] P1 CEL policies — per-agent tool filtering via AgentgatewayPolicy
+- [x] P1 CEL policies — 4 AgentgatewayPolicy CRDs: deny-dangerous-tools, deny-model-mutation, kubernetes-read-only, gitlab-write-protection (2026-03-31)
 - [ ] P1 task up clean bootstrap test — verify ghcr.io pulls work end-to-end from zero
 - [ ] P2 Tailscale integration — tunnel platform services for remote access
 - [ ] P2 Multi-model benchmark — compare glm-4.7-flash vs qwen3:32b
