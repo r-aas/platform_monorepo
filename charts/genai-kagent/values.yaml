@@ -41,17 +41,18 @@ kagent:
         memory: 512Mi
 
   # ──────────────────────────────────────────────
-  # LLM Provider — LiteLLM proxy to Ollama
+  # LLM Provider — direct Ollama (no LiteLLM)
+  # 192.168.5.2 = Colima VM gateway to Mac host
+  # Custom ModelConfigs (ollama-chat, ollama-embed)
+  # are in templates/modelconfigs.yaml
   # ──────────────────────────────────────────────
   providers:
-    default: openAI
-    openAI:
-      provider: OpenAI
+    default: ollama
+    ollama:
+      provider: Ollama
       model: "glm-4.7-flash"
-      apiKeySecretRef: kagent-litellm
-      apiKeySecretKey: OPENAI_API_KEY
       config:
-        baseUrl: "http://genai-litellm.genai.svc.cluster.local:4000/v1"
+        host: "http://192.168.5.2:11434"
 
   # ──────────────────────────────────────────────
   # Built-in agents — only k8s + helm relevant

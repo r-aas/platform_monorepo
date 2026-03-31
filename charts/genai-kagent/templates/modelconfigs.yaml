@@ -1,29 +1,31 @@
-apiVersion: kagent.dev/v1alpha2
-kind: ModelConfig
-metadata:
-  name: litellm-config
-  namespace: {{ .Release.Namespace }}
-  labels:
-    {{- include "kagent.labels" . | nindent 4 }}
-spec:
-  provider: OpenAI
-  model: glm-4.7-flash
-  openAI:
-    baseUrl: "http://genai-litellm.genai.svc.cluster.local:4000/v1"
-  apiKeySecret: kagent-litellm
-  apiKeySecretKey: OPENAI_API_KEY
+# ═══════════════════════════════════════════════════════
+# ModelConfig CRDs — direct Ollama (no LiteLLM proxy)
+# kagent agents talk to Ollama at 192.168.5.2:11434
+# (Colima VM gateway to Mac host running Ollama natively)
+# ═══════════════════════════════════════════════════════
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: ModelConfig
 metadata:
-  name: embedding-config
+  name: ollama-chat
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "kagent.labels" . | nindent 4 }}
 spec:
-  provider: OpenAI
+  provider: Ollama
+  model: glm-4.7-flash
+  ollama:
+    host: "http://192.168.5.2:11434"
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: ollama-embed
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kagent.labels" . | nindent 4 }}
+spec:
+  provider: Ollama
   model: nomic-embed-text
-  openAI:
-    baseUrl: "http://genai-litellm.genai.svc.cluster.local:4000/v1"
-  apiKeySecret: kagent-litellm
-  apiKeySecretKey: OPENAI_API_KEY
+  ollama:
+    host: "http://192.168.5.2:11434"
