@@ -90,12 +90,13 @@ tasks:
       - bash {{.PLATFORM_DIR}}/scripts/ensure-colima.sh
 
   ensure-ollama:
-    desc: "Ensure Ollama is running with correct env vars"
+    desc: "Ensure Ollama is running, bound correctly, and required models are pulled"
     cmds:
       - |
         # Set performance env vars (lost on reboot)
         launchctl setenv OLLAMA_NUM_PARALLEL 4 2>/dev/null || true
         launchctl setenv OLLAMA_FLASH_ATTENTION 1 2>/dev/null || true
+        launchctl setenv OLLAMA_HOST "0.0.0.0:11434" 2>/dev/null || true
         if pgrep -x ollama > /dev/null; then
           echo "  ✓ Ollama running (PID $(pgrep -x ollama))"
         else
@@ -107,6 +108,22 @@ tasks:
           done
           pgrep -x ollama > /dev/null && echo "  ✓ Ollama started" || echo "  ⚠ Ollama did not start"
         fi
+        # Wait for API to be ready
+        for i in $(seq 1 15); do
+          curl -sf http://localhost:11434/api/version &>/dev/null && break
+          sleep 1
+        done
+        # Pull required models if missing
+        MODELS=$(curl -sf http://localhost:11434/api/tags 2>/dev/null | jq -r '.models[].name' 2>/dev/null || echo "")
+        for model in glm-4.7-flash nomic-embed-text; do
+          if echo "$MODELS" | grep -q "^${model}"; then
+            echo "  ✓ ${model} available"
+          else
+            echo "  ▸ Pulling ${model} (first run only)..."
+            ollama pull "$model"
+            echo "  ✓ ${model} pulled"
+          fi
+        done
 
   ensure-secrets:
     desc: "Ensure critical k8s secrets exist (idempotent)"

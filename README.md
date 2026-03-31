@@ -184,19 +184,15 @@ brew install --cask ollama
 git clone https://github.com/r-aas/platform_monorepo.git
 cd platform_monorepo
 
-# 2. Pull the LLM models
-ollama pull glm-4.7-flash
-ollama pull nomic-embed-text
-
-# 3. Create secrets
+# 2. Create secrets
 cp envs/secrets.env.example envs/secrets.env
 # Defaults work for local dev — edit if you want custom passwords
 
-# 4. Bootstrap everything
+# 3. Bootstrap everything
 task up
 ```
 
-`task up` runs: preflight checks → Colima VM → Ollama verify → k3d cluster → helmfile bootstrap → GitLab setup → image builds → ArgoCD sync → n8n workflow promotion → agent deployment → smoke tests.
+That's it. `task up` handles everything: preflight checks → starts Colima VM → starts Ollama → pulls models (glm-4.7-flash + nomic-embed-text) → creates k3d cluster → helmfile bootstrap → GitLab setup → pulls/builds images → ArgoCD sync → n8n workflow promotion → agent deployment → smoke tests. ~20 minutes on first run.
 
 ### Verify it works
 
