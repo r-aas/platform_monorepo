@@ -72,10 +72,8 @@ app_exists "genai-minio" && \
   http_check "http://minio.platform.127.0.0.1.nip.io/minio/health/live" "MinIO"
 app_exists "genai-minio" && \
   http_check "http://minio-console.platform.127.0.0.1.nip.io"   "MinIO Console"
-app_exists "genai-datahub" && \
-  http_check "http://datahub.platform.127.0.0.1.nip.io"         "DataHub Frontend"
-app_exists "genai-datahub" && \
-  http_check "http://datahub-gms.platform.127.0.0.1.nip.io/health" "DataHub GMS"
+app_exists "genai-odd-platform" && \
+  http_check "http://odd.platform.127.0.0.1.nip.io/actuator/health" "ODD Platform"
 echo ""
 
 # ── Internal services (via kubectl) ───────────────────────
@@ -116,23 +114,6 @@ if app_exists "genai-n8n" && app_exists "genai-mlflow"; then
   fi
 fi
 
-# DataHub GMS internal connectivity
-if app_exists "genai-datahub"; then
-  if kubectl get pod -n genai -l app.kubernetes.io/name=datahub-gms --no-headers 2>/dev/null | grep -q "Running"; then
-    ok "DataHub GMS (pod running)"
-  else
-    fail "DataHub GMS not running"
-  fi
-fi
-
-# DataHub bridge → GMS
-if app_exists "genai-datahub-bridge" && app_exists "genai-datahub"; then
-  if kubectl exec -n genai deploy/genai-datahub-bridge -- python3 -c "import urllib.request; urllib.request.urlopen('http://genai-datahub-datahub-gms.genai.svc.cluster.local:8080/health')" 2>/dev/null; then
-    ok "DataHub bridge → GMS"
-  else
-    warn "DataHub bridge → GMS (unreachable)"
-  fi
-fi
 
 # agent-gateway e2e (user → agent-gateway → n8n → LiteLLM → Ollama)
 if app_exists "genai-agent-gateway"; then

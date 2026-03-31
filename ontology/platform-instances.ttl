@@ -75,10 +75,7 @@
               :plane-web, :plane-api, :plane-live, :plane-space, :plane-admin, :plane-minio, :plane-rabbitmq,
               :kagent-controller, :kagent-tools, :kagent-ui,
               :developer-agent, :mlops-agent, :platform-admin-agent,
-              :datahub-gms, :datahub-frontend, :datahub-actions,
-              :datahub-mysql, :datahub-elasticsearch, :datahub-kafka, :datahub-zookeeper,
-              :datahub-bridge,
-              :mcp-kubernetes, :mcp-gitlab, :mcp-n8n, :mcp-datahub, :mcp-plane,
+              :mcp-kubernetes, :mcp-gitlab, :mcp-n8n, :mcp-plane,
               :pg-mlflow, :pg-n8n, :pg-plane, :pgvector,
               :langfuse-clickhouse, :langfuse-redis, :langfuse-zookeeper .
 
@@ -172,7 +169,7 @@
     :ingressHost "agent-gateway.genai.127.0.0.1.nip.io" ;
     :lanIngressHost "agent-gateway.genai.192.0.0.2.nip.io" ;
     :address "genai-agent-gateway.genai.svc.cluster.local" ;
-    :dependsOn :litellm, :pgvector, :mcp-kubernetes, :mcp-gitlab, :mcp-n8n, :mcp-datahub, :mcp-plane .
+    :dependsOn :litellm, :pgvector, :mcp-kubernetes, :mcp-gitlab, :mcp-n8n, :mcp-plane .
 
 :open-ontologies a :MCPServer ;
     rdfs:label "Open Ontologies" ;
@@ -334,12 +331,6 @@
     :address "genai-mcp-n8n.genai.svc.cluster.local" ;
     :dependsOn :n8n .
 
-:mcp-datahub a :MCPServer ;
-    rdfs:label "MCP DataHub" ;
-    :port 8000 ;
-    :protocol "http" ;
-    :address "genai-mcp-datahub.genai.svc.cluster.local" ;
-    :dependsOn :datahub-gms .
 
 :mcp-plane a :MCPServer ;
     rdfs:label "MCP Plane" ;
@@ -375,69 +366,6 @@
     :protocol "tcp" ;
     :address "genai-pgvector.genai.svc.cluster.local" .
 
-# ── GenAI namespace — DataHub ─────────────
-
-:datahub-gms a :MetadataCatalog ;
-    rdfs:label "DataHub GMS" ;
-    rdfs:comment "3 ingestion sources (postgres-n8n, postgres-mlflow, postgres-langfuse), 5 lineage edges, 5 quality checks, 5 domains." ;
-    :port 8080 ;
-    :protocol "http" ;
-    :healthPath "/health" ;
-    :ingressHost "datahub-gms.genai.127.0.0.1.nip.io" ;
-    :lanIngressHost "datahub-gms.genai.192.0.0.2.nip.io" ;
-    :address "genai-datahub-datahub-gms.genai.svc.cluster.local" ;
-    :dependsOn :datahub-mysql, :datahub-elasticsearch, :datahub-kafka .
-
-:datahub-frontend a :APIService ;
-    rdfs:label "DataHub Frontend" ;
-    :port 9002 ;
-    :protocol "http" ;
-    :healthPath "/health" ;
-    :ingressHost "datahub.genai.127.0.0.1.nip.io" ;
-    :lanIngressHost "datahub.genai.192.0.0.2.nip.io" ;
-    :address "genai-datahub-datahub-frontend.genai.svc.cluster.local" ;
-    :dependsOn :datahub-gms .
-
-:datahub-actions a :Service ;
-    rdfs:label "DataHub Actions" ;
-    :port 9093 ;
-    :protocol "http" ;
-    :address "genai-datahub-acryl-datahub-actions.genai.svc.cluster.local" ;
-    :dependsOn :datahub-gms, :datahub-kafka .
-
-:datahub-bridge a :APIService ;
-    rdfs:label "DataHub Bridge" ;
-    rdfs:comment "n8n → DataHub event bridge." ;
-    :port 8000 ;
-    :protocol "http" ;
-    :healthPath "/health" ;
-    :address "genai-datahub-bridge.genai.svc.cluster.local" ;
-    :dependsOn :datahub-gms .
-
-:datahub-mysql a :Database ;
-    rdfs:label "DataHub MySQL" ;
-    :port 3306 ;
-    :protocol "tcp" ;
-    :address "genai-datahub-prereqs-mysql.genai.svc.cluster.local" .
-
-:datahub-elasticsearch a :SearchEngine ;
-    rdfs:label "DataHub Elasticsearch" ;
-    :port 9200 ;
-    :protocol "http" ;
-    :address "elasticsearch-master.genai.svc.cluster.local" .
-
-:datahub-kafka a :MessageBroker ;
-    rdfs:label "DataHub Kafka" ;
-    :port 9092 ;
-    :protocol "tcp" ;
-    :address "genai-datahub-prereqs-kafka.genai.svc.cluster.local" ;
-    :dependsOn :datahub-zookeeper .
-
-:datahub-zookeeper a :Service ;
-    rdfs:label "DataHub Zookeeper" ;
-    :port 2181 ;
-    :protocol "tcp" ;
-    :address "genai-datahub-prereqs-zookeeper.genai.svc.cluster.local" .
 
 # ── Data flows ────────────────────────────
 
@@ -451,11 +379,6 @@
 :yt-ingest :flowsTo :pgvector .
 :n8n :flowsTo :pgvector .
 
-# DataHub
-:datahub-gms :flowsTo :datahub-elasticsearch, :datahub-kafka .
-:datahub-actions :flowsTo :datahub-gms .
-:datahub-frontend :flowsTo :datahub-gms .
-:datahub-bridge :flowsTo :datahub-gms .
 
 # Observability
 :langfuse-web :flowsTo :langfuse-clickhouse .

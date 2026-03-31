@@ -78,7 +78,7 @@
 :MetadataCatalog a owl:Class ;
     rdfs:subClassOf :APIService ;
     rdfs:label "Metadata Catalog" ;
-    rdfs:comment "Metadata management (DataHub, Amundsen, etc)." .
+    rdfs:comment "Metadata management (ODD Platform, etc)." .
 
 :MLPlatform a owl:Class ;
     rdfs:subClassOf :APIService ;

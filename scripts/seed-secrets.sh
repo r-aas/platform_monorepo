@@ -58,8 +58,6 @@ PLANE_API_TOKEN=plane_api_2ae384a415bd4c29acaa40872639e189
 LANGFUSE_PUBLIC_KEY=pk-lf-placeholder
 LANGFUSE_SECRET_KEY=sk-lf-placeholder
 
-# ── DataHub ──
-DATAHUB_MYSQL_ROOT_PASSWORD=datahub
 
 # ── n8n API ──
 # Set after n8n boots: task n8n-setup creates the owner and API key
@@ -155,9 +153,10 @@ create_secret genai langfuse-api-keys \
   --from-literal=public-key="${LANGFUSE_PUBLIC_KEY}" \
   --from-literal=secret-key="${LANGFUSE_SECRET_KEY}"
 
-# DataHub MySQL
-create_secret genai mysql-secrets \
-  --from-literal=mysql-root-password="${DATAHUB_MYSQL_ROOT_PASSWORD}"
+
+# ODD Platform PostgreSQL (uses shared pgvector instance)
+create_secret genai odd-platform-db \
+  --from-literal=password="${PGVECTOR_PASSWORD:-postgres}"
 
 # n8n sensitive env vars (loaded via extraSecretNamesForEnvFrom)
 create_secret genai n8n-env-secrets \

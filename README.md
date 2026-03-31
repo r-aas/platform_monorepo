@@ -74,7 +74,7 @@ This repo is the answer to "how do I actually run all of this together?"
 | **Gateway** | Unified entry point — agent-gateway (Python) + agentgateway MCP proxy (Rust) | http://gateway.platform.127.0.0.1.nip.io |
 | **ArgoCD** | GitOps controller — syncs all 35 Helm charts from GitLab | http://argocd.platform.127.0.0.1.nip.io |
 | **GitLab CE** | In-cluster git — source of truth for ArgoCD, no external dependencies | http://gitlab.platform.127.0.0.1.nip.io |
-| **DataHub** | Data catalog — metadata, cross-service lineage, quality assertions | http://datahub.platform.127.0.0.1.nip.io |
+| **ODD Platform** | Data catalog — metadata, lineage, quality (PostgreSQL-only, ARM64 native) | http://odd.platform.127.0.0.1.nip.io |
 | **Plane** | Project management — issues, sprints, backlogs | http://plane.platform.127.0.0.1.nip.io |
 | **MinIO** | S3-compatible object storage for MLflow artifacts | http://minio.platform.127.0.0.1.nip.io |
 
@@ -88,7 +88,7 @@ Six autonomous agents, each with a defined role, schedule, tool access, and memo
 |-------|----------|--------------|-------|
 | **platform-admin** | Every 15 min | Watches cluster health, responds to incidents, manages k8s resources | kubernetes, gitlab, kagent, ollama |
 | **project-coordinator** | Hourly | Triages backlog, manages sprints, reports status across Plane and GitLab | kubernetes, plane, gitlab |
-| **data-engineer** | Every 2 hours | Manages data catalog, traces lineage, runs quality checks, handles ingestion | kubernetes, minio, mlflow, datahub |
+| **data-engineer** | Every 2 hours | Manages data catalog, traces lineage, runs quality checks, handles ingestion | kubernetes, minio, mlflow |
 | **mlops** | Every 4 hours | Tracks experiments, manages model lifecycle, monitors drift | kubernetes, mlflow, langfuse, minio, ollama |
 | **developer** | Every 6 hours | Generates code, reviews PRs, runs security audits, manages CI/CD | kubernetes, gitlab |
 | **qa-eval** | Nightly (2 AM) | Runs benchmarks, detects regressions, evaluates prompt quality | kubernetes, mlflow, langfuse |
@@ -134,7 +134,7 @@ Nine MCP servers expose platform capabilities as tools. The **agentgateway** (Ru
 | **mcp-plane** | Plane API | `create_issue`, `list_cycles`, `update_sprint` |
 | **mcp-minio** | MinIO S3 | `list_buckets`, `get_object`, `put_object` |
 | **mcp-ollama** | Ollama API | `list_models`, `pull_model`, `generate` |
-| **mcp-datahub** | DataHub GMS | `search_entities`, `get_lineage`, `run_assertion` |
+| **mcp-odd-platform** | ODD Platform | `search_catalog`, `get_upstream_lineage`, `get_quality_tests` |
 
 **243 tools** available in a single MCP session at `gateway.platform.127.0.0.1.nip.io/mcp/all`. Tool names are prefixed by backend (e.g., `kubernetes_kubectl_get`, `gitlab_create_issue`).
 
@@ -250,7 +250,7 @@ charts/                 # 35 Helm charts (ArgoCD-managed after bootstrap)
   genai-agentgateway/   #   Rust MCP proxy (Linux Foundation)
   genai-agent-gateway/  #   Python agent gateway (custom)
   genai-langfuse/       #   LLM observability
-  genai-datahub/        #   Data catalog
+  genai-odd-platform/   #   Data catalog (ODD Platform)
   genai-plane/          #   Project management
   genai-minio/          #   Object storage
   genai-agentregistry/  #   Agent/skill catalog + semantic search
@@ -292,7 +292,7 @@ All secrets live in `envs/secrets.env` (gitignored). The example file ships with
 | `GITLAB_PAT` | Auto-generated during `task up` |
 | `PLANE_API_TOKEN` | Plane project management API |
 | `LANGFUSE_PUBLIC_KEY` / `SECRET_KEY` | Langfuse observability |
-| `DATAHUB_MYSQL_ROOT_PASSWORD` | DataHub metadata store |
+| `PGVECTOR_PASSWORD` | Shared pgvector (ODD Platform, agent registry) |
 
 `task seed-secrets` creates k8s secrets from this file. Use `--force` to recreate.
 
@@ -374,7 +374,7 @@ If you have 36-48 GB RAM, reduce the Colima VM size:
 colima start --cpu 6 --memory 20 --disk 150
 ```
 
-The cluster will still run — pods will schedule with less headroom and some may restart under memory pressure. DataHub is the heaviest optional service (8 GB limits, 19 GB storage). To skip it, remove `genai-datahub` from ArgoCD.
+The cluster will still run — pods will schedule with less headroom and some may restart under memory pressure.
 
 ### Disk space
 

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: genai-odd-platform
+description: ODD Platform — lightweight data catalog (PostgreSQL-only, ARM64 native)
+type: application
+version: 0.1.0
+appVersion: "0.27.10"

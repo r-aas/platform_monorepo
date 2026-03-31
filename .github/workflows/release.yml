@@ -22,9 +22,6 @@ jobs:
           - name: agent-gateway
             dockerfile: services/agent-gateway/Dockerfile
             context: .
-          - name: datahub-bridge
-            dockerfile: services/n8n-datahub-bridge/Dockerfile
-            context: services/n8n-datahub-bridge
           # litellm-mlflow excluded: base image amd64-only (built locally)
           # open-ontologies excluded: Rust cross-compile OOMs on GHA (built locally)
           - name: mcp-kubernetes
@@ -57,6 +54,9 @@ jobs:
           - name: mcp-n8n-manager
             dockerfile: images/mcp-n8n-manager/Dockerfile
             context: images/mcp-n8n-manager
+          - name: mcp-odd-platform
+            dockerfile: images/mcp-odd-platform/Dockerfile
+            context: images/mcp-odd-platform
     steps:
       - uses: actions/checkout@v4
 
@@ -113,10 +113,10 @@ jobs:
           # Pull images (task up does this automatically)
           HEADER
 
-          for img in agent-gateway datahub-bridge litellm-mlflow \
+          for img in agent-gateway litellm-mlflow \
             mcp-kubernetes mcp-plane mcp-mlflow mcp-langfuse mcp-minio \
             mcp-ollama mcp-claude-code mcp-gitlab mcp-n8n-knowledge \
-            mcp-n8n-manager open-ontologies; do
+            mcp-n8n-manager mcp-odd-platform open-ontologies; do
             echo "docker pull ghcr.io/r-aas/${img}:${TAG#v}" >> notes.md
           done
 

@@ -29,9 +29,6 @@ capabilities:
   workflows:
     mcp_server: mcp-n8n
     url: http://genai-mcp-n8n.genai.svc.cluster.local:3000
-  catalog:
-    mcp_server: mcp-datahub
-    url: http://genai-mcp-datahub.genai.svc.cluster.local:8000
   ontology:
     mcp_server: open-ontologies
     url: http://genai-open-ontologies.genai.svc.cluster.local:8080

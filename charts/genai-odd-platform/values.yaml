@@ -1,0 +1,47 @@
+# ODD Platform — data catalog, lineage, quality
+# Replaces DataHub (8 containers) with 1 container + shared PostgreSQL
+#
+# Docs: https://docs.opendatadiscovery.org
+# API:  https://docs.opendatadiscovery.org/developer-guides/api-reference
+
+image:
+  repository: ghcr.io/opendatadiscovery/odd-platform
+  tag: "0.27.10"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+# Spring Boot config mounted as /app/config/application.yml
+config:
+  spring:
+    datasource:
+      url: jdbc:postgresql://genai-pgvector.genai.svc.cluster.local:5432/odd_platform
+      username: postgres
+      # password from existingSecret
+  auth:
+    type: DISABLED
+  session:
+    provider: IN_MEMORY
+  metrics:
+    storage: INTERNAL_POSTGRES
+
+# Existing k8s secret with key "password" for PostgreSQL
+existingSecret: odd-platform-db
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: nginx
+  host: odd.platform.127.0.0.1.nip.io
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 768Mi
+  limits:
+    cpu: "1"
+    memory: 1536Mi

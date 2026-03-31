@@ -31,7 +31,7 @@ agents:
 
   data-engineer-agent:
     schedule: "0 */2 * * *"     # Every 2 hours
-    task: "Check data ingestion pipeline health. Verify DataHub sources are current, check data quality assertions, identify any stale datasets or failed ingestions."
+    task: "Check data ingestion pipeline health. Verify data catalog sources are current, check data quality assertions, identify any stale datasets or failed ingestions."
     enabled: true
 
   mlops-agent:

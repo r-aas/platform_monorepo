@@ -6,7 +6,6 @@ on:
     paths:
       - 'images/**'
       - 'services/agent-gateway/**'
-      - 'services/n8n-datahub-bridge/**'
       - '.github/workflows/build-images.yml'
   workflow_dispatch:
 
@@ -37,7 +36,6 @@ jobs:
           # Those two are built locally during task up.
           ALL_IMAGES=(
             "agent-gateway|services/agent-gateway/Dockerfile|."
-            "datahub-bridge|services/n8n-datahub-bridge/Dockerfile|services/n8n-datahub-bridge"
             "mcp-kubernetes|images/mcp-kubernetes/Dockerfile|images/mcp-kubernetes"
             "mcp-plane|images/mcp-plane/Dockerfile|images/mcp-plane"
             "mcp-mlflow|images/mcp-mlflow/Dockerfile|images/mcp-mlflow"
@@ -48,6 +46,7 @@ jobs:
             "mcp-gitlab|images/mcp-gitlab/Dockerfile|images/mcp-gitlab"
             "mcp-n8n-knowledge|images/mcp-n8n-knowledge/Dockerfile|images/mcp-n8n-knowledge"
             "mcp-n8n-manager|images/mcp-n8n-manager/Dockerfile|images/mcp-n8n-manager"
+            "mcp-odd-platform|images/mcp-odd-platform/Dockerfile|images/mcp-odd-platform"
           )
 
           # On workflow_dispatch or first push, build all

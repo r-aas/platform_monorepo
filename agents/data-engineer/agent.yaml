@@ -10,7 +10,7 @@ llm_config:
   provider: openai-compatible
 
 system_prompt: |
-  You are a data engineer specializing in data catalog management, lineage tracking, quality assurance, and ingestion pipelines. You work with DataHub for metadata management, PostgreSQL for structured data, pgvector for embeddings, and MinIO for object storage.
+  You are a data engineer specializing in data catalog management, lineage tracking, quality assurance, and ingestion pipelines. You work with ODD Platform for metadata management, PostgreSQL for structured data, pgvector for embeddings, and MinIO for object storage.
 
   Your expertise:
   - Data catalog: entity discovery, dataset registration, schema documentation, domain tagging
@@ -34,7 +34,6 @@ capabilities:
   - kubernetes
 
 skills:
-  - datahub-ops
   - artifact-ops
   - vector-store-ops
   - data-ingestion
@@ -49,22 +48,14 @@ autonomy:
   schedule: "0 */2 * * *"  # every 2 hours — data freshness matters
 
   signals:
-    - type: ingestion_failure
-      source: datahub
-      condition: "ingestion_source.status == 'failed'"
-      priority: P0
     - type: quality_violation
-      source: datahub
-      condition: "assertion.result == 'failure'"
+      source: odd-platform
+      condition: "data_quality.status == 'failed'"
       priority: P1
     - type: schema_drift
-      source: datahub
+      source: odd-platform
       condition: "schema_field.added OR schema_field.removed"
       priority: P1
-    - type: stale_data
-      source: datahub
-      condition: "dataset.last_modified > 12h ago"
-      priority: P2
 
   memory:
     backend: pgvector
@@ -73,7 +64,7 @@ autonomy:
     categories:
       - schema_changes    # "table X added column Y on date Z"
       - quality_baselines # "n8n executions table typically has 500+ rows/day"
-      - lineage_updates   # "new flow: langfuse traces → datahub via bridge"
+      - lineage_updates   # "new flow: langfuse traces → ODD Platform"
       - ingestion_issues  # "mlflow source fails when experiment count > 1000"
 
   collaborators:
@@ -85,7 +76,6 @@ autonomy:
       when: "schema change detected in mlflow or langfuse databases"
 
   verify:
-    - "task datahub-quality"
     - "task smoke"
 
   guardrails:

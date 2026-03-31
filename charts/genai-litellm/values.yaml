@@ -144,11 +144,6 @@ config:
       url: "http://genai-mcp-gitlab:3000/mcp"
       description: "GitLab repository, MR, and pipeline management"
 
-    # DataHub metadata catalog — search datasets, pipelines, lineage
-    datahub_metadata:
-      transport: "http"
-      url: "http://genai-mcp-datahub.genai.svc.cluster.local:3000/mcp"
-      description: "DataHub metadata catalog — search datasets, pipelines, lineage"
 
     # Agent gateway — expose agent-gateway REST API as MCP tools
     # (served by the gateway MCP server at /gateway-mcp)

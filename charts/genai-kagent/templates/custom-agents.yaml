@@ -78,79 +78,23 @@ spec:
           kind: RemoteMCPServer
           name: kubernetes-ops
           toolNames:
-            - cleanup
             - kubectl_get
             - kubectl_describe
-            - kubectl_apply
-            - kubectl_delete
-            - kubectl_create
             - kubectl_logs
             - kubectl_scale
-            - kubectl_patch
             - kubectl_rollout
-            - kubectl_context
-            - kubectl_reconnect
-            - explain_resource
-            - install_helm_chart
-            - upgrade_helm_chart
-            - uninstall_helm_chart
-            - node_management
-            - port_forward
-            - stop_port_forward
+            - kubectl_patch
             - exec_in_pod
-            - list_api_resources
-            - kubectl_generic
-            - ping
+            - node_management
       - type: McpServer
         mcpServer:
           apiGroup: kagent.dev
           kind: RemoteMCPServer
           name: gitlab-ops
           toolNames:
-            - browse_projects
-            - browse_namespaces
-            - browse_commits
-            - browse_events
-            - browse_users
-            - browse_todos
-            - manage_project
-            - manage_namespace
-            - manage_todos
-            - manage_context
-            - browse_labels
-            - manage_label
-            - browse_merge_requests
-            - browse_mr_discussions
-            - manage_merge_request
-            - manage_mr_discussion
-            - manage_draft_notes
-            - browse_files
-            - manage_files
-            - browse_milestones
-            - manage_milestone
             - browse_pipelines
             - manage_pipeline
-            - manage_pipeline_job
-            - browse_variables
-            - manage_variable
-            - browse_wiki
-            - manage_wiki
-            - browse_work_items
-            - manage_work_item
-            - browse_snippets
-            - manage_snippet
-            - browse_webhooks
-            - manage_webhook
-            - browse_integrations
-            - manage_integration
-            - browse_releases
-            - manage_release
-            - browse_refs
-            - manage_ref
-            - browse_members
-            - manage_member
-            - browse_search
-            - browse_iterations
+            - browse_merge_requests
       - type: McpServer
         mcpServer:
           apiGroup: kagent.dev
@@ -158,13 +102,9 @@ spec:
           name: ollama-models
           toolNames:
             - list_models
-            - show_model
             - running_models
-            - pull_model
-            - delete_model
-            - copy_model
             - ollama_status
-            - generate_test
+            - pull_model
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
@@ -229,37 +169,15 @@ spec:
         mcpServer:
           apiGroup: kagent.dev
           kind: RemoteMCPServer
-
           name: kubernetes-ops
           toolNames:
-            - cleanup
             - kubectl_get
             - kubectl_describe
-            - kubectl_apply
-            - kubectl_delete
-            - kubectl_create
             - kubectl_logs
-            - kubectl_scale
-            - kubectl_patch
-            - kubectl_rollout
-            - kubectl_context
-            - kubectl_reconnect
-            - explain_resource
-            - install_helm_chart
-            - upgrade_helm_chart
-            - uninstall_helm_chart
-            - node_management
-            - port_forward
-            - stop_port_forward
-            - exec_in_pod
-            - list_api_resources
-            - kubectl_generic
-            - ping
       - type: McpServer
         mcpServer:
           apiGroup: kagent.dev
           kind: RemoteMCPServer
-
           name: plane-project
           toolNames:
             - list_projects
@@ -279,53 +197,12 @@ spec:
         mcpServer:
           apiGroup: kagent.dev
           kind: RemoteMCPServer
-
           name: gitlab-ops
           toolNames:
             - browse_projects
-            - browse_namespaces
-            - browse_commits
-            - browse_events
-            - browse_users
-            - browse_todos
-            - manage_project
-            - manage_namespace
-            - manage_todos
-            - manage_context
-            - browse_labels
-            - manage_label
             - browse_merge_requests
-            - browse_mr_discussions
-            - manage_merge_request
-            - manage_mr_discussion
-            - manage_draft_notes
-            - browse_files
-            - manage_files
-            - browse_milestones
-            - manage_milestone
             - browse_pipelines
-            - manage_pipeline
-            - manage_pipeline_job
-            - browse_variables
-            - manage_variable
-            - browse_wiki
-            - manage_wiki
             - browse_work_items
-            - manage_work_item
-            - browse_snippets
-            - manage_snippet
-            - browse_webhooks
-            - manage_webhook
-            - browse_integrations
-            - manage_integration
-            - browse_releases
-            - manage_release
-            - browse_refs
-            - manage_ref
-            - browse_members
-            - manage_member
-            - browse_search
-            - browse_iterations
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
@@ -346,7 +223,7 @@ spec:
     modelConfig: ollama-chat
     stream: true
     systemMessage: |
-      You are a data engineer specializing in data catalog management, lineage tracking, quality assurance, and ingestion pipelines. You work with DataHub for metadata management, PostgreSQL for structured data, pgvector for embeddings, and MinIO for object storage.
+      You are a data engineer specializing in data catalog management, lineage tracking, quality assurance, and ingestion pipelines. You work with ODD Platform for metadata management, PostgreSQL for structured data, pgvector for embeddings, and MinIO for object storage.
 
       Your expertise:
       - Data catalog: entity discovery, dataset registration, schema documentation, domain tagging
@@ -366,8 +243,8 @@ spec:
       ttlDays: 90
     a2aConfig:
       skills:
-        - id: datahub-ops
-          name: DataHub Operations
+        - id: catalog-ops
+          name: Data Catalog Operations
           description: Manage data catalog — datasets, lineage, quality assertions
           tags:
             - data
@@ -398,68 +275,35 @@ spec:
         mcpServer:
           apiGroup: kagent.dev
           kind: RemoteMCPServer
-
           name: kubernetes-ops
           toolNames:
-            - cleanup
             - kubectl_get
             - kubectl_describe
-            - kubectl_apply
-            - kubectl_delete
-            - kubectl_create
             - kubectl_logs
-            - kubectl_scale
-            - kubectl_patch
-            - kubectl_rollout
-            - kubectl_context
-            - kubectl_reconnect
-            - explain_resource
-            - install_helm_chart
-            - upgrade_helm_chart
-            - uninstall_helm_chart
-            - node_management
-            - port_forward
-            - stop_port_forward
             - exec_in_pod
-            - list_api_resources
-            - kubectl_generic
-            - ping
       - type: McpServer
         mcpServer:
           apiGroup: kagent.dev
           kind: RemoteMCPServer
-
           name: minio-storage
           toolNames:
             - list_buckets
-            - create_bucket
-            - delete_bucket
             - list_objects
             - get_object_info
             - get_object_text
             - put_object
-            - delete_object
             - bucket_stats
       - type: McpServer
         mcpServer:
           apiGroup: kagent.dev
           kind: RemoteMCPServer
-
           name: mlflow-tracking
           toolNames:
             - list_experiments
             - get_experiment
-            - create_experiment
             - search_runs
             - get_run
-            - create_run
-            - log_metric
-            - log_param
-            - log_batch
-            - end_run
             - list_registered_models
-            - get_model_version
-            - compare_runs
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
@@ -529,37 +373,15 @@ spec:
         mcpServer:
           apiGroup: kagent.dev
           kind: RemoteMCPServer
-
           name: kubernetes-ops
           toolNames:
-            - cleanup
             - kubectl_get
             - kubectl_describe
-            - kubectl_apply
-            - kubectl_delete
-            - kubectl_create
             - kubectl_logs
-            - kubectl_scale
-            - kubectl_patch
-            - kubectl_rollout
-            - kubectl_context
-            - kubectl_reconnect
-            - explain_resource
-            - install_helm_chart
-            - upgrade_helm_chart
-            - uninstall_helm_chart
-            - node_management
-            - port_forward
-            - stop_port_forward
-            - exec_in_pod
-            - list_api_resources
-            - kubectl_generic
-            - ping
       - type: McpServer
         mcpServer:
           apiGroup: kagent.dev
           kind: RemoteMCPServer
-
           name: mlflow-tracking
           toolNames:
             - list_experiments
@@ -570,58 +392,27 @@ spec:
             - create_run
             - log_metric
             - log_param
-            - log_batch
             - end_run
-            - list_registered_models
-            - get_model_version
             - compare_runs
       - type: McpServer
         mcpServer:
           apiGroup: kagent.dev
           kind: RemoteMCPServer
-
           name: langfuse-observability
           toolNames:
             - list_traces
             - get_trace
-            - list_observations
-            - get_observation
             - list_scores
-            - list_sessions
-            - get_session
             - usage_summary
             - error_traces
       - type: McpServer
         mcpServer:
           apiGroup: kagent.dev
           kind: RemoteMCPServer
-
-          name: minio-storage
-          toolNames:
-            - list_buckets
-            - create_bucket
-            - delete_bucket
-            - list_objects
-            - get_object_info
-            - get_object_text
-            - put_object
-            - delete_object
-            - bucket_stats
-      - type: McpServer
-        mcpServer:
-          apiGroup: kagent.dev
-          kind: RemoteMCPServer
-
           name: ollama-models
           toolNames:
             - list_models
-            - show_model
             - running_models
-            - pull_model
-            - delete_model
-            - copy_model
-            - ollama_status
-            - generate_test
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
@@ -692,83 +483,30 @@ spec:
         mcpServer:
           apiGroup: kagent.dev
           kind: RemoteMCPServer
-
           name: kubernetes-ops
           toolNames:
-            - cleanup
             - kubectl_get
             - kubectl_describe
-            - kubectl_apply
-            - kubectl_delete
-            - kubectl_create
             - kubectl_logs
-            - kubectl_scale
-            - kubectl_patch
-            - kubectl_rollout
-            - kubectl_context
-            - kubectl_reconnect
-            - explain_resource
-            - install_helm_chart
-            - upgrade_helm_chart
-            - uninstall_helm_chart
-            - node_management
-            - port_forward
-            - stop_port_forward
-            - exec_in_pod
-            - list_api_resources
-            - kubectl_generic
-            - ping
       - type: McpServer
         mcpServer:
           apiGroup: kagent.dev
           kind: RemoteMCPServer
-
           name: gitlab-ops
           toolNames:
             - browse_projects
-            - browse_namespaces
             - browse_commits
-            - browse_events
-            - browse_users
-            - browse_todos
-            - manage_project
-            - manage_namespace
-            - manage_todos
-            - manage_context
-            - browse_labels
-            - manage_label
-            - browse_merge_requests
-            - browse_mr_discussions
-            - manage_merge_request
-            - manage_mr_discussion
-            - manage_draft_notes
             - browse_files
             - manage_files
-            - browse_milestones
-            - manage_milestone
+            - browse_merge_requests
+            - manage_merge_request
+            - browse_mr_discussions
+            - manage_mr_discussion
             - browse_pipelines
             - manage_pipeline
             - manage_pipeline_job
-            - browse_variables
-            - manage_variable
-            - browse_wiki
-            - manage_wiki
-            - browse_work_items
-            - manage_work_item
-            - browse_snippets
-            - manage_snippet
-            - browse_webhooks
-            - manage_webhook
-            - browse_integrations
-            - manage_integration
-            - browse_releases
-            - manage_release
             - browse_refs
-            - manage_ref
-            - browse_members
-            - manage_member
             - browse_search
-            - browse_iterations
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
@@ -841,65 +579,34 @@ spec:
         mcpServer:
           apiGroup: kagent.dev
           kind: RemoteMCPServer
-
           name: kubernetes-ops
           toolNames:
-            - cleanup
             - kubectl_get
             - kubectl_describe
-            - kubectl_apply
-            - kubectl_delete
-            - kubectl_create
             - kubectl_logs
-            - kubectl_scale
-            - kubectl_patch
-            - kubectl_rollout
-            - kubectl_context
-            - kubectl_reconnect
-            - explain_resource
-            - install_helm_chart
-            - upgrade_helm_chart
-            - uninstall_helm_chart
-            - node_management
-            - port_forward
-            - stop_port_forward
-            - exec_in_pod
-            - list_api_resources
-            - kubectl_generic
-            - ping
       - type: McpServer
         mcpServer:
           apiGroup: kagent.dev
           kind: RemoteMCPServer
-
           name: mlflow-tracking
           toolNames:
             - list_experiments
             - get_experiment
-            - create_experiment
             - search_runs
             - get_run
             - create_run
             - log_metric
-            - log_param
-            - log_batch
             - end_run
-            - list_registered_models
-            - get_model_version
             - compare_runs
       - type: McpServer
         mcpServer:
           apiGroup: kagent.dev
           kind: RemoteMCPServer
-
           name: langfuse-observability
           toolNames:
             - list_traces
             - get_trace
-            - list_observations
-            - get_observation
             - list_scores
             - list_sessions
-            - get_session
             - usage_summary
             - error_traces

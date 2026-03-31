@@ -1,5 +1,5 @@
 # ~/work/repos/platform_monorepo/taskfiles/yt.yml — YouTube ETL pipeline
-# Extract playlists, analyze transcripts, store in pgvector, govern in DataHub.
+# Extract playlists, analyze transcripts, store in pgvector.
 
 version: "3"
 
@@ -87,10 +87,6 @@ tasks:
           | python3 -c "import json,sys; d=json.load(sys.stdin); print(f'Extracted {d[\"total_videos\"]} videos ({d[\"with_transcript\"]} with transcripts)')" \
           || echo "yt-ingest not running — run: task yt:start"
 
-  govern:
-    desc: "Run DataHub governance for YouTube pipeline (lineage, tags, quality)"
-    cmds:
-      - python3 {{.PLATFORM_DIR}}/scripts/datahub-yt-governance.py
 
   schema:
     desc: "Apply YouTube schema to pgvector database"

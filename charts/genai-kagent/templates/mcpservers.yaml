@@ -210,15 +210,15 @@ spec:
 apiVersion: kagent.dev/v1alpha1
 kind: MCPServer
 metadata:
-  name: mcp-datahub
+  name: mcp-odd-platform
   namespace: {{ .Release.Namespace }}
 spec:
   deployment:
-    image: acuvity/mcp-server-datahub:latest
-    port: 8000
+    image: ghcr.io/r-aas/mcp-odd-platform:latest
+    port: 3000
     env:
-      DATAHUB_GMS_URL: http://genai-datahub-datahub-gms.genai.svc.cluster.local:8080
-      DATAHUB_GMS_TOKEN: "placeholder"
+      ODD_BASE_URL: http://genai-odd-platform.genai.svc.cluster.local
+      PORT: "3000"
     resources:
       requests:
         cpu: 100m
@@ -228,5 +228,5 @@ spec:
         memory: 256Mi
   transportType: http
   httpTransport:
-    targetPort: 8000
+    targetPort: 3000
   timeout: 30s

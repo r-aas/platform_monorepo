@@ -217,8 +217,7 @@ tasks:
         echo "  MLflow:       http://mlflow.platform.127.0.0.1.nip.io"
         echo "  LiteLLM:      http://litellm.platform.127.0.0.1.nip.io"
         echo "  MinIO:        http://minio-console.platform.127.0.0.1.nip.io"
-        echo "  DataHub:      http://datahub.platform.127.0.0.1.nip.io"
-        echo "  DataHub GMS:  http://datahub-gms.platform.127.0.0.1.nip.io"
+        echo "  ODD Platform: http://odd.platform.127.0.0.1.nip.io"
         echo "  Agent Reg:   http://agent-registry.platform.127.0.0.1.nip.io"
         echo "  Langfuse:     http://langfuse.platform.127.0.0.1.nip.io"
         echo "  kagent:       http://kagent.platform.127.0.0.1.nip.io"
@@ -244,7 +243,6 @@ tasks:
         echo "  MLflow:       http://mlflow.genai.${LAN_IP}.nip.io"
         echo "  LiteLLM:      http://litellm.genai.${LAN_IP}.nip.io"
         echo "  MinIO:        http://minio-console.genai.${LAN_IP}.nip.io"
-        echo "  DataHub:      http://datahub.genai.${LAN_IP}.nip.io"
         echo "  Agent GW:     http://agent-gateway.genai.${LAN_IP}.nip.io"
         echo "  Langfuse:     http://langfuse.genai.${LAN_IP}.nip.io"
         echo "  Plane:        http://plane.genai.${LAN_IP}.nip.io"
@@ -426,25 +424,6 @@ tasks:
     cmds:
       - bash scripts/langfuse-setup.sh
 
-  datahub-ingest:
-    desc: "Register DataHub ingestion sources (PostgreSQL for n8n, MLflow, Langfuse)"
-    cmds:
-      - bash {{.PLATFORM_DIR}}/scripts/datahub-ingest.sh
-
-  datahub-lineage:
-    desc: "Emit cross-service lineage edges to DataHub"
-    cmds:
-      - python3 {{.PLATFORM_DIR}}/scripts/datahub-lineage.py
-
-  datahub-quality:
-    desc: "Run data quality checks against platform databases"
-    cmds:
-      - python3 {{.PLATFORM_DIR}}/scripts/datahub-quality.py
-
-  datahub-domains:
-    desc: "Tag DataHub datasets by domain (agent, eval, trace, workflow, research)"
-    cmds:
-      - python3 {{.PLATFORM_DIR}}/scripts/datahub-domains.py {{.CLI_ARGS}}
 
   seed-secrets:
     desc: "Create all platform k8s secrets from ~/work/envs/secrets.env"

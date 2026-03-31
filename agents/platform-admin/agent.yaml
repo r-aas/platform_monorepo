@@ -73,7 +73,7 @@ autonomy:
     categories:
       - incidents      # "pod X crashed because of OOM, fixed by bumping limits"
       - capacity       # "cluster is at 70% memory, 45% CPU"
-      - remediations   # "when datahub OOMs, restart prereqs-mysql first"
+      - remediations   # "when service OOMs, check resource limits first"
 
   collaborators:
     - name: mlops

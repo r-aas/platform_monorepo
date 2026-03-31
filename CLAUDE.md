@@ -8,8 +8,6 @@ Shared infrastructure for the k3d "mewtwo" platform. Helm charts, agent definiti
 charts/              # 35 Helm charts (ArgoCD manages all post-bootstrap)
 services/
   agent-gateway/     # Slim orchestrator: skill catalog, semantic discovery, schedule→A2A glue
-  datahub-obsidian-source/  # DataHub custom source for Obsidian vault
-  n8n-datahub-bridge/       # n8n → DataHub event bridge
 agents/              # Agent YAML definitions (6 agents + _shared)
 skills/              # Skill definitions (21 skills)
 scripts/             # Bootstrap, setup, ingestion, benchmarks, secrets, smoke tests
@@ -47,9 +45,6 @@ task agent-sync      # Sync agent YAMLs to MLflow prompt registry
 task seed-secrets    # Create k8s secrets from ~/work/envs/secrets.env
 task seed-registry   # Seed agent registry with agents + env bindings
 
-task datahub-ingest  # Register DataHub ingestion sources (PostgreSQL)
-task datahub-lineage # Emit cross-service lineage edges
-task datahub-quality # Run data quality checks against platform DBs
 
 task benchmark-smoke # Quick 1-agent, 3-case benchmark
 task benchmark-agents # Full agent benchmarks with LLM-as-judge
@@ -90,7 +85,7 @@ The platform uses best-of-breed OSS components for each layer:
 | mcp-kubernetes | k8s API | platform | kubectl operations, pod logs, exec |
 | mcp-gitlab | GitLab CE | platform | repos, MRs, pipelines, issues |
 | mcp-n8n | n8n API | orchestration | workflow CRUD, execution, node docs |
-| mcp-datahub | DataHub GMS | data | entity search, lineage, quality |
+| mcp-odd-platform | ODD Platform | data | search, lineage, quality, schema |
 | mcp-plane | Plane API | project-management | issues, labels, cycles, sprints |
 | mcp-mlflow | MLflow API | mlops | experiments, runs, metrics, model registry |
 | mcp-langfuse | Langfuse API | observability | traces, scores, usage, cost analysis |
@@ -101,7 +96,7 @@ The platform uses best-of-breed OSS components for each layer:
 
 Core: kubernetes-ops, mlflow-tracking, n8n-workflow-ops, code-generation, documentation, security-audit, benchmark-runner, data-ingestion, prompt-engineering, agent-management, skill-management, vector-store-ops, dev-sandbox
 
-New: datahub-ops, langfuse-ops, artifact-ops, model-management, issue-triage, sprint-management, test-generation, gitlab-pipeline-ops
+New: catalog-ops, langfuse-ops, artifact-ops, model-management, issue-triage, sprint-management, test-generation, gitlab-pipeline-ops
 
 ## Agent Gateway (`services/agent-gateway/`) — Being Slimmed
 
@@ -169,7 +164,7 @@ kubectl rollout restart deployment/genai-agent-gateway -n genai
 | `genai-mlflow` | genai | Experiment tracking, prompt registry |
 | `genai-litellm` | genai | LLM proxy to Ollama |
 | `genai-langfuse` | genai | LLM observability |
-| `genai-datahub` | genai | Data catalog |
+| `genai-odd-platform` | genai | Data catalog (ODD Platform) |
 | `genai-minio` | genai | Object storage |
 | `genai-plane` | genai | Project management |
 | `genai-agentgateway` | genai | MCP/A2A proxy (agentgateway, Rust) |
@@ -216,7 +211,7 @@ Inside k8s pods, use service DNS: `genai-agent-gateway.genai.svc.cluster.local`
 
 All secrets managed via `scripts/seed-secrets.sh` reading from `~/work/envs/secrets.env`.
 
-Secrets covered: PostgreSQL passwords (n8n, mlflow, plane), n8n encryption key, MLflow flask key, MinIO credentials, LiteLLM key, GitLab PAT, Plane API token, Langfuse keys, DataHub MySQL password, n8n API key.
+Secrets covered: PostgreSQL passwords (n8n, mlflow, plane, pgvector/ODD Platform), n8n encryption key, MLflow flask key, MinIO credentials, LiteLLM key, GitLab PAT, Plane API token, Langfuse keys, n8n API key.
 
 Use `--force` flag to recreate existing secrets.
 
@@ -233,12 +228,14 @@ YAML-based agent specs with autonomy blocks (schedule, signals, memory, collabor
 - `_shared/` — Shared LLM and MCP configs
 - `envs/` — Environment bindings (k3d-mewtwo)
 
-## DataHub Integration
+## ODD Platform (Data Catalog)
 
-- **Ingestion**: 3 PostgreSQL sources (n8n, mlflow, langfuse) running every 6h
-- **Lineage**: 5 cross-service dataset edges via GMS REST API
-- **Quality**: 5 assertions checking row counts against live PostgreSQL pods
-- **Recipes**: Must be JSON (not YAML) — YAML causes "Invalid recipe json" on execution
+Lightweight data catalog replacing DataHub. PostgreSQL-only (shared pgvector instance), ARM64 native.
+
+- **Chart**: `genai-odd-platform` — single container + shared PostgreSQL
+- **MCP Server**: `mcp-odd-platform` — 17 tools (search, lineage, quality, schema, tags, alerts)
+- **API**: REST at `http://odd.platform.127.0.0.1.nip.io/api/`
+- **Health**: `/actuator/health`
 
 ## Sandbox (Ephemeral Code Execution)
 
@@ -247,6 +244,16 @@ Agent gateway creates k8s Jobs for sandboxed code execution.
 - Git clone uses in-cluster GitLab: `gitlab-ce.platform.svc.cluster.local` (not nip.io)
 - PAT read from `gitlab-pat` k8s secret, injected into clone URL
 - Jobs run in `genai` namespace with resource limits
+
+## Operational Patterns (GitOps / DevOps / AgentOps)
+
+Full reference: `~/.claude/skills/platform-ops-patterns/SKILL.md`
+
+**GitOps**: Git is the source of truth. All changes via Helm charts + ArgoCD. Never `helm install` or `kubectl apply` manually after bootstrap. Secrets via `existingSecret` pattern + `seed-secrets.sh`.
+
+**DevOps**: CI pipeline = lint → test → build → deploy → verify. Quality gates: agent-lint (≤20 tools), helm lint, ruff, pytest, smoke. Images built ARM64-native, multi-stage, <500MB.
+
+**AgentOps**: Agent lifecycle = define → lint → deploy → verify → monitor → iterate. Tool budget ≤20 per agent. Explicit `toolNames` always. Scheduling cadence matched to domain (15m monitoring → nightly benchmarks). Observability via Langfuse traces + MLflow metrics.
 
 ## Testing
 

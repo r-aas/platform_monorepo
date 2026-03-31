@@ -47,7 +47,7 @@ spec:
       annotations:
         # Databases/storage (pg-*, minio, pgvector) sync first, apps after
         argocd.argoproj.io/sync-wave: |-
-          {{`{{ if or (hasPrefix "genai-pg" .path.basename) (eq .path.basename "genai-minio") (eq .path.basename "genai-pgvector") (eq .path.basename "genai-datahub-prereqs") }}0{{ else }}1{{ end }}`}}
+          {{`{{ if or (hasPrefix "genai-pg" .path.basename) (eq .path.basename "genai-minio") (eq .path.basename "genai-pgvector") }}0{{ else }}1{{ end }}`}}
     spec:
       project: |-
         {{`{{ if hasPrefix "genai-" .path.basename }}genai{{ else if or (hasPrefix "gitlab-" .path.basename) (eq .path.basename "argocd") }}platform-apps{{ else }}genai{{ end }}`}}

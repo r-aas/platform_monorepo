@@ -137,7 +137,7 @@ for server in \
   "mcp-ollama|Ollama MCP Server|Model management — pull, delete, VRAM info, inference" \
   "mcp-plane|Plane MCP Server|Project management — issues, labels, cycles, sprints" \
   "mcp-n8n|n8n MCP Server|Workflow automation — workflow CRUD, execution, node docs" \
-  "mcp-datahub|DataHub MCP Server|Data catalog — entity search, lineage, quality"; do
+  "mcp-odd-platform|ODD Platform MCP Server|Data catalog — search, lineage, quality, schema"; do
 
   IFS='|' read -r name title desc <<< "$server"
 
@@ -171,7 +171,6 @@ for skill in \
   "skill-management|Skill Management" \
   "vector-store-ops|Vector Store Operations" \
   "dev-sandbox|Dev Sandbox" \
-  "datahub-ops|DataHub Operations" \
   "gitlab-pipeline-ops|GitLab Pipeline Operations" \
   "issue-triage|Issue Triage" \
   "sprint-management|Sprint Management" \

@@ -34,6 +34,7 @@ except ImportError:
 EXPECTED_API_VERSION = "kagent.dev/v1alpha2"
 EXPECTED_KIND = "Agent"
 MIN_SYSTEM_MESSAGE_LENGTH = 100
+MAX_TOOLS_PER_AGENT = 20
 HELM_TEMPLATE_RE = re.compile(r"\{\{.*?\}\}")
 # Match IPs like 192.168.1.1 or http://10.0.0.1:8080 but not inside {{ }}
 IP_RE = re.compile(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b")
@@ -172,6 +173,22 @@ def lint_agent(doc: dict, filepath: str) -> AgentReport:
                         f"McpServer tool '{mcp_name}' MUST have explicit toolNames "
                         f"(pods crash without this — see kagent v0.8.0 ValidationError)"
                     )
+
+    # --- Tool count per agent ---
+    if tools and isinstance(tools, list):
+        total_tool_names = 0
+        for tool in tools:
+            if tool.get("type") == "McpServer":
+                mcp = tool.get("mcpServer", {})
+                tool_names = mcp.get("toolNames")
+                if isinstance(tool_names, list):
+                    total_tool_names += len(tool_names)
+        if total_tool_names > MAX_TOOLS_PER_AGENT:
+            error(
+                f"Agent has {total_tool_names} tools (max {MAX_TOOLS_PER_AGENT}). "
+                f"Local LLMs cannot reliably select from >20 tools. "
+                f"Trim toolNames or split into sub-agents."
+            )
 
     # --- spec.declarative.modelConfig ---
     model_config = decl.get("modelConfig")

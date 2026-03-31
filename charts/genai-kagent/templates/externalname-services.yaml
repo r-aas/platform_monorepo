@@ -6,7 +6,7 @@
 # subchart's fullnameOverride, not the parent release name.
 # ═══════════════════════════════════════════════════════
 {{- $prefix := "genai" }}
-{{- $servers := list "mcp-kubernetes" "mcp-mlflow" "mcp-langfuse" "mcp-minio" "mcp-ollama" "mcp-plane" "mcp-gitlab" "mcp-n8n" "mcp-datahub" }}
+{{- $servers := list "mcp-kubernetes" "mcp-mlflow" "mcp-langfuse" "mcp-minio" "mcp-ollama" "mcp-plane" "mcp-gitlab" "mcp-n8n" "mcp-odd-platform" }}
 {{- range $server := $servers }}
 ---
 apiVersion: v1

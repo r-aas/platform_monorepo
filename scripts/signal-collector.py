@@ -171,7 +171,6 @@ def collect_health_signals() -> list[Signal]:
         ("litellm", "http://litellm.platform.127.0.0.1.nip.io/health"),
         ("langfuse", "http://langfuse.platform.127.0.0.1.nip.io/api/public/health"),
         ("agent-gateway", "http://gateway.platform.127.0.0.1.nip.io/health"),
-        ("datahub", "http://datahub-gms.platform.127.0.0.1.nip.io/health"),
     ]
 
     with httpx.Client(timeout=5) as client:

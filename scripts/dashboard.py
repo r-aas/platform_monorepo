@@ -210,7 +210,6 @@ MCP_PARENT_STACK: dict[str, str] = {
     "kubernetes": "platform",
     "gitlab": "platform",
     "n8n": "orchestration",
-    "datahub": "dataops",
     "plane": "dataops",
 }
 
@@ -218,7 +217,6 @@ MCP_ICONS: dict[str, str] = {
     "kubernetes": "\u2638\ufe0f",
     "gitlab": "\U0001f98a",
     "n8n": "\U0001f527",
-    "datahub": "\U0001f5c4",
     "plane": "\U0001f4cb",
 }
 
@@ -227,7 +225,6 @@ MCP_TARGETS: dict[str, list[tuple[str, str]]] = {
     "kubernetes": [("ingress-nginx", "cluster")],
     "gitlab": [("gitlab-ce", "API")],
     "n8n": [("n8n", "API")],
-    "datahub": [("datahub-gms", "API")],
     "plane": [("plane-web", "API")],
 }
 
@@ -454,41 +451,6 @@ BASE_SERVICES = [
     },
     # ── DataOps group ──
     {
-        "sid": "datahub-frontend",
-        "label": "DataHub",
-        "category": "application",
-        "group": "dataops",
-        "detail": "Data catalog \u00b7 :9002",
-    },
-    {
-        "sid": "datahub-gms",
-        "label": "DataHub GMS",
-        "category": "application",
-        "group": "dataops",
-        "detail": "Metadata service \u00b7 :8080",
-    },
-    {
-        "sid": "datahub-mysql",
-        "label": "DataHub MySQL",
-        "category": "database",
-        "group": "dataops",
-        "detail": "MySQL",
-    },
-    {
-        "sid": "datahub-elasticsearch",
-        "label": "Elasticsearch",
-        "category": "database",
-        "group": "dataops",
-        "detail": "Search index",
-    },
-    {
-        "sid": "datahub-kafka",
-        "label": "Kafka",
-        "category": "database",
-        "group": "dataops",
-        "detail": "Event streaming",
-    },
-    {
         "sid": "pgvector",
         "label": "pgvector",
         "category": "database",
@@ -591,15 +553,6 @@ BASE_EDGES = [
     {"source": "langfuse", "target": "langfuse-redis", "label": "cache", "type": "cache"},
     # Agent Gateway
     {"source": "agent-gateway", "target": "pgvector", "label": "registry", "type": "storage"},
-    # DataHub
-    {"source": "datahub-frontend", "target": "datahub-gms", "label": "API", "type": "metadata"},
-    {"source": "datahub-gms", "target": "datahub-mysql", "label": "metadata", "type": "metadata"},
-    {"source": "datahub-gms", "target": "datahub-elasticsearch", "label": "search", "type": "storage"},
-    {"source": "datahub-gms", "target": "datahub-kafka", "label": "events", "type": "storage"},
-    # DataHub lineage (cross-service)
-    {"source": "datahub-gms", "target": "mlflow", "label": "lineage", "type": "logging"},
-    {"source": "datahub-gms", "target": "langfuse", "label": "lineage", "type": "logging"},
-    {"source": "datahub-gms", "target": "n8n", "label": "lineage", "type": "logging"},
     # Plane
     {"source": "n8n", "target": "plane-web", "label": "issues", "type": "tools"},
     # Platform
@@ -639,14 +592,6 @@ K8S_POD_TO_NODE: list[tuple[str, str]] = [
     ("genai-pgvector", "pgvector"),
     ("genai-agent-gateway", "agent-gateway"),
     ("genai-open-ontologies", "open-ontologies"),
-    # DataHub
-    ("genai-datahub-datahub-frontend", "datahub-frontend"),
-    ("genai-datahub-datahub-gms", "datahub-gms"),
-    ("genai-datahub-acryl-datahub-actions", "datahub-actions"),
-    ("genai-datahub-prereqs-mysql", "datahub-mysql"),
-    ("elasticsearch-master", "datahub-elasticsearch"),
-    ("genai-datahub-prereqs-kafka", "datahub-kafka"),
-    ("genai-datahub-bridge", "datahub-bridge"),
     # Plane
     ("genai-plane-web", "plane-web"),
     ("genai-plane-api", "plane-api"),
@@ -663,7 +608,6 @@ K8S_POD_TO_NODE: list[tuple[str, str]] = [
     ("genai-mcp-kubernetes", "mcp-kubernetes"),
     ("genai-mcp-gitlab", "mcp-gitlab"),
     ("genai-mcp-n8n", "mcp-n8n"),
-    ("genai-mcp-datahub", "mcp-datahub"),
     ("genai-mcp-plane", "mcp-plane"),
     # platform namespace
     ("argocd-server", "argocd-server"),
@@ -675,7 +619,7 @@ K8S_POD_TO_NODE: list[tuple[str, str]] = [
     ("ingress-nginx-controller", "ingress-nginx"),
 ]
 # Extra pods that appear in k8s but aren't in base topology
-K8S_EXTRA_PODS = {"zookeeper", "coredns", "local-path-provisioner", "metrics-server", "datahub-prereqs-zookeeper"}
+K8S_EXTRA_PODS = {"zookeeper", "coredns", "local-path-provisioner", "metrics-server"}
 
 K8S_NAMESPACES = os.getenv("K8S_NAMESPACES", "platform,ingress-nginx,dev,genai").split(",")
 
@@ -705,12 +649,7 @@ SERVICE_STACK = {
     "n8n": "orchestration",
     "n8n-postgres": "orchestration",
     "agent-gateway": "orchestration",
-    # DataOps — Data catalog, project management, vectors
-    "datahub-frontend": "dataops",
-    "datahub-gms": "dataops",
-    "datahub-mysql": "dataops",
-    "datahub-elasticsearch": "dataops",
-    "datahub-kafka": "dataops",
+    # DataOps — Project management, vectors
     "pgvector": "dataops",
     "plane-web": "dataops",
     # Platform — GitOps & cluster infrastructure
