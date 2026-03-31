@@ -17,7 +17,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: init-db
-          image: bitnami/postgresql:16
+          image: postgres:16-alpine
           command:
             - sh
             - -c
