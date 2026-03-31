@@ -1,0 +1,20 @@
+# ═══════════════════════════════════════════════════════
+# ExternalName Services — bridge kagent naming convention
+# kagent controller prepends release name to MCPServer names,
+# generating URLs like genai-mcp-kubernetes but kmcp creates
+# services named mcp-kubernetes. These CNAME aliases bridge the gap.
+# ═══════════════════════════════════════════════════════
+{{- $servers := list "mcp-kubernetes" "mcp-mlflow" "mcp-langfuse" "mcp-minio" "mcp-ollama" "mcp-plane" "mcp-gitlab" "mcp-n8n" "mcp-datahub" }}
+{{- range $server := $servers }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $.Release.Name }}-{{ $server }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ExternalName
+  externalName: {{ $server }}.{{ $.Release.Namespace }}.svc.cluster.local
+{{- end }}

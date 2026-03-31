@@ -17,4 +17,4 @@ RUN pip install --no-cache-dir mlflow-mcp mcp-proxy
 ENV PORT=3000
 EXPOSE 3000
 
-CMD ["sh", "-c", "mcp-proxy --transport streamablehttp --host 0.0.0.0 --port ${PORT} -- mlflow-mcp"]
+CMD ["sh", "-c", "mcp-proxy --pass-environment --transport streamablehttp --host 0.0.0.0 --port ${PORT} -- mlflow-mcp"]

@@ -22,4 +22,4 @@ RUN apt-get update -qq && apt-get install -y -qq python3 python3-pip curl > /dev
 ENV PORT=3000
 EXPOSE 3000
 
-CMD ["sh", "-c", "mcp-proxy --transport streamablehttp --host 0.0.0.0 --port ${PORT} -- mcp-server-kubernetes"]
+CMD ["sh", "-c", "mcp-proxy --pass-environment --transport streamablehttp --host 0.0.0.0 --port ${PORT} -- mcp-server-kubernetes"]
