@@ -13,6 +13,8 @@ spec:
   deployment:
     image: ghcr.io/r-aas/mcp-kubernetes:latest
     port: 3000
+    env:
+      PORT: "3000"
     resources:
       requests:
         cpu: 100m
@@ -36,6 +38,7 @@ spec:
     image: ghcr.io/r-aas/mcp-mlflow:latest
     port: 3000
     env:
+      PORT: "3000"
       MLFLOW_TRACKING_URI: http://genai-mlflow.genai.svc.cluster.local:5000
     resources:
       requests:
@@ -213,6 +216,7 @@ spec:
     port: 8000
     env:
       DATAHUB_GMS_URL: http://genai-datahub-datahub-gms.genai.svc.cluster.local:8080
+      DATAHUB_GMS_TOKEN: "placeholder"
     resources:
       requests:
         cpu: 100m

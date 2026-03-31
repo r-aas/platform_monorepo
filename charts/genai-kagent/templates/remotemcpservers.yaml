@@ -42,7 +42,7 @@ metadata:
 spec:
   description: GitLab repository, MR, and pipeline management
   protocol: STREAMABLE_HTTP
-  url: http://genai-mcp-gitlab.genai.svc.cluster.local:3000/mcp
+  url: http://mcp-gitlab.genai.svc.cluster.local:3000/mcp
   timeout: 30s
   sseReadTimeout: 5m0s
   allowedNamespaces:
@@ -62,8 +62,8 @@ metadata:
     app.kubernetes.io/managed-by: Helm
 spec:
   description: Kubernetes cluster management — kubectl get/describe/logs/apply
-  protocol: STREAMABLE_HTTP
-  url: http://genai-mcp-kubernetes.genai.svc.cluster.local:3000/mcp
+  protocol: SSE
+  url: http://mcp-kubernetes.genai.svc.cluster.local:3000/sse
   timeout: 30s
   sseReadTimeout: 5m0s
   allowedNamespaces:
@@ -83,8 +83,8 @@ metadata:
     app.kubernetes.io/managed-by: Helm
 spec:
   description: MLflow experiment tracking, model registry, run management
-  protocol: STREAMABLE_HTTP
-  url: http://genai-mcp-mlflow.genai.svc.cluster.local:3000/mcp
+  protocol: SSE
+  url: http://mcp-mlflow.genai.svc.cluster.local:3000/sse
   timeout: 30s
   sseReadTimeout: 5m0s
   allowedNamespaces:
@@ -105,7 +105,7 @@ metadata:
 spec:
   description: Langfuse LLM observability — traces, scores, sessions, usage
   protocol: STREAMABLE_HTTP
-  url: http://genai-mcp-langfuse.genai.svc.cluster.local:3000/mcp
+  url: http://mcp-langfuse.genai.svc.cluster.local:3000/mcp
   timeout: 30s
   sseReadTimeout: 5m0s
   allowedNamespaces:
@@ -126,7 +126,7 @@ metadata:
 spec:
   description: MinIO S3 object storage — buckets, objects, artifacts
   protocol: STREAMABLE_HTTP
-  url: http://genai-mcp-minio.genai.svc.cluster.local:3000/mcp
+  url: http://mcp-minio.genai.svc.cluster.local:3000/mcp
   timeout: 30s
   sseReadTimeout: 5m0s
   allowedNamespaces:
@@ -147,7 +147,7 @@ metadata:
 spec:
   description: Ollama model management — list, pull, delete, test inference
   protocol: STREAMABLE_HTTP
-  url: http://genai-mcp-ollama.genai.svc.cluster.local:3000/mcp
+  url: http://mcp-ollama.genai.svc.cluster.local:3000/mcp
   timeout: 30s
   sseReadTimeout: 5m0s
   allowedNamespaces:
@@ -168,7 +168,7 @@ metadata:
 spec:
   description: Plane project management — issues, cycles, modules
   protocol: STREAMABLE_HTTP
-  url: http://genai-mcp-plane.genai.svc.cluster.local:3000/mcp
+  url: http://mcp-plane.genai.svc.cluster.local:3000/mcp
   timeout: 30s
   sseReadTimeout: 5m0s
   allowedNamespaces:
