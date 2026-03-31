@@ -22,9 +22,9 @@ spec:
             - sh
             - -c
             - |
-              PGPASSWORD="$PGPASSWORD" psql -h genai-pgvector.genai.svc.cluster.local -U postgres -tc \
+              PGPASSWORD="$PGPASSWORD" psql -h genai-pgvector.genai.svc.cluster.local -U pgvector -d postgres -tc \
                 "SELECT 1 FROM pg_database WHERE datname = 'odd_platform'" | grep -q 1 \
-                || PGPASSWORD="$PGPASSWORD" psql -h genai-pgvector.genai.svc.cluster.local -U postgres -c \
+                || PGPASSWORD="$PGPASSWORD" psql -h genai-pgvector.genai.svc.cluster.local -U pgvector -d postgres -c \
                 "CREATE DATABASE odd_platform"
           env:
             - name: PGPASSWORD

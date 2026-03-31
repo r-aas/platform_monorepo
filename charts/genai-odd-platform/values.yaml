@@ -16,7 +16,7 @@ config:
   spring:
     datasource:
       url: jdbc:postgresql://genai-pgvector.genai.svc.cluster.local:5432/odd_platform
-      username: postgres
+      username: pgvector
       # password from existingSecret
   auth:
     type: DISABLED
