@@ -7,7 +7,12 @@ from mcp.server.fastmcp import FastMCP
 ODD_BASE_URL = os.environ.get("ODD_BASE_URL", "http://genai-odd-platform.genai.svc.cluster.local")
 ODD_API_KEY = os.environ.get("ODD_API_KEY", "")
 
-mcp = FastMCP("mcp-odd-platform", instructions="Data catalog operations via ODD Platform REST API")
+mcp = FastMCP(
+    "mcp-odd-platform",
+    instructions="Data catalog operations via ODD Platform REST API",
+    host="0.0.0.0",
+    port=int(os.environ.get("PORT", "3000")),
+)
 
 _headers: dict[str, str] = {"Accept": "application/json"}
 if ODD_API_KEY:
@@ -190,3 +195,7 @@ def get_platform_info() -> dict:
         r = c.get("/api/appInfo")
         r.raise_for_status()
         return r.json()
+
+
+if __name__ == "__main__":
+    mcp.run(transport="streamable-http")
