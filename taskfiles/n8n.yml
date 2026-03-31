@@ -15,8 +15,7 @@ tasks:
         AVAIL=$(docker exec k3d-mewtwo-server-0 awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo 2>/dev/null || echo 0)
         if [ "$AVAIL" -lt 1500 ]; then
           echo "⚠ Only ${AVAIL}MB available on k3d VM (need ≥1500MB)"
-          echo "  Stop competing containers: docker stop deathco-backend deathco-litellm deathco-mongodb deathco-pgvector"
-          echo "  Or stop genai-mlops:       docker compose -f ~/work/code/genai-mlops/docker-compose.yml stop"
+          echo "  Stop competing containers or free memory on Colima VM"
           exit 1
         fi
         echo "✓ ${AVAIL}MB available on k3d VM — sufficient"
@@ -118,12 +117,10 @@ tasks:
         done
 
   promote:
-    desc: "Promote genai-mlops workflows to k8s n8n (NS=dev|stage|prod)"
-    vars:
-      GENAI_DIR: '{{.GENAI_DIR | default "${HOME}/work/repos/genai-mlops"}}'
+    desc: "Promote workflows to k8s n8n (NS=dev|stage|prod)"
     cmds:
-      - bash {{.GENAI_DIR}}/scripts/n8n-promote.sh {{.NS}}
-      - bash {{.GENAI_DIR}}/scripts/n8n-verify.sh {{.NS}}
+      - bash {{.PLATFORM_DIR}}/scripts/n8n-promote.sh {{.NS}}
+      - bash {{.PLATFORM_DIR}}/scripts/n8n-verify.sh {{.NS}}
 
   promote-all:
     desc: "Promote workflows to all namespaces"

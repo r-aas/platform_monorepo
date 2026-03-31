@@ -66,6 +66,13 @@ services:
       service: genai-n8n
       port: 5678
 
+  - name: odd-platform
+    namespace: genai
+    host: odd-platform.genai
+    backend:
+      service: genai-odd-platform
+      port: 8080
+
   - name: open-ontologies
     namespace: genai
     host: open-ontologies.genai

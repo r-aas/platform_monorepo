@@ -4,27 +4,20 @@
 <http://r-aas.dev/ontology/platform#MLPlatform> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Service> .
 <http://r-aas.dev/ontology/platform#GitOpsController> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#argocd> a <http://r-aas.dev/ontology/platform#Thing> .
-<http://r-aas.dev/ontology/platform#datahub-frontend> a <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#DeployOperation> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#MessageBroker> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#DebugOperation> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#APIService> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#n8n> a <http://r-aas.dev/ontology/platform#APIService> .
-<http://r-aas.dev/ontology/platform#datahub-gms> a <http://r-aas.dev/ontology/platform#APIService> .
 <http://r-aas.dev/ontology/platform#MetadataCatalog> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#gitlab> a <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#ns-genai> a <http://r-aas.dev/ontology/platform#System> .
 <http://r-aas.dev/ontology/platform#agent-gateway> a <http://r-aas.dev/ontology/platform#Service> .
-<http://r-aas.dev/ontology/platform#datahub-mysql> a <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#minio> a <http://r-aas.dev/ontology/platform#Service> .
-<http://r-aas.dev/ontology/platform#datahub-mysql> a <http://r-aas.dev/ontology/platform#Service> .
-<http://r-aas.dev/ontology/platform#datahub-zookeeper> a <http://r-aas.dev/ontology/platform#Thing> .
-<http://r-aas.dev/ontology/platform#datahub-gms> a <http://r-aas.dev/ontology/platform#Service> .
 <http://r-aas.dev/ontology/platform#mlflow> a <http://r-aas.dev/ontology/platform#APIService> , <http://r-aas.dev/ontology/platform#Service> .
 <http://r-aas.dev/ontology/platform#argocd> a <http://r-aas.dev/ontology/platform#APIService> .
 <http://r-aas.dev/ontology/platform#gitlab> a <http://r-aas.dev/ontology/platform#APIService> .
 <http://r-aas.dev/ontology/platform#GitServer> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Service> .
-<http://r-aas.dev/ontology/platform#datahub-kafka> a <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#LLMProxy> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Service> .
 <http://r-aas.dev/ontology/platform#Decision> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#Database> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
@@ -33,8 +26,6 @@
 <http://r-aas.dev/ontology/platform#n8n> a <http://r-aas.dev/ontology/platform#Service> .
 <http://r-aas.dev/ontology/platform#mewtwo> a <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#litellm> a <http://r-aas.dev/ontology/platform#Thing> .
-<http://r-aas.dev/ontology/platform#datahub-elasticsearch> a <http://r-aas.dev/ontology/platform#Thing> .
-<http://r-aas.dev/ontology/platform#datahub-frontend> a <http://r-aas.dev/ontology/platform#Service> .
 <http://r-aas.dev/ontology/platform#Namespace> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#ObjectStore> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#WorkflowEngine> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Service> .
@@ -44,13 +35,10 @@
 <http://r-aas.dev/ontology/platform#MCPServer> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Service> .
 <http://r-aas.dev/ontology/platform#ns-platform> a <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#MetadataCatalog> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Service> .
-<http://r-aas.dev/ontology/platform#datahub-actions> a <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#GitServer> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#MCPServer> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#minio> a <http://r-aas.dev/ontology/platform#Thing> .
-<http://r-aas.dev/ontology/platform#datahub-gms> a <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#LLMProxy> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
-<http://r-aas.dev/ontology/platform#datahub-kafka> a <http://r-aas.dev/ontology/platform#Service> .
 <http://r-aas.dev/ontology/platform#ollama> a <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#MLPlatform> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#mlflow> a <http://r-aas.dev/ontology/platform#Thing> .
@@ -59,52 +47,37 @@
 <http://r-aas.dev/ontology/platform#BuildOperation> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://r-aas.dev/ontology/platform#Thing> .
 <http://r-aas.dev/ontology/platform#ns-platform> a <http://r-aas.dev/ontology/platform#System> .
 <http://r-aas.dev/ontology/platform#litellm> a <http://r-aas.dev/ontology/platform#APIService> .
-<http://r-aas.dev/ontology/platform#datahub-frontend> <http://r-aas.dev/ontology/platform#flowsTo> <http://r-aas.dev/ontology/platform#datahub-gms> .
-<http://r-aas.dev/ontology/platform#datahub-actions> <http://r-aas.dev/ontology/platform#flowsTo> <http://r-aas.dev/ontology/platform#datahub-gms> .
-<http://r-aas.dev/ontology/platform#datahub-gms> <http://r-aas.dev/ontology/platform#flowsTo> <http://r-aas.dev/ontology/platform#datahub-kafka> , <http://r-aas.dev/ontology/platform#datahub-elasticsearch> .
 <http://r-aas.dev/ontology/platform#agent-gateway> <http://r-aas.dev/ontology/platform#flowsTo> <http://r-aas.dev/ontology/platform#litellm> , <http://r-aas.dev/ontology/platform#n8n> .
 <http://r-aas.dev/ontology/platform#mlflow> <http://r-aas.dev/ontology/platform#flowsTo> <http://r-aas.dev/ontology/platform#minio> .
 <http://r-aas.dev/ontology/platform#litellm> <http://r-aas.dev/ontology/platform#flowsTo> <http://r-aas.dev/ontology/platform#ollama> .
 <http://r-aas.dev/ontology/platform#n8n> <http://r-aas.dev/ontology/platform#flowsTo> <http://r-aas.dev/ontology/platform#mlflow> , <http://r-aas.dev/ontology/platform#litellm> .
-<http://r-aas.dev/ontology/platform#datahub-zookeeper> <http://r-aas.dev/ontology/platform#address> "datahub-prereqs-zookeeper.genai.svc.cluster.local" ;
 	<http://r-aas.dev/ontology/platform#protocol> "tcp" ;
 	<http://r-aas.dev/ontology/platform#port> 2181 ;
 	<http://www.w3.org/2000/01/rdf-schema#label> "DataHub Zookeeper" ;
 	a <http://r-aas.dev/ontology/platform#Service> .
-<http://r-aas.dev/ontology/platform#datahub-kafka> <http://r-aas.dev/ontology/platform#dependsOn> <http://r-aas.dev/ontology/platform#datahub-zookeeper> ;
-	<http://r-aas.dev/ontology/platform#address> "datahub-prereqs-kafka.genai.svc.cluster.local" ;
 	<http://r-aas.dev/ontology/platform#protocol> "tcp" ;
 	<http://r-aas.dev/ontology/platform#port> 9092 ;
 	<http://www.w3.org/2000/01/rdf-schema#label> "DataHub Kafka" ;
 	a <http://r-aas.dev/ontology/platform#MessageBroker> .
-<http://r-aas.dev/ontology/platform#datahub-elasticsearch> <http://r-aas.dev/ontology/platform#address> "datahub-prereqs-elasticsearch-master.genai.svc.cluster.local" ;
 	<http://r-aas.dev/ontology/platform#protocol> "http" ;
 	<http://r-aas.dev/ontology/platform#port> 9200 ;
 	<http://www.w3.org/2000/01/rdf-schema#comment> "Search index for DataHub." ;
 	<http://www.w3.org/2000/01/rdf-schema#label> "DataHub Elasticsearch" ;
 	a <http://r-aas.dev/ontology/platform#Service> .
-<http://r-aas.dev/ontology/platform#datahub-mysql> <http://r-aas.dev/ontology/platform#address> "datahub-prereqs-mysql.genai.svc.cluster.local" ;
 	<http://r-aas.dev/ontology/platform#protocol> "tcp" ;
 	<http://r-aas.dev/ontology/platform#port> 3306 ;
 	<http://www.w3.org/2000/01/rdf-schema#label> "DataHub MySQL" ;
 	a <http://r-aas.dev/ontology/platform#Database> .
-<http://r-aas.dev/ontology/platform#datahub-actions> <http://r-aas.dev/ontology/platform#dependsOn> <http://r-aas.dev/ontology/platform#datahub-kafka> , <http://r-aas.dev/ontology/platform#datahub-gms> ;
-	<http://r-aas.dev/ontology/platform#address> "datahub-datahub-actions.genai.svc.cluster.local" ;
 	<http://r-aas.dev/ontology/platform#protocol> "http" ;
 	<http://r-aas.dev/ontology/platform#port> 9093 ;
 	<http://www.w3.org/2000/01/rdf-schema#comment> "Event-driven actions processor." ;
 	<http://www.w3.org/2000/01/rdf-schema#label> "DataHub Actions" ;
 	a <http://r-aas.dev/ontology/platform#Service> .
-<http://r-aas.dev/ontology/platform#datahub-frontend> <http://r-aas.dev/ontology/platform#dependsOn> <http://r-aas.dev/ontology/platform#datahub-gms> ;
-	<http://r-aas.dev/ontology/platform#address> "datahub-datahub-frontend.genai.svc.cluster.local" ;
-	<http://r-aas.dev/ontology/platform#ingressHost> "datahub.genai.127.0.0.1.nip.io" ;
 	<http://r-aas.dev/ontology/platform#healthPath> "/health" ;
 	<http://r-aas.dev/ontology/platform#protocol> "http" ;
 	<http://r-aas.dev/ontology/platform#port> 9002 ;
 	<http://www.w3.org/2000/01/rdf-schema#label> "DataHub Frontend" ;
 	a <http://r-aas.dev/ontology/platform#APIService> .
-<http://r-aas.dev/ontology/platform#datahub-gms> <http://r-aas.dev/ontology/platform#dependsOn> <http://r-aas.dev/ontology/platform#datahub-kafka> , <http://r-aas.dev/ontology/platform#datahub-elasticsearch> , <http://r-aas.dev/ontology/platform#datahub-mysql> ;
-	<http://r-aas.dev/ontology/platform#address> "datahub-datahub-gms.genai.svc.cluster.local" ;
 	<http://r-aas.dev/ontology/platform#healthPath> "/health" ;
 	<http://r-aas.dev/ontology/platform#protocol> "http" ;
 	<http://r-aas.dev/ontology/platform#port> 8080 ;
@@ -169,7 +142,6 @@
 	<http://r-aas.dev/ontology/platform#port> 80 ;
 	<http://www.w3.org/2000/01/rdf-schema#label> "GitLab CE" ;
 	a <http://r-aas.dev/ontology/platform#GitServer> .
-<http://r-aas.dev/ontology/platform#ns-genai> <http://r-aas.dev/ontology/platform#contains> <http://r-aas.dev/ontology/platform#agent-gateway> , <http://r-aas.dev/ontology/platform#datahub-zookeeper> , <http://r-aas.dev/ontology/platform#datahub-kafka> , <http://r-aas.dev/ontology/platform#datahub-elasticsearch> , <http://r-aas.dev/ontology/platform#datahub-mysql> , <http://r-aas.dev/ontology/platform#datahub-actions> , <http://r-aas.dev/ontology/platform#datahub-frontend> , <http://r-aas.dev/ontology/platform#datahub-gms> , <http://r-aas.dev/ontology/platform#minio> , <http://r-aas.dev/ontology/platform#mlflow> , <http://r-aas.dev/ontology/platform#litellm> , <http://r-aas.dev/ontology/platform#n8n> ;
 	<http://r-aas.dev/ontology/platform#memberOf> <http://r-aas.dev/ontology/platform#mewtwo> ;
 	<http://www.w3.org/2000/01/rdf-schema#label> "genai" ;
 	a <http://r-aas.dev/ontology/platform#Namespace> .

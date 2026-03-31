@@ -323,16 +323,10 @@ tasks:
       - bash {{.PLATFORM_DIR}}/scripts/n8n-setup.sh {{.CLI_ARGS}}
 
   n8n-import:
-    desc: "Import genai-mlops workflows into k3d n8n (patches URLs, skips if genai-mlops absent)"
+    desc: "Import workflows into k3d n8n (from n8n-data/workflows/)"
     deps: [n8n-setup]
     cmds:
-      - |
-        if [ ! -d "${HOME}/work/repos/genai-mlops/n8n-data/workflows" ]; then
-          echo "  ⚠ genai-mlops not found — skipping n8n workflow import"
-          echo "    Clone it: git clone <url> ~/work/repos/genai-mlops"
-          exit 0
-        fi
-        bash {{.PLATFORM_DIR}}/scripts/n8n-import-workflows.sh
+      - bash {{.PLATFORM_DIR}}/scripts/n8n-import-workflows.sh
 
   agent-sync:
     desc: "Sync agent YAML definitions to MLflow prompt registry (retries until MLflow ready)"
@@ -364,25 +358,25 @@ tasks:
 
   benchmark:
     desc: "Run AgenticOps benchmarks (usage: task benchmark -- --agent mlops --model qwen2.5:7b)"
-    dir: "${HOME}/work/repos/genai-mlops"
+    dir: "{{.PLATFORM_DIR}}"
     cmds:
       - uv run python scripts/benchmark.py {{.CLI_ARGS}}
 
   benchmark-matrix:
     desc: "Full model × agent matrix (3 models, direct runtime, logged to MLflow)"
-    dir: "${HOME}/work/repos/genai-mlops"
+    dir: "{{.PLATFORM_DIR}}"
     cmds:
       - uv run python scripts/benchmark.py --type agent --runtime direct --matrix --log-mlflow -v
 
   benchmark-compare:
     desc: "Compare gateway vs direct runtimes (default model, logged to MLflow)"
-    dir: "${HOME}/work/repos/genai-mlops"
+    dir: "{{.PLATFORM_DIR}}"
     cmds:
       - uv run python scripts/benchmark.py --type agent --runtime all --log-mlflow -v
 
   benchmark-agents:
     desc: "End-to-end agent benchmarks with LLM-as-judge (k3d mode)"
-    dir: "${HOME}/work/repos/genai-mlops"
+    dir: "{{.PLATFORM_DIR}}"
     env:
       N8N_BASE_URL: "http://n8n.platform.127.0.0.1.nip.io/webhook"
       MLFLOW_TRACKING_URI: "http://mlflow.platform.127.0.0.1.nip.io"
@@ -400,7 +394,7 @@ tasks:
 
   benchmark-smoke:
     desc: "Quick benchmark smoke test — 1 agent, 3 cases"
-    dir: "${HOME}/work/repos/genai-mlops"
+    dir: "{{.PLATFORM_DIR}}"
     env:
       N8N_BASE_URL: "http://n8n.platform.127.0.0.1.nip.io/webhook"
       MLFLOW_TRACKING_URI: "http://mlflow.platform.127.0.0.1.nip.io"

@@ -76,6 +76,7 @@ K3D_URLS = {
     "litellm": f"http://litellm.genai.{K3D_DOMAIN}",
     "langfuse": f"http://langfuse.genai.{K3D_DOMAIN}",
     "plane": f"http://plane.genai.{K3D_DOMAIN}",
+    "odd-platform": f"http://odd.platform.{K3D_DOMAIN}",
     "argocd": f"http://argocd.platform.{K3D_DOMAIN}",
     "gitlab": f"http://gitlab.platform.{K3D_DOMAIN}",
 }
@@ -451,6 +452,13 @@ BASE_SERVICES = [
     },
     # ── DataOps group ──
     {
+        "sid": "odd-platform",
+        "label": "ODD Platform",
+        "category": "application",
+        "group": "dataops",
+        "detail": "Data catalog \u00b7 :8080",
+    },
+    {
         "sid": "pgvector",
         "label": "pgvector",
         "category": "database",
@@ -553,6 +561,8 @@ BASE_EDGES = [
     {"source": "langfuse", "target": "langfuse-redis", "label": "cache", "type": "cache"},
     # Agent Gateway
     {"source": "agent-gateway", "target": "pgvector", "label": "registry", "type": "storage"},
+    # ODD Platform
+    {"source": "odd-platform", "target": "pgvector", "label": "metadata", "type": "metadata"},
     # Plane
     {"source": "n8n", "target": "plane-web", "label": "issues", "type": "tools"},
     # Platform
@@ -591,6 +601,7 @@ K8S_POD_TO_NODE: list[tuple[str, str]] = [
     ("genai-pg-mlflow", "mlflow-postgres"),
     ("genai-pgvector", "pgvector"),
     ("genai-agent-gateway", "agent-gateway"),
+    ("genai-odd-platform", "odd-platform"),
     ("genai-open-ontologies", "open-ontologies"),
     # Plane
     ("genai-plane-web", "plane-web"),
@@ -649,7 +660,8 @@ SERVICE_STACK = {
     "n8n": "orchestration",
     "n8n-postgres": "orchestration",
     "agent-gateway": "orchestration",
-    # DataOps — Project management, vectors
+    # DataOps — Data catalog, project management, vectors
+    "odd-platform": "dataops",
     "pgvector": "dataops",
     "plane-web": "dataops",
     # Platform — GitOps & cluster infrastructure
