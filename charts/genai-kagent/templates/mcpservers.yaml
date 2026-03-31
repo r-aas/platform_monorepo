@@ -188,10 +188,11 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   deployment:
-    image: ghcr.io/czlonkowski/n8n-mcp:latest
+    image: ghcr.io/r-aas/mcp-n8n:latest
     port: 3000
     env:
       N8N_BASE_URL: http://genai-n8n.genai.svc.cluster.local:5678
+      PORT: "3000"
     secretRefs:
       - name: mcp-n8n-env
     resources:

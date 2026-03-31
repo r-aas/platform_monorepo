@@ -74,6 +74,8 @@ spec:
     tools:
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
           name: kubernetes-ops
           toolNames:
             - cleanup
@@ -101,6 +103,8 @@ spec:
             - ping
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
           name: gitlab-ops
           toolNames:
             - browse_projects
@@ -149,6 +153,8 @@ spec:
             - browse_iterations
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
           name: ollama-models
           toolNames:
             - list_models
@@ -221,6 +227,9 @@ spec:
     tools:
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+
           name: kubernetes-ops
           toolNames:
             - cleanup
@@ -248,6 +257,9 @@ spec:
             - ping
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+
           name: plane-project
           toolNames:
             - list_projects
@@ -265,6 +277,9 @@ spec:
             - add_issue_to_cycle
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+
           name: gitlab-ops
           toolNames:
             - browse_projects
@@ -381,6 +396,9 @@ spec:
     tools:
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+
           name: kubernetes-ops
           toolNames:
             - cleanup
@@ -408,6 +426,9 @@ spec:
             - ping
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+
           name: minio-storage
           toolNames:
             - list_buckets
@@ -421,6 +442,9 @@ spec:
             - bucket_stats
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+
           name: mlflow-tracking
           toolNames:
             - list_experiments
@@ -503,6 +527,9 @@ spec:
     tools:
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+
           name: kubernetes-ops
           toolNames:
             - cleanup
@@ -530,6 +557,9 @@ spec:
             - ping
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+
           name: mlflow-tracking
           toolNames:
             - list_experiments
@@ -547,6 +577,9 @@ spec:
             - compare_runs
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+
           name: langfuse-observability
           toolNames:
             - list_traces
@@ -560,6 +593,9 @@ spec:
             - error_traces
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+
           name: minio-storage
           toolNames:
             - list_buckets
@@ -573,6 +609,9 @@ spec:
             - bucket_stats
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+
           name: ollama-models
           toolNames:
             - list_models
@@ -651,6 +690,9 @@ spec:
     tools:
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+
           name: kubernetes-ops
           toolNames:
             - cleanup
@@ -678,6 +720,9 @@ spec:
             - ping
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+
           name: gitlab-ops
           toolNames:
             - browse_projects
@@ -794,6 +839,9 @@ spec:
     tools:
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+
           name: kubernetes-ops
           toolNames:
             - cleanup
@@ -821,6 +869,9 @@ spec:
             - ping
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+
           name: mlflow-tracking
           toolNames:
             - list_experiments
@@ -838,6 +889,9 @@ spec:
             - compare_runs
       - type: McpServer
         mcpServer:
+          apiGroup: kagent.dev
+          kind: RemoteMCPServer
+
           name: langfuse-observability
           toolNames:
             - list_traces

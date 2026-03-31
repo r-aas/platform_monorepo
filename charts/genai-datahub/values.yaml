@@ -9,7 +9,7 @@ datahub:
       metadata_service_authentication:
         enabled: false
       systemUpdate:
-        enabled: true
+        enabled: false  # amd64 Go binary crashes on ARM64 (failed to get system page size)
     graph_service_impl: elasticsearch
     elasticsearch:
       host: "elasticsearch-master"
@@ -59,9 +59,9 @@ datahub:
         memory: 1Gi
         cpu: "0.5"
 
-  # Actions (metadata automation)
+  # Actions (metadata automation) — disabled: amd64 Go binary crashes on ARM64
   datahub-actions:
-    enabled: true
+    enabled: false
     resources:
       requests:
         memory: 256Mi
