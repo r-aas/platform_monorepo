@@ -62,8 +62,8 @@ metadata:
     app.kubernetes.io/managed-by: Helm
 spec:
   description: Kubernetes cluster management — kubectl get/describe/logs/apply
-  protocol: SSE
-  url: http://mcp-kubernetes.genai.svc.cluster.local:3000/sse
+  protocol: STREAMABLE_HTTP
+  url: http://mcp-kubernetes.genai.svc.cluster.local:3000/mcp
   timeout: 30s
   sseReadTimeout: 5m0s
   allowedNamespaces:
@@ -83,8 +83,8 @@ metadata:
     app.kubernetes.io/managed-by: Helm
 spec:
   description: MLflow experiment tracking, model registry, run management
-  protocol: SSE
-  url: http://mcp-mlflow.genai.svc.cluster.local:3000/sse
+  protocol: STREAMABLE_HTTP
+  url: http://mcp-mlflow.genai.svc.cluster.local:3000/mcp
   timeout: 30s
   sseReadTimeout: 5m0s
   allowedNamespaces:

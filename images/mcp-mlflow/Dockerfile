@@ -1,7 +1,7 @@
 ###############################################################################
 # MLflow MCP Server — experiment tracking, run analysis, model registry
 #
-# Uses supergateway to bridge mlflow-mcp (stdio) → streamable HTTP
+# Uses mcp-proxy to bridge mlflow-mcp (stdio) → streamable HTTP
 # so kmcp controller can serve it as a RemoteMCPServer.
 #
 # Tools: get_experiments, get_runs, get_run, query_runs, get_run_artifacts,
@@ -12,12 +12,9 @@
 ###############################################################################
 FROM python:3.12-slim
 
-RUN apt-get update -qq && apt-get install -y -qq curl nodejs npm > /dev/null \
-    && pip install --no-cache-dir mlflow-mcp \
-    && npm install -g supergateway \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir mlflow-mcp mcp-proxy
 
 ENV PORT=3000
 EXPOSE 3000
 
-CMD supergateway --stdio "mlflow-mcp" --outputTransport sse --port ${PORT}
+CMD ["sh", "-c", "mcp-proxy --transport streamablehttp --host 0.0.0.0 --port ${PORT} -- mlflow-mcp"]
