@@ -1,14 +1,16 @@
+{{- $targetNs := .Values.targetNamespace | default .Release.Namespace }}
 {{- range $name, $agent := .Values.agents }}
 {{- if $agent.enabled }}
 ---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: schedule-{{ $name }}
+  name: {{ $name }}-schedule
   namespace: {{ $.Release.Namespace }}
   labels:
     app.kubernetes.io/part-of: genai-agent-schedules
     app.kubernetes.io/component: {{ $name }}
+    agentops.dev/target-namespace: {{ $targetNs }}
 spec:
   schedule: {{ $agent.schedule | quote }}
   concurrencyPolicy: Forbid
@@ -21,6 +23,7 @@ spec:
       template:
         metadata:
           labels:
+            app.kubernetes.io/part-of: genai-agent-schedules
             app.kubernetes.io/component: {{ $name }}
         spec:
           restartPolicy: Never
@@ -33,17 +36,16 @@ spec:
             - -c
             - |
               MSG_ID="schedule-$(date +%s)"
-              # Build JSON payload via heredoc to avoid shell quoting issues with toJson
               PAYLOAD=$(cat <<JSONEOF
               {"jsonrpc":"2.0","method":"message/send","id":"$MSG_ID","params":{"message":{"role":"user","messageId":"$MSG_ID","parts":[{"type":"text","text":{{ $agent.task | toJson }}}]}}}
               JSONEOF
               )
-              # Fire-and-forget: A2A message/send is synchronous (waits for LLM).
+              # Fire-and-forget: A2A message/send waits for LLM inference.
               # Exit 0 regardless — the agent received the message even if we timeout.
               curl -s -X POST \
                 -H "Content-Type: application/json" \
                 -d "$PAYLOAD" \
-                "http://{{ $name }}.{{ $.Release.Namespace }}.svc.cluster.local:8080/" \
+                "http://{{ $name }}.{{ $targetNs }}.svc.cluster.local:8080/" \
                 --connect-timeout 10 \
                 --max-time 240 \
                 -o /dev/null -w "HTTP %{http_code}\n" \

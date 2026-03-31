@@ -1,10 +1,14 @@
 # ── Agent Scheduling — CronJobs → kagent A2A ──────────
-# Each agent gets a CronJob that POSTs a task to its A2A endpoint.
-# kagent agents are long-running Deployments (FastAPI on :8080).
-# A2A endpoint: POST http://{agent-name}.genai.svc.cluster.local:8080/a2a/task
+# Each agent gets a CronJob that POSTs a JSON-RPC message/send to its A2A endpoint.
+# kagent agents run as long-lived Deployments with A2A server on :8080.
+# A2A endpoint: POST http://{agent-name}.{targetNamespace}.svc.cluster.local:8080/
+#
+# targetNamespace controls which namespace the agents live in.
+# The CronJobs themselves deploy to Release.Namespace (typically genai),
+# but they can POST to agents in any namespace (genai, genai-dev, genai-stage).
+targetNamespace: genai
 
 # Schedule definitions per agent
-# Matches the autonomy.schedule from agent YAML specs
 agents:
   platform-admin-agent:
     schedule: "*/15 * * * *"    # Every 15 minutes
