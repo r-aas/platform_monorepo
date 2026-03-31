@@ -1,6 +1,0 @@
-apiVersion: v2
-name: genai-mcp-langfuse
-description: Langfuse MCP server (Streamable HTTP) — LLM observability and trace analysis tools for agents
-type: application
-version: 0.1.0
-appVersion: "latest"

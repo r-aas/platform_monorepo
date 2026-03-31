@@ -1,7 +1,0 @@
-apiVersion: v2
-name: genai-mcp-datahub
-description: DataHub MCP server for AI agent metadata queries
-type: application
-version: 0.1.0
-appVersion: "0.1.0"
-# Image: acuvity/mcp-server-datahub (ARM64 + amd64 available)

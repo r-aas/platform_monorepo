@@ -16,8 +16,8 @@ tasks:
         echo "  ─────────────────────────────────────────"
         for d in agents/*/; do
           name=$(basename "$d")
-          [ "$name" = "_shared" ] && continue
-          [ "$name" = "envs" ] && continue
+          [ "$name" = "_shared" ] && continue  # legacy, removed in spec-032
+          [ "$name" = "envs" ] && continue  # legacy, removed in spec-032
           if [ -f "$d/agent.yaml" ]; then
             desc=$(grep 'description:' "$d/agent.yaml" | head -1 | sed 's/.*description: "//' | sed 's/"//')
             schedule=$(grep '  schedule:' "$d/agent.yaml" | head -1 | sed 's/.*schedule: "//' | sed 's/".*//' | tr -d ' ')
@@ -105,27 +105,11 @@ tasks:
         echo "  Created $DIR/agent.yaml"
         echo "  Next steps:"
         echo "    1. Edit $DIR/agent.yaml — fill in system_prompt, skills, signals"
-        echo "    2. task agents:transpile — generate kagent CRDs"
+        echo "    2. Add Agent CRD to charts/genai-kagent/templates/"
         echo "    3. task agents:signals — verify signal collection"
         echo "    4. git commit + push — ArgoCD deploys"
 
-  transpile:
-    desc: "Transpile Agent Spec YAML → kagent CRDs"
-    dir: "{{.ROOT_DIR}}"
-    cmds:
-      - uvx --with pyyaml python3 scripts/agentspec-to-kagent.py
-
-  transpile-dry:
-    desc: "Preview transpiled CRDs without writing"
-    dir: "{{.ROOT_DIR}}"
-    cmds:
-      - uvx --with pyyaml python3 scripts/agentspec-to-kagent.py --dry-run
-
-  drift:
-    desc: "Show drift between Agent Spec YAML and kagent CRDs"
-    dir: "{{.ROOT_DIR}}"
-    cmds:
-      - uvx --with pyyaml python3 scripts/agentspec-to-kagent.py --drift
+  # transpile/transpile-dry/drift tasks removed — spec-032 replaced transpiler with native kagent CRDs
 
   signals:
     desc: "Collect platform signals (dry-run)"

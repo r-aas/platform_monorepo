@@ -1,298 +1,28 @@
 # ═══════════════════════════════════════════════════════
 # Custom kagent Agents for platform_monorepo
 # Source: agents/*/agent.yaml
+# ModelConfig: ollama-chat (chat), ollama-embed (memory)
 # ═══════════════════════════════════════════════════════
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
 metadata:
-  name: developer-agent
-  namespace: '{{ .Release.Namespace }}'
-  labels:
-    app.kubernetes.io/managed-by: agentspec-transpiler
-    agentspec.oracle.com/version: 26.2.0
-  annotations:
-    agentspec.oracle.com/source: agents/developer/agent.yaml
-spec:
-  type: Declarative
-  description: Software engineer — code generation, review, documentation, security audit
-  declarative:
-    systemMessage: |-
-      You are a senior software engineer who writes clean, tested, well-documented code. You follow SOLID principles, prefer simplicity over cleverness, and treat readability as a feature.
-
-      Your capabilities:
-      - Code review: identify bugs, security vulnerabilities, performance issues, and style violations
-      - Code generation: write production-quality code from specifications with proper error handling and types
-      - Documentation: generate docstrings, README sections, API documentation, and inline comments
-
-      Behavioral guidelines:
-      - Always consider edge cases and error handling
-      - Prefer composition over inheritance
-      - Write code that is easy to test and maintain
-      - When reviewing, be specific: cite line numbers, suggest fixes, explain why
-      - When generating, include type annotations and follow the project's existing patterns
-      - Prioritize OWASP Top 10 when auditing security
-      - Never generate code without considering how it will be tested
-    modelConfig: default-model-config
-    a2aConfig:
-      skills:
-      - id: code-generation
-        name: Code Generation
-        description: Generate production-quality code from specifications
-        tags:
-        - development
-        - generation
-      - id: documentation
-        name: Documentation
-        description: Generate docstrings, README, and API documentation
-        tags:
-        - development
-        - documentation
-      - id: security-audit
-        name: Security Audit
-        description: Audit code for OWASP Top 10 vulnerabilities
-        tags:
-        - development
-        - security
-      - id: code-execution
-        name: Sandboxed Code Execution
-        description: Run code in ephemeral Kubernetes jobs
-        tags:
-        - development
-        - sandbox
-      - id: gitlab-pipeline-ops
-        name: GitLab Pipeline Operations
-        description: Manage GitLab CI/CD pipelines, MRs, and repos
-        tags:
-        - development
-        - ci-cd
-        - gitlab
-    tools:
-    - type: McpServer
-      mcpServer:
-        name: kubernetes-ops
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - cleanup
-        - kubectl_get
-        - kubectl_describe
-        - kubectl_apply
-        - kubectl_delete
-        - kubectl_create
-        - kubectl_logs
-        - kubectl_scale
-        - kubectl_patch
-        - kubectl_rollout
-        - kubectl_context
-        - kubectl_reconnect
-        - explain_resource
-        - install_helm_chart
-        - upgrade_helm_chart
-        - uninstall_helm_chart
-        - node_management
-        - port_forward
-        - stop_port_forward
-        - exec_in_pod
-        - list_api_resources
-        - kubectl_generic
-        - ping
-    - type: McpServer
-      mcpServer:
-        name: gitlab-ops
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - browse_projects
-        - browse_namespaces
-        - browse_commits
-        - browse_events
-        - browse_merge_requests
-        - browse_mr_discussions
-        - manage_merge_request
-        - manage_mr_discussion
-        - browse_files
-        - manage_files
-        - browse_pipelines
-        - manage_pipeline
-        - manage_pipeline_job
-        - browse_variables
-        - browse_refs
-        - browse_search
----
-apiVersion: kagent.dev/v1alpha2
-kind: Agent
-metadata:
-  name: mlops-agent
-  namespace: '{{ .Release.Namespace }}'
-  labels:
-    app.kubernetes.io/managed-by: agentspec-transpiler
-    agentspec.oracle.com/version: 26.2.0
-  annotations:
-    agentspec.oracle.com/source: agents/mlops/agent.yaml
-spec:
-  type: Declarative
-  description: MLOps engineer — experiment tracking, model lifecycle, monitoring
-  declarative:
-    systemMessage: |-
-      You are an MLOps engineer specializing in machine learning model lifecycle management. Your expertise covers experiment tracking, model evaluation, prompt engineering, deployment pipelines, and production monitoring.
-
-      You work with MLflow for experiment tracking and the prompt registry. You understand model versioning, A/B testing, and canary deployments. When evaluating models or prompts, you use quantitative metrics (latency, accuracy, token usage) alongside qualitative assessment.
-
-      Behavioral guidelines:
-      - Be methodical: gather data before making recommendations
-      - Always verify results after taking actions
-      - Present findings in structured format (tables, lists, metrics)
-      - When debugging, follow systematic root cause analysis
-      - Quantify trade-offs (latency vs quality, cost vs accuracy)
-      - Cite specific metrics and thresholds in recommendations
-
-      Domain: ML experiment tracking, model lifecycle, LLM observability
-    modelConfig: default-model-config
-    a2aConfig:
-      skills:
-      - id: kubernetes-ops
-        name: Kubernetes Operations
-        description: Manage Kubernetes resources — get, describe, logs, apply, delete
-        tags:
-        - platform
-        - kubernetes
-      - id: experiment-tracking
-        name: Experiment Tracking
-        description: Track, compare, and manage ML experiments using MLflow
-        tags:
-        - mlops
-        - mlflow
-        - experiments
-      - id: observability
-        name: LLM Observability
-        description: Monitor LLM traces, scores, sessions, and usage via Langfuse
-        tags:
-        - mlops
-        - observability
-        - langfuse
-      - id: model-management
-        name: Model Management
-        description: Manage Ollama models — pull, delete, test inference
-        tags:
-        - mlops
-        - models
-        - ollama
-      - id: artifact-ops
-        name: Artifact Operations
-        description: Manage experiment artifacts in MinIO S3
-        tags:
-        - mlops
-        - artifacts
-        - minio
-      - id: code-execution
-        name: Sandboxed Code Execution
-        description: Run code in ephemeral Kubernetes jobs
-        tags:
-        - development
-        - sandbox
-    tools:
-    - type: McpServer
-      mcpServer:
-        name: kubernetes-ops
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - cleanup
-        - kubectl_get
-        - kubectl_describe
-        - kubectl_apply
-        - kubectl_delete
-        - kubectl_create
-        - kubectl_logs
-        - kubectl_scale
-        - kubectl_patch
-        - kubectl_rollout
-        - kubectl_context
-        - kubectl_reconnect
-        - explain_resource
-        - list_api_resources
-        - kubectl_generic
-        - ping
-    - type: McpServer
-      mcpServer:
-        name: mlflow-tracking
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - list_experiments
-        - get_experiment
-        - create_experiment
-        - search_runs
-        - get_run
-        - create_run
-        - log_metric
-        - log_param
-        - log_batch
-        - end_run
-        - list_registered_models
-        - get_model_version
-        - compare_runs
-    - type: McpServer
-      mcpServer:
-        name: langfuse-observability
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - list_traces
-        - get_trace
-        - list_observations
-        - get_observation
-        - list_scores
-        - list_sessions
-        - get_session
-        - usage_summary
-        - error_traces
-    - type: McpServer
-      mcpServer:
-        name: minio-storage
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - list_buckets
-        - create_bucket
-        - delete_bucket
-        - list_objects
-        - get_object_info
-        - get_object_text
-        - put_object
-        - delete_object
-        - bucket_stats
-    - type: McpServer
-      mcpServer:
-        name: ollama-models
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - list_models
-        - show_model
-        - running_models
-        - pull_model
-        - delete_model
-        - copy_model
-        - ollama_status
-        - generate_test
----
-apiVersion: kagent.dev/v1alpha2
-kind: Agent
-metadata:
   name: platform-admin-agent
-  namespace: '{{ .Release.Namespace }}'
+  namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/managed-by: agentspec-transpiler
-    agentspec.oracle.com/version: 26.2.0
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    agentops.dev/tier: custom
   annotations:
     agentspec.oracle.com/source: agents/platform-admin/agent.yaml
 spec:
   type: Declarative
   description: Platform operations — Kubernetes, CI/CD, monitoring, incident response
   declarative:
-    systemMessage: |-
+    runtime: python
+    modelConfig: ollama-chat
+    stream: true
+    systemMessage: |
       You are a platform operations engineer managing Kubernetes clusters, CI/CD pipelines, and infrastructure services. You prioritize stability, observability, and reproducibility.
 
       Your expertise:
@@ -309,438 +39,813 @@ spec:
       - When diagnosing issues, work from symptoms to root cause systematically
       - Prefer declarative (Helm, manifests) over imperative (kubectl apply) approaches
       - Report both successes and failures with actionable next steps
-    modelConfig: default-model-config
+    memory:
+      modelConfig: ollama-embed
+      ttlDays: 30
     a2aConfig:
       skills:
-      - id: kubernetes-ops
-        name: Kubernetes Operations
-        description: Manage Kubernetes resources — get, describe, logs, apply, delete
-        tags:
-        - platform
-        - kubernetes
-      - id: workflow-management
-        name: Workflow Management
-        description: Manage n8n workflows — list, activate, execute
-        tags:
-        - platform
-        - workflows
-        - n8n
-      - id: ci-cd-pipelines
-        name: CI/CD Pipelines
-        description: Manage GitLab pipelines, MRs, and repository operations
-        tags:
-        - platform
-        - ci-cd
-        - gitlab
-      - id: code-execution
-        name: Sandboxed Code Execution
-        description: Run code in ephemeral Kubernetes jobs
-        tags:
-        - development
-        - sandbox
+        - id: kubernetes-ops
+          name: Kubernetes Operations
+          description: Manage Kubernetes resources — get, describe, logs, apply, delete
+          tags:
+            - platform
+            - kubernetes
+        - id: gitlab-pipeline-ops
+          name: GitLab Pipeline Operations
+          description: Manage GitLab CI/CD pipelines, MRs, and repos
+          tags:
+            - platform
+            - ci-cd
+            - gitlab
+        - id: model-management
+          name: Model Management
+          description: Manage Ollama models — pull, delete, test inference
+          tags:
+            - platform
+            - models
+            - ollama
+        - id: incident-response
+          name: Incident Response
+          description: Triage and remediate infrastructure incidents
+          tags:
+            - platform
+            - operations
+            - incidents
     tools:
-    - type: McpServer
-      mcpServer:
-        name: kubernetes-ops
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - cleanup
-        - kubectl_get
-        - kubectl_describe
-        - kubectl_apply
-        - kubectl_delete
-        - kubectl_create
-        - kubectl_logs
-        - kubectl_scale
-        - kubectl_patch
-        - kubectl_rollout
-        - kubectl_context
-        - kubectl_reconnect
-        - explain_resource
-        - list_api_resources
-        - kubectl_generic
-        - ping
-    - type: McpServer
-      mcpServer:
-        name: gitlab-ops
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - browse_projects
-        - browse_namespaces
-        - browse_commits
-        - browse_events
-        - browse_merge_requests
-        - browse_mr_discussions
-        - manage_merge_request
-        - manage_mr_discussion
-        - browse_files
-        - manage_files
-        - browse_pipelines
-        - manage_pipeline
-        - manage_pipeline_job
-        - browse_variables
-        - browse_refs
-        - browse_search
-    - type: McpServer
-      mcpServer:
-        name: kagent-tool-server
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - k8s_get_resources
-        - k8s_describe_resource
-        - k8s_get_pod_logs
-        - k8s_get_events
-        - k8s_apply_manifest
-        - k8s_delete_resource
-        - k8s_scale
-        - k8s_rollout
-        - k8s_get_resource_yaml
-        - k8s_get_available_api_resources
-        - helm_list_releases
-        - helm_get_release
-        - helm_upgrade
-        - helm_uninstall
-        - helm_repo_add
-        - helm_repo_update
-        - prometheus_query_tool
-        - prometheus_query_range_tool
-        - prometheus_targets_tool
-        - prometheus_label_names_tool
-        - prometheus_promql_tool
-    - type: McpServer
-      mcpServer:
-        name: ollama-models
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - list_models
-        - show_model
-        - running_models
-        - pull_model
-        - delete_model
-        - copy_model
-        - ollama_status
-        - generate_test
-# ── Data Engineer Agent ───────────────────────────────
----
-apiVersion: kagent.dev/v1alpha2
-kind: Agent
-metadata:
-  name: data-engineer-agent
-  namespace: '{{ .Release.Namespace }}'
-  labels:
-    app.kubernetes.io/managed-by: Helm
-  annotations:
-    agentspec.oracle.com/source: agents/data-engineer/agent.yaml
-spec:
-  type: Declarative
-  description: Data engineer — catalog management, lineage, quality, ingestion
-  declarative:
-    systemMessage: |-
-      You are a data engineer specializing in data catalog management, lineage tracking, data quality, and ingestion pipelines. You work with DataHub for metadata, MinIO for artifact storage, and PostgreSQL databases.
-
-      Your expertise:
-      - Data catalog: dataset registration, schema management, tag governance
-      - Lineage: cross-service data flow tracking, impact analysis
-      - Quality: assertion design, threshold management, anomaly detection
-      - Ingestion: source configuration, scheduling, failure recovery
-
-      Behavioral guidelines:
-      - Always verify data quality before and after changes
-      - Document lineage for every new data flow
-      - Use structured formats for reporting (tables, metrics)
-      - When debugging ingestion failures, check source connectivity first
-      - Prefer idempotent operations
-    modelConfig: default-model-config
-    a2aConfig:
-      skills:
-      - id: datahub-ops
-        name: DataHub Operations
-        description: Manage data catalog — datasets, lineage, quality assertions
-        tags:
-        - data
-        - catalog
-        - lineage
-      - id: artifact-ops
-        name: Artifact Operations
-        description: Manage data artifacts in MinIO S3
-        tags:
-        - data
-        - artifacts
-        - minio
-      - id: data-ingestion
-        name: Data Ingestion
-        description: Configure and monitor data ingestion pipelines
-        tags:
-        - data
-        - ingestion
-    tools:
-    - type: McpServer
-      mcpServer:
-        name: kubernetes-ops
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - cleanup
-        - kubectl_get
-        - kubectl_describe
-        - kubectl_apply
-        - kubectl_delete
-        - kubectl_create
-        - kubectl_logs
-        - kubectl_scale
-        - kubectl_patch
-        - kubectl_rollout
-        - explain_resource
-        - list_api_resources
-        - kubectl_generic
-        - ping
-    - type: McpServer
-      mcpServer:
-        name: minio-storage
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - list_buckets
-        - create_bucket
-        - delete_bucket
-        - list_objects
-        - get_object_info
-        - get_object_text
-        - put_object
-        - delete_object
-        - bucket_stats
-    - type: McpServer
-      mcpServer:
-        name: mlflow-tracking
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - list_experiments
-        - get_experiment
-        - create_experiment
-        - search_runs
-        - get_run
-        - create_run
-        - log_metric
-        - log_param
-        - log_batch
-        - end_run
-        - list_registered_models
-        - get_model_version
-        - compare_runs
-# ── Project Coordinator Agent ─────────────────────────
+      - type: McpServer
+        mcpServer:
+          name: kubernetes-ops
+          toolNames:
+            - cleanup
+            - kubectl_get
+            - kubectl_describe
+            - kubectl_apply
+            - kubectl_delete
+            - kubectl_create
+            - kubectl_logs
+            - kubectl_scale
+            - kubectl_patch
+            - kubectl_rollout
+            - kubectl_context
+            - kubectl_reconnect
+            - explain_resource
+            - install_helm_chart
+            - upgrade_helm_chart
+            - uninstall_helm_chart
+            - node_management
+            - port_forward
+            - stop_port_forward
+            - exec_in_pod
+            - list_api_resources
+            - kubectl_generic
+            - ping
+      - type: McpServer
+        mcpServer:
+          name: gitlab-ops
+          toolNames:
+            - browse_projects
+            - browse_namespaces
+            - browse_commits
+            - browse_events
+            - browse_users
+            - browse_todos
+            - manage_project
+            - manage_namespace
+            - manage_todos
+            - manage_context
+            - browse_labels
+            - manage_label
+            - browse_merge_requests
+            - browse_mr_discussions
+            - manage_merge_request
+            - manage_mr_discussion
+            - manage_draft_notes
+            - browse_files
+            - manage_files
+            - browse_milestones
+            - manage_milestone
+            - browse_pipelines
+            - manage_pipeline
+            - manage_pipeline_job
+            - browse_variables
+            - manage_variable
+            - browse_wiki
+            - manage_wiki
+            - browse_work_items
+            - manage_work_item
+            - browse_snippets
+            - manage_snippet
+            - browse_webhooks
+            - manage_webhook
+            - browse_integrations
+            - manage_integration
+            - browse_releases
+            - manage_release
+            - browse_refs
+            - manage_ref
+            - browse_members
+            - manage_member
+            - browse_search
+            - browse_iterations
+      - type: McpServer
+        mcpServer:
+          name: ollama-models
+          toolNames:
+            - list_models
+            - show_model
+            - running_models
+            - pull_model
+            - delete_model
+            - copy_model
+            - ollama_status
+            - generate_test
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
 metadata:
   name: project-coordinator-agent
-  namespace: '{{ .Release.Namespace }}'
+  namespace: {{ .Release.Namespace }}
   labels:
+    app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
+    agentops.dev/tier: custom
   annotations:
     agentspec.oracle.com/source: agents/project-coordinator/agent.yaml
 spec:
   type: Declarative
-  description: Project coordinator — issue triage, sprint management, status reporting
+  description: Project coordinator — backlog grooming, issue triage, sprint management, status reporting
   declarative:
-    systemMessage: |-
-      You are a project coordinator who manages issue triage, sprint cycles, and cross-team status reporting. You work with Plane for project management and coordinate between all platform agents.
+    runtime: python
+    modelConfig: ollama-chat
+    stream: true
+    systemMessage: |
+      You are a project coordinator who manages the engineering backlog, triages incoming issues, runs sprint cycles, and generates status reports. You bridge the gap between signals (failures, regressions, feature requests) and actionable work items.
 
       Your expertise:
-      - Issue triage: classify by severity, assign to appropriate agents, track resolution
-      - Sprint management: plan sprints, track velocity, identify blockers
-      - Status reporting: aggregate progress across agents, highlight risks
+      - Backlog management: prioritization (P0-P3), deduplication, stale issue cleanup
+      - Issue triage: classify issues by type (bug, feature, infra, security), assign to appropriate agent
+      - Sprint management: cycle creation, issue assignment, burndown tracking, retrospectives
+      - Status reporting: aggregate progress across agents, highlight blockers, summarize completed work
+      - Cross-service awareness: understand relationships between GitLab MRs, Plane issues, and n8n workflows
 
       Behavioral guidelines:
-      - Prioritize by impact and urgency, not by order received
-      - Keep status updates concise and actionable
-      - Escalate blockers immediately, don't wait for scheduled reports
-      - Track patterns in issues to identify systemic problems
-    modelConfig: default-model-config
+      - Always check for duplicate issues before creating new ones
+      - Assign priority based on impact: P0 (production down), P1 (degraded), P2 (improvement), P3 (nice-to-have)
+      - Link related issues and MRs for traceability
+      - Generate status reports with specific metrics, not vague summaries
+      - When triaging signals from other agents, verify the signal is still active before creating work items
+      - Keep sprint cycles to 1-2 week duration
+    memory:
+      modelConfig: ollama-embed
+      ttlDays: 60
     a2aConfig:
       skills:
-      - id: issue-triage
-        name: Issue Triage
-        description: Classify, prioritize, and assign issues
-        tags:
-        - project
-        - triage
-      - id: sprint-management
-        name: Sprint Management
-        description: Plan and track sprint cycles
-        tags:
-        - project
-        - sprint
+        - id: issue-triage
+          name: Issue Triage
+          description: Classify, prioritize, and assign issues
+          tags:
+            - project
+            - triage
+        - id: sprint-management
+          name: Sprint Management
+          description: Plan and track sprint cycles
+          tags:
+            - project
+            - sprint
+        - id: status-reporting
+          name: Status Reporting
+          description: Aggregate progress and generate status reports
+          tags:
+            - project
+            - reporting
     tools:
-    - type: McpServer
-      mcpServer:
-        name: kubernetes-ops
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - cleanup
-        - kubectl_get
-        - kubectl_describe
-        - kubectl_apply
-        - kubectl_delete
-        - kubectl_create
-        - kubectl_logs
-        - kubectl_scale
-        - kubectl_patch
-        - kubectl_rollout
-        - explain_resource
-        - list_api_resources
-        - kubectl_generic
-        - ping
-    - type: McpServer
-      mcpServer:
-        name: plane-project
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - list_projects
-        - get_project
-        - list_states
-        - list_labels
-        - create_label
-        - list_issues
-        - get_issue
-        - create_issue
-        - update_issue
-        - list_comments
-        - add_comment
-        - list_cycles
-        - add_issue_to_cycle
-    - type: McpServer
-      mcpServer:
-        name: gitlab-ops
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - browse_projects
-        - browse_namespaces
-        - browse_commits
-        - browse_events
-        - browse_merge_requests
-        - browse_mr_discussions
-        - manage_merge_request
-        - manage_mr_discussion
-        - browse_files
-        - manage_files
-        - browse_pipelines
-        - manage_pipeline
-        - manage_pipeline_job
-        - browse_variables
-        - browse_refs
-        - browse_search
-# ── QA & Eval Agent ───────────────────────────────────
+      - type: McpServer
+        mcpServer:
+          name: kubernetes-ops
+          toolNames:
+            - cleanup
+            - kubectl_get
+            - kubectl_describe
+            - kubectl_apply
+            - kubectl_delete
+            - kubectl_create
+            - kubectl_logs
+            - kubectl_scale
+            - kubectl_patch
+            - kubectl_rollout
+            - kubectl_context
+            - kubectl_reconnect
+            - explain_resource
+            - install_helm_chart
+            - upgrade_helm_chart
+            - uninstall_helm_chart
+            - node_management
+            - port_forward
+            - stop_port_forward
+            - exec_in_pod
+            - list_api_resources
+            - kubectl_generic
+            - ping
+      - type: McpServer
+        mcpServer:
+          name: plane-project
+          toolNames:
+            - list_projects
+            - get_project
+            - list_states
+            - list_labels
+            - create_label
+            - list_issues
+            - get_issue
+            - create_issue
+            - update_issue
+            - list_comments
+            - add_comment
+            - list_cycles
+            - add_issue_to_cycle
+      - type: McpServer
+        mcpServer:
+          name: gitlab-ops
+          toolNames:
+            - browse_projects
+            - browse_namespaces
+            - browse_commits
+            - browse_events
+            - browse_users
+            - browse_todos
+            - manage_project
+            - manage_namespace
+            - manage_todos
+            - manage_context
+            - browse_labels
+            - manage_label
+            - browse_merge_requests
+            - browse_mr_discussions
+            - manage_merge_request
+            - manage_mr_discussion
+            - manage_draft_notes
+            - browse_files
+            - manage_files
+            - browse_milestones
+            - manage_milestone
+            - browse_pipelines
+            - manage_pipeline
+            - manage_pipeline_job
+            - browse_variables
+            - manage_variable
+            - browse_wiki
+            - manage_wiki
+            - browse_work_items
+            - manage_work_item
+            - browse_snippets
+            - manage_snippet
+            - browse_webhooks
+            - manage_webhook
+            - browse_integrations
+            - manage_integration
+            - browse_releases
+            - manage_release
+            - browse_refs
+            - manage_ref
+            - browse_members
+            - manage_member
+            - browse_search
+            - browse_iterations
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: data-engineer-agent
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    agentops.dev/tier: custom
+  annotations:
+    agentspec.oracle.com/source: agents/data-engineer/agent.yaml
+spec:
+  type: Declarative
+  description: Data engineer — data catalog, lineage, quality, ingestion, vector stores
+  declarative:
+    runtime: python
+    modelConfig: ollama-chat
+    stream: true
+    systemMessage: |
+      You are a data engineer specializing in data catalog management, lineage tracking, quality assurance, and ingestion pipelines. You work with DataHub for metadata management, PostgreSQL for structured data, pgvector for embeddings, and MinIO for object storage.
+
+      Your expertise:
+      - Data catalog: entity discovery, dataset registration, schema documentation, domain tagging
+      - Data lineage: tracing data flow across services (n8n → MLflow → Langfuse), upstream/downstream impact analysis
+      - Data quality: freshness assertions, volume checks, schema drift detection, null rate monitoring
+      - Ingestion: scheduling and monitoring PostgreSQL source ingestion, troubleshooting pipeline failures
+      - Vector stores: pgvector index management, embedding lifecycle, similarity search tuning
+
+      Behavioral guidelines:
+      - Always verify data exists before operating on it
+      - Report quality issues with specific metrics (row counts, freshness timestamps, null percentages)
+      - When debugging ingestion, check source connectivity first, then schema compatibility, then resource limits
+      - Prefer declarative ingestion recipes over ad-hoc scripts
+      - Track lineage changes proactively — new connections between services should be documented
+    memory:
+      modelConfig: ollama-embed
+      ttlDays: 90
+    a2aConfig:
+      skills:
+        - id: datahub-ops
+          name: DataHub Operations
+          description: Manage data catalog — datasets, lineage, quality assertions
+          tags:
+            - data
+            - catalog
+            - lineage
+        - id: artifact-ops
+          name: Artifact Operations
+          description: Manage data artifacts in MinIO S3
+          tags:
+            - data
+            - artifacts
+            - minio
+        - id: data-ingestion
+          name: Data Ingestion
+          description: Configure and monitor data ingestion pipelines
+          tags:
+            - data
+            - ingestion
+        - id: vector-store-ops
+          name: Vector Store Operations
+          description: Manage pgvector indexes, embeddings, and similarity search
+          tags:
+            - data
+            - vector
+            - embeddings
+    tools:
+      - type: McpServer
+        mcpServer:
+          name: kubernetes-ops
+          toolNames:
+            - cleanup
+            - kubectl_get
+            - kubectl_describe
+            - kubectl_apply
+            - kubectl_delete
+            - kubectl_create
+            - kubectl_logs
+            - kubectl_scale
+            - kubectl_patch
+            - kubectl_rollout
+            - kubectl_context
+            - kubectl_reconnect
+            - explain_resource
+            - install_helm_chart
+            - upgrade_helm_chart
+            - uninstall_helm_chart
+            - node_management
+            - port_forward
+            - stop_port_forward
+            - exec_in_pod
+            - list_api_resources
+            - kubectl_generic
+            - ping
+      - type: McpServer
+        mcpServer:
+          name: minio-storage
+          toolNames:
+            - list_buckets
+            - create_bucket
+            - delete_bucket
+            - list_objects
+            - get_object_info
+            - get_object_text
+            - put_object
+            - delete_object
+            - bucket_stats
+      - type: McpServer
+        mcpServer:
+          name: mlflow-tracking
+          toolNames:
+            - list_experiments
+            - get_experiment
+            - create_experiment
+            - search_runs
+            - get_run
+            - create_run
+            - log_metric
+            - log_param
+            - log_batch
+            - end_run
+            - list_registered_models
+            - get_model_version
+            - compare_runs
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: mlops-agent
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    agentops.dev/tier: custom
+  annotations:
+    agentspec.oracle.com/source: agents/mlops/agent.yaml
+spec:
+  type: Declarative
+  description: MLOps engineer — experiment tracking, model lifecycle, monitoring
+  declarative:
+    runtime: python
+    modelConfig: ollama-chat
+    stream: true
+    systemMessage: |
+      You are an MLOps engineer specializing in machine learning model lifecycle management. Your expertise covers experiment tracking, model evaluation, prompt engineering, deployment pipelines, and production monitoring.
+
+      You work with MLflow for experiment tracking and the prompt registry. You understand model versioning, A/B testing, and canary deployments. When evaluating models or prompts, you use quantitative metrics (latency, accuracy, token usage) alongside qualitative assessment.
+
+      Behavioral guidelines:
+      - Be methodical: gather data before making recommendations
+      - Always verify results after taking actions
+      - Present findings in structured format (tables, lists, metrics)
+      - When debugging, follow systematic root cause analysis
+      - Quantify trade-offs (latency vs quality, cost vs accuracy)
+      - Cite specific metrics and thresholds in recommendations
+    memory:
+      modelConfig: ollama-embed
+      ttlDays: 90
+    a2aConfig:
+      skills:
+        - id: experiment-tracking
+          name: Experiment Tracking
+          description: Track, compare, and manage ML experiments using MLflow
+          tags:
+            - mlops
+            - mlflow
+            - experiments
+        - id: observability
+          name: LLM Observability
+          description: Monitor LLM traces, scores, sessions, and usage via Langfuse
+          tags:
+            - mlops
+            - observability
+            - langfuse
+        - id: model-management
+          name: Model Management
+          description: Manage Ollama models — pull, delete, test inference
+          tags:
+            - mlops
+            - models
+            - ollama
+        - id: artifact-ops
+          name: Artifact Operations
+          description: Manage experiment artifacts in MinIO S3
+          tags:
+            - mlops
+            - artifacts
+            - minio
+    tools:
+      - type: McpServer
+        mcpServer:
+          name: kubernetes-ops
+          toolNames:
+            - cleanup
+            - kubectl_get
+            - kubectl_describe
+            - kubectl_apply
+            - kubectl_delete
+            - kubectl_create
+            - kubectl_logs
+            - kubectl_scale
+            - kubectl_patch
+            - kubectl_rollout
+            - kubectl_context
+            - kubectl_reconnect
+            - explain_resource
+            - install_helm_chart
+            - upgrade_helm_chart
+            - uninstall_helm_chart
+            - node_management
+            - port_forward
+            - stop_port_forward
+            - exec_in_pod
+            - list_api_resources
+            - kubectl_generic
+            - ping
+      - type: McpServer
+        mcpServer:
+          name: mlflow-tracking
+          toolNames:
+            - list_experiments
+            - get_experiment
+            - create_experiment
+            - search_runs
+            - get_run
+            - create_run
+            - log_metric
+            - log_param
+            - log_batch
+            - end_run
+            - list_registered_models
+            - get_model_version
+            - compare_runs
+      - type: McpServer
+        mcpServer:
+          name: langfuse-observability
+          toolNames:
+            - list_traces
+            - get_trace
+            - list_observations
+            - get_observation
+            - list_scores
+            - list_sessions
+            - get_session
+            - usage_summary
+            - error_traces
+      - type: McpServer
+        mcpServer:
+          name: minio-storage
+          toolNames:
+            - list_buckets
+            - create_bucket
+            - delete_bucket
+            - list_objects
+            - get_object_info
+            - get_object_text
+            - put_object
+            - delete_object
+            - bucket_stats
+      - type: McpServer
+        mcpServer:
+          name: ollama-models
+          toolNames:
+            - list_models
+            - show_model
+            - running_models
+            - pull_model
+            - delete_model
+            - copy_model
+            - ollama_status
+            - generate_test
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: developer-agent
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    agentops.dev/tier: custom
+  annotations:
+    agentspec.oracle.com/source: agents/developer/agent.yaml
+spec:
+  type: Declarative
+  description: Software engineer — code generation, review, documentation, security audit
+  declarative:
+    runtime: python
+    modelConfig: ollama-chat
+    stream: true
+    systemMessage: |
+      You are a senior software engineer who writes clean, tested, well-documented code. You follow SOLID principles, prefer simplicity over cleverness, and treat readability as a feature.
+
+      Your capabilities:
+      - Code review: identify bugs, security vulnerabilities, performance issues, and style violations
+      - Code generation: write production-quality code from specifications with proper error handling and types
+      - Documentation: generate docstrings, README sections, API documentation, and inline comments
+
+      Behavioral guidelines:
+      - Always consider edge cases and error handling
+      - Prefer composition over inheritance
+      - Write code that is easy to test and maintain
+      - When reviewing, be specific: cite line numbers, suggest fixes, explain why
+      - When generating, include type annotations and follow the project's existing patterns
+      - Prioritize OWASP Top 10 when auditing security
+      - Never generate code without considering how it will be tested
+    memory:
+      modelConfig: ollama-embed
+      ttlDays: 90
+    a2aConfig:
+      skills:
+        - id: code-generation
+          name: Code Generation
+          description: Generate production-quality code from specifications
+          tags:
+            - development
+            - generation
+        - id: documentation
+          name: Documentation
+          description: Generate docstrings, README, and API documentation
+          tags:
+            - development
+            - documentation
+        - id: security-audit
+          name: Security Audit
+          description: Audit code for OWASP Top 10 vulnerabilities
+          tags:
+            - development
+            - security
+        - id: gitlab-pipeline-ops
+          name: GitLab Pipeline Operations
+          description: Manage GitLab CI/CD pipelines, MRs, and repos
+          tags:
+            - development
+            - ci-cd
+            - gitlab
+    tools:
+      - type: McpServer
+        mcpServer:
+          name: kubernetes-ops
+          toolNames:
+            - cleanup
+            - kubectl_get
+            - kubectl_describe
+            - kubectl_apply
+            - kubectl_delete
+            - kubectl_create
+            - kubectl_logs
+            - kubectl_scale
+            - kubectl_patch
+            - kubectl_rollout
+            - kubectl_context
+            - kubectl_reconnect
+            - explain_resource
+            - install_helm_chart
+            - upgrade_helm_chart
+            - uninstall_helm_chart
+            - node_management
+            - port_forward
+            - stop_port_forward
+            - exec_in_pod
+            - list_api_resources
+            - kubectl_generic
+            - ping
+      - type: McpServer
+        mcpServer:
+          name: gitlab-ops
+          toolNames:
+            - browse_projects
+            - browse_namespaces
+            - browse_commits
+            - browse_events
+            - browse_users
+            - browse_todos
+            - manage_project
+            - manage_namespace
+            - manage_todos
+            - manage_context
+            - browse_labels
+            - manage_label
+            - browse_merge_requests
+            - browse_mr_discussions
+            - manage_merge_request
+            - manage_mr_discussion
+            - manage_draft_notes
+            - browse_files
+            - manage_files
+            - browse_milestones
+            - manage_milestone
+            - browse_pipelines
+            - manage_pipeline
+            - manage_pipeline_job
+            - browse_variables
+            - manage_variable
+            - browse_wiki
+            - manage_wiki
+            - browse_work_items
+            - manage_work_item
+            - browse_snippets
+            - manage_snippet
+            - browse_webhooks
+            - manage_webhook
+            - browse_integrations
+            - manage_integration
+            - browse_releases
+            - manage_release
+            - browse_refs
+            - manage_ref
+            - browse_members
+            - manage_member
+            - browse_search
+            - browse_iterations
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
 metadata:
   name: qa-eval-agent
-  namespace: '{{ .Release.Namespace }}'
+  namespace: {{ .Release.Namespace }}
   labels:
+    app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
+    agentops.dev/tier: custom
   annotations:
     agentspec.oracle.com/source: agents/qa-eval/agent.yaml
 spec:
   type: Declarative
-  description: QA engineer — benchmarks, regression detection, prompt evaluation
+  description: QA & evaluation — benchmarks, regression detection, test generation, prompt evaluation
   declarative:
-    systemMessage: |-
-      You are a QA and evaluation engineer specializing in AI/ML system testing. You run benchmarks, detect regressions, evaluate prompts, and ensure quality standards across the agent platform.
+    runtime: python
+    modelConfig: ollama-chat
+    stream: true
+    systemMessage: |
+      You are a QA and evaluation engineer who ensures agent quality through systematic benchmarking, regression detection, test generation, and prompt evaluation. You are the quality gate — nothing ships without passing your checks.
 
       Your expertise:
-      - Benchmarking: design test suites, run agent benchmarks, compare baselines
-      - Regression detection: identify quality drops, bisect root causes
-      - Prompt evaluation: score prompt variants, A/B testing, cost analysis
-      - Test generation: create test cases from specifications
+      - Benchmark execution: run agent benchmark suites, compare against baselines, report regressions
+      - Regression detection: monitor pass rates, latency percentiles, and quality scores across deployments
+      - Test generation: create test cases from specs and user stories, measure coverage gaps
+      - Prompt evaluation: A/B test system prompts, measure quality/cost/latency trade-offs
+      - Observability analysis: mine Langfuse traces for failure patterns, slow generations, high-cost operations
 
       Behavioral guidelines:
-      - Always compare against established baselines
-      - Quantify regressions with specific metrics and thresholds
-      - Run benchmarks in isolation to avoid interference
-      - Report both improvements and degradations
-      - Track cost per evaluation run
-    modelConfig: default-model-config
+      - Always compare results against established baselines — absolute numbers without context are useless
+      - Report regressions with specific deltas: "pass rate dropped from 0.88 to 0.72 (-18%)"
+      - When a benchmark fails, diagnose whether it's a model issue, prompt issue, or infrastructure issue
+      - Generate test cases that cover edge cases, not just happy paths
+      - Track prompt versions in MLflow — every prompt change should have a corresponding eval run
+      - Use LLM-as-judge for subjective quality, but always report the judge model and rubric used
+    memory:
+      modelConfig: ollama-embed
+      ttlDays: 90
     a2aConfig:
       skills:
-      - id: benchmark-runner
-        name: Benchmark Runner
-        description: Run agent benchmark suites and compare to baselines
-        tags:
-        - qa
-        - benchmark
-      - id: prompt-evaluation
-        name: Prompt Evaluation
-        description: Evaluate and score prompt variants
-        tags:
-        - qa
-        - prompts
-        - evaluation
-      - id: test-generation
-        name: Test Generation
-        description: Generate test cases from specifications
-        tags:
-        - qa
-        - testing
+        - id: benchmark-runner
+          name: Benchmark Runner
+          description: Run agent benchmark suites and compare to baselines
+          tags:
+            - qa
+            - benchmark
+        - id: prompt-evaluation
+          name: Prompt Evaluation
+          description: Evaluate and score prompt variants with A/B testing
+          tags:
+            - qa
+            - prompts
+            - evaluation
+        - id: test-generation
+          name: Test Generation
+          description: Generate test cases from specifications and user stories
+          tags:
+            - qa
+            - testing
+        - id: langfuse-ops
+          name: Langfuse Operations
+          description: Mine traces for failure patterns, slow generations, cost analysis
+          tags:
+            - qa
+            - observability
+            - langfuse
     tools:
-    - type: McpServer
-      mcpServer:
-        name: kubernetes-ops
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - cleanup
-        - kubectl_get
-        - kubectl_describe
-        - kubectl_apply
-        - kubectl_delete
-        - kubectl_create
-        - kubectl_logs
-        - kubectl_scale
-        - kubectl_patch
-        - kubectl_rollout
-        - explain_resource
-        - list_api_resources
-        - kubectl_generic
-        - ping
-    - type: McpServer
-      mcpServer:
-        name: mlflow-tracking
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - list_experiments
-        - get_experiment
-        - create_experiment
-        - search_runs
-        - get_run
-        - create_run
-        - log_metric
-        - log_param
-        - log_batch
-        - end_run
-        - list_registered_models
-        - get_model_version
-        - compare_runs
-    - type: McpServer
-      mcpServer:
-        name: langfuse-observability
-        kind: RemoteMCPServer
-        apiGroup: kagent.dev
-        toolNames:
-        - list_traces
-        - get_trace
-        - list_observations
-        - get_observation
-        - list_scores
-        - list_sessions
-        - get_session
-        - usage_summary
-        - error_traces
+      - type: McpServer
+        mcpServer:
+          name: kubernetes-ops
+          toolNames:
+            - cleanup
+            - kubectl_get
+            - kubectl_describe
+            - kubectl_apply
+            - kubectl_delete
+            - kubectl_create
+            - kubectl_logs
+            - kubectl_scale
+            - kubectl_patch
+            - kubectl_rollout
+            - kubectl_context
+            - kubectl_reconnect
+            - explain_resource
+            - install_helm_chart
+            - upgrade_helm_chart
+            - uninstall_helm_chart
+            - node_management
+            - port_forward
+            - stop_port_forward
+            - exec_in_pod
+            - list_api_resources
+            - kubectl_generic
+            - ping
+      - type: McpServer
+        mcpServer:
+          name: mlflow-tracking
+          toolNames:
+            - list_experiments
+            - get_experiment
+            - create_experiment
+            - search_runs
+            - get_run
+            - create_run
+            - log_metric
+            - log_param
+            - log_batch
+            - end_run
+            - list_registered_models
+            - get_model_version
+            - compare_runs
+      - type: McpServer
+        mcpServer:
+          name: langfuse-observability
+          toolNames:
+            - list_traces
+            - get_trace
+            - list_observations
+            - get_observation
+            - list_scores
+            - list_sessions
+            - get_session
+            - usage_summary
+            - error_traces

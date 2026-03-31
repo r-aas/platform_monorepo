@@ -1,6 +1,0 @@
-apiVersion: v2
-name: genai-mcp-mlflow
-description: MLflow MCP server (Streamable HTTP) — experiment tracking and model registry tools for agents
-type: application
-version: 0.1.0
-appVersion: "latest"

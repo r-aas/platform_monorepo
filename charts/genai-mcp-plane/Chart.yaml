@@ -1,6 +1,0 @@
-apiVersion: v2
-name: genai-mcp-plane
-description: Plane CE MCP server (Streamable HTTP) — project management tools for agents
-type: application
-version: 0.1.0
-appVersion: "latest"

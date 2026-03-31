@@ -1,6 +1,0 @@
-apiVersion: v2
-name: genai-mcp-n8n
-description: n8n MCP server (Streamable HTTP) — node docs, workflow CRUD, validation
-type: application
-version: 0.1.0
-appVersion: "2.38.0"

@@ -1,6 +1,0 @@
-apiVersion: v2
-name: genai-mcp-kubernetes
-description: Kubernetes MCP server (Streamable HTTP) for MetaMCP integration
-type: application
-version: 0.1.0
-appVersion: "latest"
