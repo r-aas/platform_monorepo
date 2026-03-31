@@ -1,6 +1,7 @@
 # ═══════════════════════════════════════════════════════
 # MCPServer CRDs — managed by kmcp controller
-# Replaces individual genai-mcp-* Helm charts
+# Each MCPServer creates: Deployment + Service + ConfigMap
+# secretRefs mounts ALL keys from a Secret as env vars
 # ═══════════════════════════════════════════════════════
 ---
 apiVersion: kagent.dev/v1alpha1
@@ -60,12 +61,7 @@ spec:
     env:
       LANGFUSE_BASE_URL: http://genai-langfuse-web.genai.svc.cluster.local:3000
     secretRefs:
-      - name: genai-langfuse-secret
-        key: LANGFUSE_PUBLIC_KEY
-        envVar: LANGFUSE_PUBLIC_KEY
-      - name: genai-langfuse-secret
-        key: LANGFUSE_SECRET_KEY
-        envVar: LANGFUSE_SECRET_KEY
+      - name: mcp-langfuse-env
     resources:
       requests:
         cpu: 100m
@@ -90,12 +86,7 @@ spec:
     env:
       MINIO_ENDPOINT: http://genai-minio.genai.svc.cluster.local:9000
     secretRefs:
-      - name: minio-credentials
-        key: root-user
-        envVar: MINIO_ACCESS_KEY
-      - name: minio-credentials
-        key: root-password
-        envVar: MINIO_SECRET_KEY
+      - name: mcp-minio-env
     resources:
       requests:
         cpu: 100m
@@ -143,9 +134,7 @@ spec:
     env:
       PLANE_BASE_URL: http://genai-plane-app.genai.svc.cluster.local:3000
     secretRefs:
-      - name: plane-api-token
-        key: token
-        envVar: PLANE_API_TOKEN
+      - name: mcp-plane-env
     resources:
       requests:
         cpu: 100m
@@ -167,13 +156,11 @@ spec:
   deployment:
     image: node:24-alpine
     port: 3000
-    cmd: ["npx", "-y", "@structured-world/gitlab-mcp"]
+    cmd: "npx -y @structured-world/gitlab-mcp"
     env:
       GITLAB_API_URL: http://gitlab-ce.platform.svc.cluster.local:8181
     secretRefs:
-      - name: genai-mcp-gitlab-secret
-        key: token
-        envVar: GITLAB_TOKEN
+      - name: mcp-gitlab-env
     resources:
       requests:
         cpu: 100m
@@ -198,9 +185,7 @@ spec:
     env:
       N8N_BASE_URL: http://genai-n8n.genai.svc.cluster.local:5678
     secretRefs:
-      - name: n8n-env-secrets
-        key: N8N_API_KEY
-        envVar: N8N_API_KEY
+      - name: mcp-n8n-env
     resources:
       requests:
         cpu: 100m
