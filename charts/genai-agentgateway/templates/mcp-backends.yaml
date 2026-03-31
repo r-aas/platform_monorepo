@@ -13,6 +13,7 @@
   "ollama" (dict "host" "genai-mcp-ollama.genai.svc.cluster.local" "port" 3000 "desc" "Ollama model management")
   "plane" (dict "host" "genai-mcp-plane.genai.svc.cluster.local" "port" 3000 "desc" "Plane project management")
   "kagent-tools" (dict "host" "genai-kagent-tools.genai.svc.cluster.local" "port" 8084 "desc" "kagent built-in tools (k8s, helm, argo, prometheus)")
+  "odd-platform" (dict "host" "genai-mcp-odd-platform.genai.svc.cluster.local" "port" 3000 "desc" "ODD Platform data catalog")
 }}
 {{- range $name, $cfg := $servers }}
 ---

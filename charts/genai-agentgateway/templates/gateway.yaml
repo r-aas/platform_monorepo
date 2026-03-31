@@ -24,7 +24,7 @@ spec:
 # Path: /mcp/{backend-name} (or default / for round-robin)
 {{- $gwName := printf "%s-mcp" (include "agentgateway.fullname" .Subcharts.agentgateway) }}
 {{- $ns := .Release.Namespace }}
-{{- $servers := list "kubernetes" "gitlab" "mlflow" "langfuse" "minio" "ollama" "plane" "kagent-tools" }}
+{{- $servers := list "kubernetes" "gitlab" "mlflow" "langfuse" "minio" "ollama" "plane" "kagent-tools" "odd-platform" }}
 {{- range $name := $servers }}
 ---
 apiVersion: gateway.networking.k8s.io/v1

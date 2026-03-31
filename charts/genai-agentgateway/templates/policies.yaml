@@ -1,0 +1,139 @@
+# ═══════════════════════════════════════════════════════
+# AgentgatewayPolicy — CEL-based tool filtering
+#
+# Enforces tool-level RBAC at the proxy layer.
+# kagent agents have their own toolNames constraints;
+# these policies govern access through the agentgateway
+# proxy (n8n, Claude Code, external clients via /mcp/*).
+#
+# Policy levels:
+#   1. Default deny on dangerous tools (exec, delete, apply)
+#   2. Per-backend route policies for tool-level filtering
+#   3. Header-based agent identity for elevated access
+# ═══════════════════════════════════════════════════════
+{{- $ns := .Release.Namespace }}
+{{- $gwName := printf "%s-mcp" (include "agentgateway.fullname" .Subcharts.agentgateway) }}
+---
+# ── Policy 1: Block dangerous tools by default ──────────
+# Applies to the aggregated /mcp/all route.
+# Dangerous operations (exec, delete, apply, patch, scale)
+# require X-Agent-Role: admin header.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: deny-dangerous-tools
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: genai-agentgateway
+    agentops.dev/policy-tier: safety
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: mcp-route-all
+  backend:
+    mcp:
+      authorization:
+        action: Deny
+        policy:
+          matchExpressions:
+            # Block exec/delete/apply/patch/scale unless caller has admin role
+            - >-
+              (mcp.tool.name.contains('exec') ||
+               mcp.tool.name.contains('delete') ||
+               mcp.tool.name.contains('apply') ||
+               mcp.tool.name.contains('patch') ||
+               mcp.tool.name.contains('scale') ||
+               mcp.tool.name.contains('kill') ||
+               mcp.tool.name.contains('rollout')) &&
+              !('x-agent-role' in request.headers && request.headers['x-agent-role'] == 'admin')
+---
+# ── Policy 2: Block model mutation via /mcp/all ─────────
+# Pulling/deleting Ollama models is expensive (GPU, disk).
+# Only allow via explicit /mcp/ollama route or admin role.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: deny-model-mutation
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: genai-agentgateway
+    agentops.dev/policy-tier: safety
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: mcp-route-all
+  backend:
+    mcp:
+      authorization:
+        action: Deny
+        policy:
+          matchExpressions:
+            - >-
+              (mcp.tool.name.contains('pull_model') ||
+               mcp.tool.name.contains('delete_model') ||
+               mcp.tool.name.contains('push_model')) &&
+              !('x-agent-role' in request.headers && request.headers['x-agent-role'] == 'admin')
+---
+# ── Policy 3: Read-only kubernetes for non-admin ────────
+# The /mcp/kubernetes route allows all tools by default.
+# Restrict mutation tools to admin callers.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: kubernetes-read-only
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: genai-agentgateway
+    agentops.dev/policy-tier: safety
+spec:
+  targetRefs:
+    - group: agentgateway.dev
+      kind: AgentgatewayBackend
+      name: mcp-kubernetes
+  backend:
+    mcp:
+      authorization:
+        action: Deny
+        policy:
+          matchExpressions:
+            - >-
+              (mcp.tool.name == 'kubectl_apply' ||
+               mcp.tool.name == 'kubectl_delete' ||
+               mcp.tool.name == 'kubectl_create' ||
+               mcp.tool.name == 'kubectl_patch' ||
+               mcp.tool.name == 'kubectl_scale' ||
+               mcp.tool.name == 'exec_in_pod' ||
+               mcp.tool.name == 'node_management') &&
+              !('x-agent-role' in request.headers && request.headers['x-agent-role'] == 'admin')
+---
+# ── Policy 4: GitLab write protection ───────────────────
+# Block repo/MR/pipeline creation/deletion from proxy.
+# Read operations (browse_*) are always allowed.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: gitlab-write-protection
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: genai-agentgateway
+    agentops.dev/policy-tier: safety
+spec:
+  targetRefs:
+    - group: agentgateway.dev
+      kind: AgentgatewayBackend
+      name: mcp-gitlab
+  backend:
+    mcp:
+      authorization:
+        action: Deny
+        policy:
+          matchExpressions:
+            - >-
+              (mcp.tool.name.contains('create') ||
+               mcp.tool.name.contains('update') ||
+               mcp.tool.name.contains('delete') ||
+               mcp.tool.name.contains('merge') ||
+               mcp.tool.name.contains('approve')) &&
+              !('x-agent-role' in request.headers && request.headers['x-agent-role'] == 'admin')

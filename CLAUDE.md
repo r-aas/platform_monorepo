@@ -117,8 +117,9 @@ Rust-based MCP/A2A proxy from Linux Foundation. Replaces MetaMCP. Multiplexes al
 - **Proxy** (port 8080 HTTP): MCP data plane — handles `initialize`, `tools/list`, `tools/call`
 - AgentgatewayBackend CRs define MCP server targets (8 per-server + 1 aggregated)
 - Gateway API: Gateway + HTTPRoute resources create the proxy data plane
-- Per-backend routes: `/mcp/{backend}` (kubernetes, gitlab, mlflow, langfuse, minio, ollama, plane, kagent-tools)
-- **Aggregated route: `/mcp/all`** — `mcp-all` backend with all 8 servers as targets, **243 tools** federated in one session (tool names prefixed by backend: `kubernetes_kubectl_get`, `gitlab_create_issue`, etc.)
+- Per-backend routes: `/mcp/{backend}` (kubernetes, gitlab, mlflow, langfuse, minio, ollama, plane, kagent-tools, odd-platform)
+- **Aggregated route: `/mcp/all`** — `mcp-all` backend with all 9 servers as targets, tools federated in one session (tool names prefixed by backend: `kubernetes_kubectl_get`, `gitlab_create_issue`, etc.)
+- **CEL policies**: 4 AgentgatewayPolicy CRDs enforce tool-level RBAC at the proxy layer. Dangerous tools (exec, delete, apply, scale, model mutation) require `X-Agent-Role: admin` header. Read-only by default for external callers.
 - n8n MCP Client endpoint: `http://genai-agentgateway-mcp.genai.svc.cluster.local:8080/mcp/all`
 - Supports StreamableHTTP + SSE transports
 - Policy engine via CEL expressions (AgentgatewayPolicy CRD)
