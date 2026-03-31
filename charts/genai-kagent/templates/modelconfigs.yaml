@@ -1,0 +1,29 @@
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: litellm-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kagent.labels" . | nindent 4 }}
+spec:
+  provider: OpenAI
+  model: glm-4.7-flash
+  openAI:
+    baseUrl: "http://genai-litellm.genai.svc.cluster.local:4000/v1"
+  apiKeySecret: kagent-litellm
+  apiKeySecretKey: OPENAI_API_KEY
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: embedding-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kagent.labels" . | nindent 4 }}
+spec:
+  provider: OpenAI
+  model: nomic-embed-text
+  openAI:
+    baseUrl: "http://genai-litellm.genai.svc.cluster.local:4000/v1"
+  apiKeySecret: kagent-litellm
+  apiKeySecretKey: OPENAI_API_KEY

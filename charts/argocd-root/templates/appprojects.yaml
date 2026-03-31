@@ -12,6 +12,10 @@ spec:
   destinations:
     - namespace: genai
       server: https://kubernetes.default.svc
+    - namespace: genai-dev
+      server: https://kubernetes.default.svc
+    - namespace: genai-stage
+      server: https://kubernetes.default.svc
     - namespace: platform
       server: https://kubernetes.default.svc
   clusterResourceWhitelist:

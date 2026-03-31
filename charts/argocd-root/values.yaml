@@ -39,6 +39,19 @@ helmWorkloads:
     namespace: genai
     syncWave: "1"
 
+# ── kagent promotion environments ──
+# Deploys the same genai-kagent chart to dev/stage namespaces.
+# Agents in these namespaces reference MCP servers in genai (cross-namespace).
+kagentEnvironments:
+  - name: genai-dev
+    namespace: genai-dev
+    targetRevision: HEAD
+    syncPolicy: automated
+  - name: genai-stage
+    namespace: genai-stage
+    targetRevision: HEAD
+    syncPolicy: automated
+
 # ── Cross-repo workloads ──
 # Uncomment when these repos are pushed to in-cluster GitLab:
 # crossRepoWorkloads:

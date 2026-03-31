@@ -156,9 +156,13 @@ spec:
   deployment:
     image: node:24-alpine
     port: 3000
-    cmd: "npx -y @structured-world/gitlab-mcp"
+    cmd: "sh"
+    args:
+      - "-c"
+      - "npx -y @structured-world/gitlab-mcp"
     env:
       GITLAB_API_URL: http://gitlab-ce.platform.svc.cluster.local:8181
+      PORT: "3000"
     secretRefs:
       - name: mcp-gitlab-env
     resources:

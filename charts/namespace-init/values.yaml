@@ -5,3 +5,5 @@ namespaces:
   - name: prod
   - name: platform
   - name: genai
+  - name: genai-dev
+  - name: genai-stage

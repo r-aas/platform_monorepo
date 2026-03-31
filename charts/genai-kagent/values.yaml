@@ -17,6 +17,8 @@ kagent:
     loglevel: "info"
     watchNamespaces:
       - genai
+      - genai-dev
+      - genai-stage
     resources:
       requests:
         cpu: 100m
@@ -101,10 +103,26 @@ kagent:
       enabled: false
 
   # ──────────────────────────────────────────────
-  # Observability — off for now, wire to Langfuse later
+  # Observability — OTEL tracing → Langfuse
   # ──────────────────────────────────────────────
+  # NOTE: kagent hardcodes the gRPC OTLP exporter (opentelemetry.exporter.otlp.proto.grpc)
+  # but Langfuse only accepts OTLP over HTTP at /api/public/otel/v1/traces.
+  # An OpenTelemetry Collector is required as a bridge:
+  #   kagent (gRPC) → otel-collector (gRPC:4317 → HTTP) → Langfuse OTLP endpoint
+  # The collector chart is tracked as a separate task.
+  # Endpoint below points to where the collector will listen (gRPC port 4317).
+  # Langfuse direct endpoint (for reference):
+  #   http://genai-langfuse-web.genai.svc.cluster.local:3000/api/public/otel
+  # Langfuse auth requires OTEL_EXPORTER_OTLP_HEADERS with Basic auth
+  #   (base64 of LANGFUSE_PUBLIC_KEY:LANGFUSE_SECRET_KEY) — configured on the collector.
   otel:
     tracing:
-      enabled: false
+      enabled: true
+      exporter:
+        otlp:
+          endpoint: "genai-otel-collector.genai.svc.cluster.local:4317"
+          protocol: "grpc"
+          timeout: 15
+          insecure: true
     logging:
       enabled: false

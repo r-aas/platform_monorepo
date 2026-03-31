@@ -1,0 +1,39 @@
+# kagent promotion environments — deploys genai-kagent chart to dev/stage namespaces.
+# Agents in these namespaces reference MCP servers in genai namespace (cross-namespace).
+# Production (genai namespace) is managed by the workloads-git ApplicationSet.
+{{- range .Values.kagentEnvironments }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: genai-kagent-{{ .name }}
+  namespace: {{ $.Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    app.kubernetes.io/part-of: kagent
+    platform.dev/environment: {{ .name }}
+spec:
+  project: genai
+  source:
+    repoURL: {{ $.Values.gitlabRepoUrl }}
+    targetRevision: {{ .targetRevision }}
+    path: charts/genai-kagent
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-k3d.yaml
+      ignoreMissingValueFiles: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .namespace }}
+  {{- if eq .syncPolicy "automated" }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+  {{- end }}
+{{- end }}

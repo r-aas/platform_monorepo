@@ -24,7 +24,12 @@ spec:
   timeout: 30s
   sseReadTimeout: 5m0s
   allowedNamespaces:
-    from: Same
+    from: Selector
+    selector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [genai, genai-dev, genai-stage]
 # ── Platform MCP Servers ──────────────────────────────
 ---
 apiVersion: kagent.dev/v1alpha2
@@ -41,7 +46,12 @@ spec:
   timeout: 30s
   sseReadTimeout: 5m0s
   allowedNamespaces:
-    from: Same
+    from: Selector
+    selector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [genai, genai-dev, genai-stage]
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: RemoteMCPServer
@@ -57,7 +67,12 @@ spec:
   timeout: 30s
   sseReadTimeout: 5m0s
   allowedNamespaces:
-    from: Same
+    from: Selector
+    selector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [genai, genai-dev, genai-stage]
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: RemoteMCPServer
@@ -73,7 +88,12 @@ spec:
   timeout: 30s
   sseReadTimeout: 5m0s
   allowedNamespaces:
-    from: Same
+    from: Selector
+    selector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [genai, genai-dev, genai-stage]
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: RemoteMCPServer
@@ -89,7 +109,12 @@ spec:
   timeout: 30s
   sseReadTimeout: 5m0s
   allowedNamespaces:
-    from: Same
+    from: Selector
+    selector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [genai, genai-dev, genai-stage]
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: RemoteMCPServer
@@ -105,7 +130,12 @@ spec:
   timeout: 30s
   sseReadTimeout: 5m0s
   allowedNamespaces:
-    from: Same
+    from: Selector
+    selector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [genai, genai-dev, genai-stage]
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: RemoteMCPServer
@@ -121,7 +151,12 @@ spec:
   timeout: 30s
   sseReadTimeout: 5m0s
   allowedNamespaces:
-    from: Same
+    from: Selector
+    selector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [genai, genai-dev, genai-stage]
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: RemoteMCPServer
@@ -137,4 +172,9 @@ spec:
   timeout: 30s
   sseReadTimeout: 5m0s
   allowedNamespaces:
-    from: Same
+    from: Selector
+    selector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [genai, genai-dev, genai-stage]

@@ -135,7 +135,8 @@ create_secret genai genai-minio \
 
 # LiteLLM
 create_secret genai kagent-litellm \
-  --from-literal=LITELLM_MASTER_KEY="${LITELLM_API_KEY}"
+  --from-literal=LITELLM_MASTER_KEY="${LITELLM_API_KEY}" \
+  --from-literal=OPENAI_API_KEY="sk-litellm-mewtwo-local"
 
 # GitLab PAT (for sandbox git clone, MCP server, etc.)
 create_secret genai gitlab-pat \
@@ -170,6 +171,32 @@ if [[ -n "${N8N_API_KEY:-}" ]]; then
     --from-literal=api-key="${N8N_API_KEY}" \
     --from-literal=owner-email="admin@platform.local" \
     --from-literal=owner-password="Admin-k3d-L0cal"
+fi
+
+# ── MCP Server Secrets ───────────────────────────────────────────────────────
+
+# MCP Langfuse
+create_secret genai mcp-langfuse-env \
+  --from-literal=LANGFUSE_PUBLIC_KEY="${LANGFUSE_PUBLIC_KEY}" \
+  --from-literal=LANGFUSE_SECRET_KEY="${LANGFUSE_SECRET_KEY}"
+
+# MCP MinIO
+create_secret genai mcp-minio-env \
+  --from-literal=MINIO_ROOT_USER="${MINIO_ROOT_USER}" \
+  --from-literal=MINIO_ROOT_PASSWORD="${MINIO_ROOT_PASSWORD}"
+
+# MCP Plane
+create_secret genai mcp-plane-env \
+  --from-literal=PLANE_API_KEY="${PLANE_API_TOKEN}"
+
+# MCP GitLab
+create_secret genai mcp-gitlab-env \
+  --from-literal=GITLAB_PERSONAL_ACCESS_TOKEN="${GITLAB_PAT}"
+
+# MCP n8n (if API key is set)
+if [[ -n "${N8N_API_KEY:-}" ]]; then
+  create_secret genai mcp-n8n-env \
+    --from-literal=N8N_API_KEY="${N8N_API_KEY}"
 fi
 
 # Agent Registry JWT signing key
