@@ -1,11 +1,20 @@
 # ── Agent Scheduling — CronJobs → kagent A2A ──────────
-# Each agent gets a CronJob that POSTs a JSON-RPC message/send to its A2A endpoint.
-# kagent agents run as long-lived Deployments with A2A server on :8080.
-# A2A endpoint: POST http://{agent-name}.{targetNamespace}.svc.cluster.local:8080/
+# Each agent gets a CronJob that POSTs a JSON-RPC message/send
+# to the kagent controller's A2A proxy endpoint.
 #
-# targetNamespace controls which namespace the agents live in.
-# The CronJobs themselves deploy to Release.Namespace (typically genai),
-# but they can POST to agents in any namespace (genai, genai-dev, genai-stage).
+# Endpoint format:
+#   POST http://{controllerService}:{controllerPort}/api/a2a/{targetNamespace}/{agent-name}
+#
+# This matches how `kagent invoke`, the UI, and khook all invoke agents.
+# Direct pod access (port 8080) works but bypasses auth, tracing, and session management.
+
+# kagent controller service coordinates
+controller:
+  service: genai-kagent-controller
+  namespace: genai
+  port: 8083
+
+# Namespace where the target agents live
 targetNamespace: genai
 
 # Schedule definitions per agent

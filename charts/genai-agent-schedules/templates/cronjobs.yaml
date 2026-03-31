@@ -1,3 +1,5 @@
+{{- $ctrl := .Values.controller }}
+{{- $ctrlUrl := printf "http://%s.%s.svc.cluster.local:%v" $ctrl.service $ctrl.namespace (int $ctrl.port) }}
 {{- $targetNs := .Values.targetNamespace | default .Release.Namespace }}
 {{- range $name, $agent := .Values.agents }}
 {{- if $agent.enabled }}
@@ -35,21 +37,42 @@ spec:
             - /bin/sh
             - -c
             - |
-              MSG_ID="schedule-$(date +%s)"
-              PAYLOAD=$(cat <<JSONEOF
-              {"jsonrpc":"2.0","method":"message/send","id":"$MSG_ID","params":{"message":{"role":"user","messageId":"$MSG_ID","parts":[{"type":"text","text":{{ $agent.task | toJson }}}]}}}
+              # A2A JSON-RPC 2.0 message/send via kagent controller proxy
+              # Matches kagent invoke CLI, UI, and khook patterns
+              A2A_URL="{{ $ctrlUrl }}/api/a2a/{{ $targetNs }}/{{ $name }}"
+              MSG_ID="schedule-$(date +%s)-$(head -c4 /dev/urandom | od -An -tx1 | tr -d ' ')"
+              PAYLOAD=$(cat <<'JSONEOF'
+              {
+                "jsonrpc": "2.0",
+                "id": "MSG_ID_PLACEHOLDER",
+                "method": "message/send",
+                "params": {
+                  "message": {
+                    "kind": "message",
+                    "role": "user",
+                    "parts": [{"kind": "text", "text": {{ $agent.task | toJson }}}]
+                  }
+                }
+              }
               JSONEOF
               )
-              # Fire-and-forget: A2A message/send waits for LLM inference.
-              # Exit 0 regardless — the agent received the message even if we timeout.
-              curl -s -X POST \
+              PAYLOAD=$(echo "$PAYLOAD" | sed "s/MSG_ID_PLACEHOLDER/$MSG_ID/")
+              echo "Invoking {{ $name }} at $A2A_URL"
+              # message/send is synchronous — blocks until LLM completes.
+              # Timeout after 240s; exit 0 regardless since the agent received the message.
+              HTTP_CODE=$(curl -s -X POST \
                 -H "Content-Type: application/json" \
                 -d "$PAYLOAD" \
-                "http://{{ $name }}.{{ $targetNs }}.svc.cluster.local:8080/" \
+                "$A2A_URL" \
                 --connect-timeout 10 \
                 --max-time 240 \
-                -o /dev/null -w "HTTP %{http_code}\n" \
-              || true
+                -o /dev/null -w "%{http_code}")
+              echo "Response: HTTP $HTTP_CODE"
+              # Accept 200 (completed) and 202 (accepted/working) as success
+              case "$HTTP_CODE" in
+                200|202) exit 0 ;;
+                *) echo "WARN: unexpected status $HTTP_CODE"; exit 0 ;;
+              esac
             resources:
               {{- toYaml $.Values.resources | nindent 14 }}
 {{- end }}
