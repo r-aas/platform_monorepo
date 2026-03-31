@@ -1,6 +1,6 @@
 # LAN IP — detected automatically or override here
 # nip.io resolves {anything}.{IP}.nip.io to {IP}
-lanIP: "192.0.0.2"
+lanIP: "100.103.242.54"
 
 # Services to expose on LAN. Each entry creates an Ingress resource.
 # Format matches existing localhost nip.io ingress routes.

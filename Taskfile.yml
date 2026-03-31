@@ -251,6 +251,52 @@ tasks:
         echo "  Note: Update charts/lan-ingress/values.yaml if LAN IP changes"
         echo ""
 
+  urls-tailscale:
+    desc: Print Tailscale-accessible URLs (for any device on your tailnet)
+    cmds:
+      - |
+        TS_IP=$(tailscale ip -4 2>/dev/null || echo "")
+        if [ -z "$TS_IP" ]; then
+          echo "✗ Tailscale not running or no IPv4 address"
+          exit 1
+        fi
+        echo ""
+        echo "  Tailscale URLs (accessible from any tailnet device via $TS_IP):"
+        echo "  ─────────────────────────────────────────"
+        echo "  ArgoCD:       http://argocd.mewtwo.${TS_IP}.nip.io"
+        echo "  GitLab:       http://gitlab.mewtwo.${TS_IP}.nip.io"
+        echo "  n8n:          http://n8n.mewtwo.${TS_IP}.nip.io"
+        echo "  MLflow:       http://mlflow.genai.${TS_IP}.nip.io"
+        echo "  LiteLLM:      http://litellm.genai.${TS_IP}.nip.io"
+        echo "  MinIO:        http://minio-console.genai.${TS_IP}.nip.io"
+        echo "  Agent GW:     http://agent-gateway.genai.${TS_IP}.nip.io"
+        echo "  Langfuse:     http://langfuse.genai.${TS_IP}.nip.io"
+        echo "  ODD Platform: http://odd-platform.genai.${TS_IP}.nip.io"
+        echo "  Plane:        http://plane.genai.${TS_IP}.nip.io"
+        echo "  kagent:       http://kagent.genai.${TS_IP}.nip.io"
+        echo ""
+
+  lan-ingress-update:
+    desc: "Update lan-ingress with current IP (MODE=lan|tailscale)"
+    vars:
+      MODE: '{{.MODE | default "lan"}}'
+    cmds:
+      - |
+        if [ "{{.MODE}}" = "tailscale" ]; then
+          IP=$(tailscale ip -4 2>/dev/null || echo "")
+          [ -z "$IP" ] && echo "✗ Tailscale not running" && exit 1
+        else
+          IP=$(ifconfig en0 2>/dev/null | grep 'inet ' | awk '{print $2}')
+          [ -z "$IP" ] && echo "✗ No LAN IP found on en0" && exit 1
+        fi
+        echo "Updating lan-ingress with IP: $IP ({{.MODE}})"
+        sed -i '' "s/^lanIP: .*/lanIP: \"$IP\"/" charts/lan-ingress/values.yaml
+        git add charts/lan-ingress/values.yaml
+        git commit -m "chore: update lan-ingress IP to $IP ({{.MODE}})" --allow-empty 2>/dev/null || true
+        git push gitlab main 2>/dev/null || true
+        echo "  ArgoCD will sync the new ingress rules automatically"
+        echo "  ✓ lan-ingress updated to $IP"
+
   # ── GitLab ──────────────────────────────────────────────────
 
   gitlab-password:

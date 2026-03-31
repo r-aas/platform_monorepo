@@ -41,7 +41,7 @@ LITELLM_KEY = os.getenv("LITELLM_API_KEY", os.getenv("LITELLM_KEY", "sk-litellm-
 MLFLOW_URL = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow.platform.127.0.0.1.nip.io")
 BENCHMARK_DIR = Path(__file__).parent.parent / "data" / "benchmarks"
 
-MODELS = ["qwen2.5:14b", "qwen2.5:7b", "mistral:7b-instruct", "gemma3:12b"]
+MODELS = ["glm-4.7-flash", "qwen3:32b", "qwen2.5:14b", "gemma3:12b"]
 
 # Map agent names to their MLflow system prompt names
 AGENT_PROMPT_MAP = {
