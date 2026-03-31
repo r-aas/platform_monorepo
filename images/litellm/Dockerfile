@@ -3,7 +3,7 @@
 # Only upgrade after verifying: (1) version exists as GitHub release tag,
 # (2) Docker image matches GitHub release, (3) no .pth files in site-packages.
 # See: https://github.com/BerriAI/litellm/issues/24518
-ARG LITELLM_VERSION=1.82.6.dev1
+ARG LITELLM_VERSION=main-stable
 # litellm-database includes Prisma — required for MCP registry, virtual keys, A2A
 FROM ghcr.io/berriai/litellm-database:${LITELLM_VERSION}
 

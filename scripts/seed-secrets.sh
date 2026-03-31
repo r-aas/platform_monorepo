@@ -194,11 +194,9 @@ create_secret genai mcp-plane-env \
 create_secret genai mcp-gitlab-env \
   --from-literal=GITLAB_PERSONAL_ACCESS_TOKEN="${GITLAB_PAT}"
 
-# MCP n8n (if API key is set)
-if [[ -n "${N8N_API_KEY:-}" ]]; then
-  create_secret genai mcp-n8n-env \
-    --from-literal=N8N_API_KEY="${N8N_API_KEY}"
-fi
+# MCP n8n (always create — chart references it even before API key is set)
+create_secret genai mcp-n8n-env \
+  --from-literal=N8N_API_KEY="${N8N_API_KEY:-}"
 
 # Agent Registry JWT signing key
 create_secret genai agentregistry-jwt \
