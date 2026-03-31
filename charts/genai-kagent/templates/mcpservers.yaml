@@ -1,0 +1,237 @@
+# ═══════════════════════════════════════════════════════
+# MCPServer CRDs — managed by kmcp controller
+# Replaces individual genai-mcp-* Helm charts
+# ═══════════════════════════════════════════════════════
+---
+apiVersion: kagent.dev/v1alpha1
+kind: MCPServer
+metadata:
+  name: mcp-kubernetes
+  namespace: {{ .Release.Namespace }}
+spec:
+  deployment:
+    image: ghcr.io/r-aas/mcp-kubernetes:latest
+    port: 3000
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    serviceAccountName: genai-mcp-kubernetes
+  transportType: http
+  httpTransport:
+    targetPort: 3000
+  timeout: 30s
+---
+apiVersion: kagent.dev/v1alpha1
+kind: MCPServer
+metadata:
+  name: mcp-mlflow
+  namespace: {{ .Release.Namespace }}
+spec:
+  deployment:
+    image: ghcr.io/r-aas/mcp-mlflow:latest
+    port: 3000
+    env:
+      MLFLOW_TRACKING_URI: http://genai-mlflow.genai.svc.cluster.local:5000
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  transportType: http
+  httpTransport:
+    targetPort: 3000
+  timeout: 30s
+---
+apiVersion: kagent.dev/v1alpha1
+kind: MCPServer
+metadata:
+  name: mcp-langfuse
+  namespace: {{ .Release.Namespace }}
+spec:
+  deployment:
+    image: ghcr.io/r-aas/mcp-langfuse:latest
+    port: 3000
+    env:
+      LANGFUSE_BASE_URL: http://genai-langfuse-web.genai.svc.cluster.local:3000
+    secretRefs:
+      - name: genai-langfuse-secret
+        key: LANGFUSE_PUBLIC_KEY
+        envVar: LANGFUSE_PUBLIC_KEY
+      - name: genai-langfuse-secret
+        key: LANGFUSE_SECRET_KEY
+        envVar: LANGFUSE_SECRET_KEY
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  transportType: http
+  httpTransport:
+    targetPort: 3000
+  timeout: 30s
+---
+apiVersion: kagent.dev/v1alpha1
+kind: MCPServer
+metadata:
+  name: mcp-minio
+  namespace: {{ .Release.Namespace }}
+spec:
+  deployment:
+    image: ghcr.io/r-aas/mcp-minio:latest
+    port: 3000
+    env:
+      MINIO_ENDPOINT: http://genai-minio.genai.svc.cluster.local:9000
+    secretRefs:
+      - name: minio-credentials
+        key: root-user
+        envVar: MINIO_ACCESS_KEY
+      - name: minio-credentials
+        key: root-password
+        envVar: MINIO_SECRET_KEY
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  transportType: http
+  httpTransport:
+    targetPort: 3000
+  timeout: 30s
+---
+apiVersion: kagent.dev/v1alpha1
+kind: MCPServer
+metadata:
+  name: mcp-ollama
+  namespace: {{ .Release.Namespace }}
+spec:
+  deployment:
+    image: ghcr.io/r-aas/mcp-ollama:latest
+    port: 3000
+    env:
+      OLLAMA_HOST: http://192.168.5.2:11434
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  transportType: http
+  httpTransport:
+    targetPort: 3000
+  timeout: 30s
+---
+apiVersion: kagent.dev/v1alpha1
+kind: MCPServer
+metadata:
+  name: mcp-plane
+  namespace: {{ .Release.Namespace }}
+spec:
+  deployment:
+    image: ghcr.io/r-aas/mcp-plane:latest
+    port: 3000
+    env:
+      PLANE_BASE_URL: http://genai-plane-app.genai.svc.cluster.local:3000
+    secretRefs:
+      - name: plane-api-token
+        key: token
+        envVar: PLANE_API_TOKEN
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  transportType: http
+  httpTransport:
+    targetPort: 3000
+  timeout: 30s
+---
+apiVersion: kagent.dev/v1alpha1
+kind: MCPServer
+metadata:
+  name: mcp-gitlab
+  namespace: {{ .Release.Namespace }}
+spec:
+  deployment:
+    image: node:24-alpine
+    port: 3000
+    cmd: ["npx", "-y", "@structured-world/gitlab-mcp"]
+    env:
+      GITLAB_API_URL: http://gitlab-ce.platform.svc.cluster.local:8181
+    secretRefs:
+      - name: genai-mcp-gitlab-secret
+        key: token
+        envVar: GITLAB_TOKEN
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+  transportType: http
+  httpTransport:
+    targetPort: 3000
+  timeout: 30s
+---
+apiVersion: kagent.dev/v1alpha1
+kind: MCPServer
+metadata:
+  name: mcp-n8n
+  namespace: {{ .Release.Namespace }}
+spec:
+  deployment:
+    image: ghcr.io/czlonkowski/n8n-mcp:latest
+    port: 3000
+    env:
+      N8N_BASE_URL: http://genai-n8n.genai.svc.cluster.local:5678
+    secretRefs:
+      - name: n8n-env-secrets
+        key: N8N_API_KEY
+        envVar: N8N_API_KEY
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  transportType: http
+  httpTransport:
+    targetPort: 3000
+  timeout: 30s
+---
+apiVersion: kagent.dev/v1alpha1
+kind: MCPServer
+metadata:
+  name: mcp-datahub
+  namespace: {{ .Release.Namespace }}
+spec:
+  deployment:
+    image: acuvity/mcp-server-datahub:latest
+    port: 8000
+    env:
+      DATAHUB_GMS_URL: http://genai-datahub-datahub-gms.genai.svc.cluster.local:8080
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  transportType: http
+  httpTransport:
+    targetPort: 8000
+  timeout: 30s

@@ -45,7 +45,7 @@ kagent:
     default: openAI
     openAI:
       provider: OpenAI
-      model: "qwen2.5:14b"
+      model: "glm-4.7-flash"
       apiKeySecretRef: kagent-litellm
       apiKeySecretKey: OPENAI_API_KEY
       config:
