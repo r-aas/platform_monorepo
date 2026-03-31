@@ -11,7 +11,7 @@
 ###############################################################################
 FROM python:3.12-slim
 
-RUN pip install --no-cache-dir mcp[cli] httpx
+RUN pip install --no-cache-dir "mcp[cli]" httpx "uvicorn<0.42"
 
 WORKDIR /app
 COPY server.py .
@@ -19,4 +19,4 @@ COPY server.py .
 ENV PORT=3000
 EXPOSE 3000
 
-CMD ["sh", "-c", "python -m mcp run --transport streamable-http --host 0.0.0.0 --port ${PORT} server.py"]
+CMD ["mcp", "run", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "3000", "server.py"]
