@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     workflows_dir: str = "workflows"
 
     # Embeddings
-    ollama_base_url: str = "http://192.168.5.2:11434"
+    ollama_base_url: str = "http://192.168.65.254:11434"
     ollama_embedding_model: str = "nomic-embed-text"
     embedding_dim: int = 768
 

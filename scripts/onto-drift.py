@@ -228,7 +228,7 @@ def check_drift():
             ns = parts[1] if len(parts) > 1 else ""
             onto_to_k8s[iri] = f"{ns}/{svc_name}"
         elif addr:
-            # Host service (e.g., ollama at 192.168.5.2) — skip k8s checks
+            # Host service (e.g., ollama at 192.168.65.254) — skip k8s checks
             onto_to_k8s[iri] = None
 
     # 1. Missing services (in ontology, not in k8s)

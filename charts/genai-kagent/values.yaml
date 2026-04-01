@@ -42,7 +42,7 @@ kagent:
 
   # ──────────────────────────────────────────────
   # LLM Provider — direct Ollama (no LiteLLM)
-  # 192.168.5.2 = Colima VM gateway to Mac host
+  # 192.168.65.254 = Docker Desktop host gateway (host.k3d.internal)
   # Custom ModelConfigs (ollama-chat, ollama-embed)
   # are in templates/modelconfigs.yaml
   # ──────────────────────────────────────────────
@@ -52,7 +52,7 @@ kagent:
       provider: Ollama
       model: "glm-4.7-flash"
       config:
-        host: "http://192.168.5.2:11434"
+        host: "http://192.168.65.254:11434"
 
   # ──────────────────────────────────────────────
   # Built-in agents — only k8s + helm relevant

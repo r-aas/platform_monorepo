@@ -90,7 +90,7 @@ colima ssh -- sh -c '
 
 # ── 4b. Configure Docker daemon DNS ─────────────────────────
 # k3d node containers inherit Docker daemon DNS. After restart, Colima VM
-# DNS (192.168.5.2) may be unreachable — ensure public fallback is set.
+# DNS (192.168.65.254) may be unreachable — ensure public fallback is set.
 colima ssh -- sudo sh -c '
   if ! grep -q "8.8.8.8" /etc/docker/daemon.json 2>/dev/null; then
     python3 -c "

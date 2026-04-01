@@ -40,7 +40,7 @@ This repo is the answer to "how do I actually run all of this together?"
 │  ┌──┴────────────────────────────────────────────────┐   │
 │  │  k3d cluster "mewtwo"                             │   │
 │  │                                                   │   │
-│  │  LiteLLM ──→ Ollama (192.168.5.2:11434)           │   │
+│  │  LiteLLM ──→ Ollama (192.168.65.254:11434)           │   │
 │  │     ↑                                             │   │
 │  │  n8n (17 workflows) ──→ MLflow (prompts/evals)    │   │
 │  │     ↑                       ↓                     │   │
@@ -306,7 +306,7 @@ All secrets live in `envs/secrets.env` (gitignored). The example file ships with
 | `ImagePullBackOff` on MCP pods | Custom images not on all k3d nodes | `task build-images` (imports to all nodes) |
 | n8n webhooks return 404 | Workflows not activated after import | `task smoke` to check; workflow promotion hook runs on deploy |
 | MLflow rejects requests | DNS rebinding protection | Chart sets `disableSecurityMiddleware` flag — check ArgoCD sync |
-| Ollama unreachable from cluster | Wrong host IP | Pods must use `192.168.5.2` (Colima gateway), not `localhost` |
+| Ollama unreachable from cluster | Wrong host IP | Pods must use `192.168.65.254` (Colima gateway), not `localhost` |
 | LiteLLM 401 errors | Missing API key in n8n | Check `LITELLM_API_KEY` in secrets.env, run `task seed-secrets` |
 | ArgoCD sync stuck | Failed Helm hook blocking | Delete the failed Job: `kubectl delete job <name> -n genai` |
 | PostgreSQL won't start | sshfs doesn't support chown | local-path provisioner must use `/var/lib/rancher/k3s/local-storage` (overlay FS) |

@@ -179,7 +179,7 @@ Injection content (~20 lines):
 CRITICAL RULES (survive compaction):
 - Python: uv only, never pip/venv/poetry
 - Containers: Never containerize Ollama (GPU needs native Metal)
-- k3d: Pods reach Mac host at 192.168.5.2, NOT host.docker.internal
+- k3d: Pods reach Mac host at 192.168.65.254 (host.k3d.internal), NOT host.docker.internal
 - ArgoCD: Never helmfile sync if ArgoCD manages the resource
 - n8n: Code nodes CANNOT make outbound HTTP. Use HTTP Request nodes.
 - Helm: All images must be ARM64-native or explicitly set platform: linux/amd64

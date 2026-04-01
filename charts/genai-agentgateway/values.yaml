@@ -56,8 +56,9 @@ agentgateway:
 # ── LLM Gateway — replaces LiteLLM ──────────────────
 # Routes OpenAI-compatible traffic to Ollama on Mac host.
 # Exposes port 4000 (same as LiteLLM) for drop-in replacement.
-# 192.168.5.2 = Docker Desktop Lima gateway to Mac host.
+# host.k3d.internal resolves to Mac host inside k3d (Docker Desktop = 192.168.65.254).
+# OLLAMA_HOST must be set to 0.0.0.0:11434 on Mac for k3d pods to connect.
 llm:
   enabled: true
-  ollamaHost: "192.168.5.2"
+  ollamaHost: "192.168.65.254"
   ollamaPort: 11434

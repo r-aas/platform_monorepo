@@ -25,5 +25,5 @@ spec:
   ai:
     provider:
       openai: {}
-      host: {{ .Values.llm.ollamaHost | default "192.168.5.2" }}
+      host: {{ .Values.llm.ollamaHost | default "192.168.65.254" }}
       port: {{ .Values.llm.ollamaPort | default 11434 }}

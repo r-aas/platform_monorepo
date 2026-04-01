@@ -55,7 +55,7 @@ echo '  }' >> "$OUT"
 echo '' >> "$OUT"
 
 # External dependencies
-echo '  System_Ext(ollama, "Ollama", "LLM on Mac host 192.168.5.2:11434")' >> "$OUT"
+echo '  System_Ext(ollama, "Ollama", "LLM on Mac host 192.168.65.254:11434")' >> "$OUT"
 echo '' >> "$OUT"
 
 # Infer relationships from environment variables referencing other services

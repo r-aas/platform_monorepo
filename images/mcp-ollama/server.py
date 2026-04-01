@@ -17,7 +17,7 @@ from typing import Any
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://192.168.5.2:11434")
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://192.168.65.254:11434")
 
 mcp = FastMCP("Ollama Model Management", host="0.0.0.0", port=3000)
 

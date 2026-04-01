@@ -135,7 +135,7 @@ litellm:
   consumes:
     - component: ollama
       interface: openai-compat
-      host: "192.168.5.2:11434"
+      host: "192.168.65.254:11434"
       purpose: Local LLM inference (Metal GPU)
     - component: pgvector
       interface: postgresql
@@ -528,7 +528,7 @@ mcp-ollama:
   consumes:
     - component: ollama
       interface: http
-      host: "192.168.5.2:11434"
+      host: "192.168.65.254:11434"
   taxonomy_type: mcp_server
 
 mcp-plane:
@@ -565,7 +565,7 @@ ollama:
   description: Native Mac LLM inference (Metal GPU). NOT containerized.
   exposes:
     - name: openai-compat
-      host: "192.168.5.2"
+      host: "192.168.65.254"
       port: 11434
       protocol: http
   consumes: []

@@ -26,7 +26,7 @@ trap 'rm -rf "$TMPDIR"; [ -n "$PF_PID" ] && kill "$PF_PID" 2>/dev/null || true' 
 K3D_MLFLOW="http://genai-mlflow.genai.svc.cluster.local"
 K3D_LITELLM="http://genai-agentgateway-llm.genai.svc.cluster.local:4000"
 K3D_N8N="http://genai-n8n.genai.svc.cluster.local:5678"
-K3D_OLLAMA="http://192.168.5.2:11434"
+K3D_OLLAMA="http://192.168.65.254:11434"
 
 echo "── n8n Workflow Import ──"
 

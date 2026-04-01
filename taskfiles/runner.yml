@@ -1,6 +1,6 @@
 # ~/work/repos/platform_monorepo/taskfiles/runner.yml — Agent Runner service
 # HTTP trigger for headless AI agent sessions (Claude, OpenClaw, generic CLI).
-# n8n (in k3d) calls http://192.168.5.2:7777/run to spawn autonomous sessions.
+# n8n (in k3d) calls http://192.168.65.254:7777/run to spawn autonomous sessions.
 
 version: "3"
 

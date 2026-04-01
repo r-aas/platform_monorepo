@@ -21,7 +21,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://192.168.5.2:7778/batch",
+        "url": "http://192.168.65.254:7778/batch",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

@@ -280,7 +280,7 @@ spec:
 
           API_URL = os.environ.get("N8N_URL", "http://genai-n8n:5678") + "/api/v1"
           API_KEY = os.environ.get("N8N_KEY_VALUE", "")
-          OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://192.168.5.2:11434")
+          OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://192.168.65.254:11434")
 
           if not API_KEY:
               print("  ⚠ No API key — skipping credential patch")

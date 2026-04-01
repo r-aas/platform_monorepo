@@ -112,7 +112,7 @@ spec:
     image: ghcr.io/r-aas/mcp-ollama:latest
     port: 3000
     env:
-      OLLAMA_HOST: http://192.168.5.2:11434
+      OLLAMA_HOST: http://192.168.65.254:11434
     resources:
       requests:
         cpu: 100m

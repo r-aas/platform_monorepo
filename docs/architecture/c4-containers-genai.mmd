@@ -19,7 +19,7 @@ C4Container
     Container(genai_pgvector, "pgvector", "pgvector", "StatefulSet — 5432/TCP")
   }
 
-  System_Ext(ollama, "Ollama", "LLM on Mac host 192.168.5.2:11434")
+  System_Ext(ollama, "Ollama", "LLM on Mac host 192.168.65.254:11434")
 
   Rel(genai_agent_gateway, genai_litellm, "")
   Rel(genai_agent_gateway, genai_mlflow, "")

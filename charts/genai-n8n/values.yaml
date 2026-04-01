@@ -21,11 +21,11 @@ n8n:
       LITELLM_BASE_URL: "http://genai-agentgateway-llm.genai.svc.cluster.local:4000"
       # YouTube pipeline
       YT_ANALYSIS_MODEL: "glm-4.7-flash"
-      YT_INGEST_URL: "http://192.168.5.2:7778"
+      YT_INGEST_URL: "http://192.168.65.254:7778"
       # MLflow tracking (in-cluster)
       MLFLOW_TRACKING_URI: "http://genai-mlflow.genai.svc.cluster.local"
-      # Ollama direct (host via Colima gateway)
-      OLLAMA_BASE_URL: "http://192.168.5.2:11434"
+      # Ollama direct (host via Docker Desktop gateway — host.k3d.internal)
+      OLLAMA_BASE_URL: "http://192.168.65.254:11434"
       # Plane project management (in-cluster)
       PLANE_API_URL: "http://genai-plane-api.genai.svc.cluster.local:8000"
       # GitLab (in-cluster)
@@ -66,7 +66,7 @@ workflowPromotion:
     mlflow: "http://genai-mlflow.genai.svc.cluster.local"
     litellm: "http://genai-agentgateway-llm.genai.svc.cluster.local:4000"
     n8n: "http://genai-n8n.genai.svc.cluster.local:5678"
-    ollama: "http://192.168.5.2:11434"
+    ollama: "http://192.168.65.254:11434"
   # Webhook-bearing workflows to activate (sub-workflows must NOT be activated)
   activateWorkflows:
     - prompt-crud-v1

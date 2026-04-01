@@ -71,7 +71,7 @@ tasks:
       - |
         for node in $(docker ps --filter name=k3d-{{.K3D_CLUSTER}} --format '{{`{{.Names}}`}}'); do
           # Fallback DNS — 8.8.8.8 ensures external resolution works even if
-          # Colima VM resolver (192.168.5.2) is unavailable (Tailscale not connected, etc)
+          # Docker Desktop resolver (192.168.65.254) is unavailable (Tailscale not connected, etc)
           docker exec $node sh -c 'grep -q "8.8.8.8" /etc/resolv.conf || echo "nameserver 8.8.8.8" >> /etc/resolv.conf'
         done
 

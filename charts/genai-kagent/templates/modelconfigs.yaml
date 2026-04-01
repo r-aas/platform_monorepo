@@ -1,7 +1,7 @@
 # ═══════════════════════════════════════════════════════
 # ModelConfig CRDs — direct Ollama (no LiteLLM proxy)
-# kagent agents talk to Ollama at 192.168.5.2:11434
-# (Colima VM gateway to Mac host running Ollama natively)
+# kagent agents talk to Ollama at 192.168.65.254:11434
+# (Docker Desktop host gateway — host.k3d.internal — to Mac host running Ollama natively)
 # ═══════════════════════════════════════════════════════
 ---
 apiVersion: kagent.dev/v1alpha2
@@ -15,7 +15,7 @@ spec:
   provider: Ollama
   model: glm-4.7-flash
   ollama:
-    host: "http://192.168.5.2:11434"
+    host: "http://192.168.65.254:11434"
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: ModelConfig
@@ -28,4 +28,4 @@ spec:
   provider: Ollama
   model: nomic-embed-text
   ollama:
-    host: "http://192.168.5.2:11434"
+    host: "http://192.168.65.254:11434"
