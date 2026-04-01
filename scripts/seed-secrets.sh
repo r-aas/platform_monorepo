@@ -136,6 +136,10 @@ create_secret genai kagent-litellm \
   --from-literal=LITELLM_MASTER_KEY="${LITELLM_API_KEY}" \
   --from-literal=OPENAI_API_KEY="sk-litellm-mewtwo-local"
 
+# GitLab root password
+create_secret platform gitlab-root-password \
+  --from-literal=password="${GITLAB_ROOT_PASSWORD:-changeme123}"
+
 # GitLab PAT (for sandbox git clone, MCP server, etc.)
 create_secret genai gitlab-pat \
   --from-literal=token="${GITLAB_PAT}" \
@@ -148,10 +152,24 @@ create_secret genai genai-mcp-gitlab-secret \
 create_secret genai plane-api-token \
   --from-literal=token="${PLANE_API_TOKEN}"
 
-# Langfuse
+# Langfuse API keys
 create_secret genai langfuse-api-keys \
   --from-literal=public-key="${LANGFUSE_PUBLIC_KEY}" \
   --from-literal=secret-key="${LANGFUSE_SECRET_KEY}"
+
+# Langfuse crypto secrets (salt, encryption, nextauth)
+create_secret genai langfuse-crypto \
+  --from-literal=salt="${LANGFUSE_SALT:-$(openssl rand -base64 32)}" \
+  --from-literal=encryption-key="${LANGFUSE_ENCRYPTION_KEY:-$(openssl rand -hex 32)}" \
+  --from-literal=nextauth-secret="${LANGFUSE_NEXTAUTH_SECRET:-$(openssl rand -base64 32)}"
+
+# Langfuse ClickHouse
+create_secret genai langfuse-clickhouse \
+  --from-literal=password="${LANGFUSE_CLICKHOUSE_PASSWORD:-$(generate_password)}"
+
+# Langfuse Redis/Valkey
+create_secret genai langfuse-redis \
+  --from-literal=password="${LANGFUSE_REDIS_PASSWORD:-$(generate_password)}"
 
 
 # ODD Platform PostgreSQL (uses shared pgvector instance)

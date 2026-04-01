@@ -1,0 +1,66 @@
+# GitLab CI/CD Catalog Component: agent-eval-gate
+# Graph: G2 (Evaluate), G3 (Promote)
+# Runs benchmark against MLflow baseline. Blocks promotion if below threshold.
+#
+# Usage:
+#   include:
+#     - component: $CI_SERVER_FQDN/root/platform/ci-catalog/agent-eval-gate@main
+#       inputs:
+#         agent_name: mlops
+#         threshold: "0.85"
+
+spec:
+  inputs:
+    agent_name:
+      description: Agent to evaluate
+      type: string
+    threshold:
+      description: Minimum pass_rate to proceed (0.0-1.0)
+      type: string
+      default: "0.85"
+    baseline_source:
+      description: MLflow experiment for baseline comparison
+      type: string
+      default: __baselines
+    eval_dataset:
+      description: Path to eval dataset JSONL
+      type: string
+      default: data/benchmarks/$[[ inputs.agent_name ]].smoke.jsonl
+    timeout:
+      description: Max eval duration in seconds
+      type: string
+      default: "300"
+
+---
+
+agent-eval-gate:
+  stage: test
+  image: ghcr.io/r-aas/platform-ci:latest
+  timeout: 10 minutes
+  variables:
+    MLFLOW_TRACKING_URI: http://genai-mlflow.genai.svc.cluster.local:5000
+  script:
+    - echo "Evaluating agent $[[ inputs.agent_name ]] (threshold=$[[ inputs.threshold ]])..."
+    # Run benchmark
+    - |
+      uv run scripts/agent-benchmark.py \
+        --agent $[[ inputs.agent_name ]] \
+        --dataset $[[ inputs.eval_dataset ]] \
+        --timeout $[[ inputs.timeout ]]
+    # Check against threshold
+    - |
+      uv run scripts/eval-gate.py \
+        --agent $[[ inputs.agent_name ]] \
+        --threshold $[[ inputs.threshold ]] \
+        --baseline-experiment $[[ inputs.baseline_source ]] \
+        --gate
+    # Log result to MLflow
+    - echo "Eval gate passed for $[[ inputs.agent_name ]]"
+  rules:
+    - changes:
+        - agents/$[[ inputs.agent_name ]]/**
+        - charts/genai-kagent/templates/agents.yaml
+  artifacts:
+    reports:
+      junit: eval-results.xml
+    when: always

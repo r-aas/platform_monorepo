@@ -23,7 +23,6 @@ err() { echo "✗ $*" >&2; exit 1; }
 PLATFORM_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 IMAGES=(
   "agent-gateway:latest:${PLATFORM_DIR}/services/agent-gateway/Dockerfile:${PLATFORM_DIR}"
-  "litellm-mlflow:latest:${PLATFORM_DIR}/images/litellm/Dockerfile:${PLATFORM_DIR}/images/litellm"
   "mcp-kubernetes:latest:${PLATFORM_DIR}/images/mcp-kubernetes/Dockerfile:${PLATFORM_DIR}/images/mcp-kubernetes"
   "mcp-plane:latest:${PLATFORM_DIR}/images/mcp-plane/Dockerfile:${PLATFORM_DIR}/images/mcp-plane"
   "mcp-mlflow:latest:${PLATFORM_DIR}/images/mcp-mlflow/Dockerfile:${PLATFORM_DIR}/images/mcp-mlflow"

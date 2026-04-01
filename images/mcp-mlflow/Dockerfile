@@ -10,9 +10,13 @@
 #
 # Env: MLFLOW_TRACKING_URI, PORT (default 3000)
 ###############################################################################
-FROM python:3.12-slim
+# python:3.12-slim
+FROM python:3.12-slim@sha256:3d5ed973e45820f5ba5e46bd065bd88b3a504ff0724d85980dcd05eab361fcf4
 
-RUN pip install --no-cache-dir mlflow-mcp mcp-proxy
+RUN pip install --no-cache-dir mlflow-mcp==0.2.0 mcp-proxy==0.4.0
+
+RUN adduser --disabled-password --gecos '' --uid 1001 appuser
+USER 1001
 
 ENV PORT=3000
 EXPOSE 3000

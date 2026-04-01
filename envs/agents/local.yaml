@@ -6,12 +6,12 @@ gateway:
   internal: http://genai-agent-gateway.genai.svc.cluster.local:8000
 
 llm:
-  base_url: http://genai-litellm.genai.svc.cluster.local:4000/v1
-  api_key_ref: secret/genai/litellm-api-key
+  base_url: http://genai-agentgateway-llm.genai.svc.cluster.local:4000/v1
+  api_key_ref: ""
   default_model: qwen2.5:14b
   provider: openai-compatible
 
-mcp_registry: http://genai-litellm.genai.svc.cluster.local:4000
+mcp_registry: http://genai-agentgateway-mcp.genai.svc.cluster.local:8080
 
 capabilities:
   experiment-tracking:

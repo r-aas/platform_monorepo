@@ -1,4 +1,4 @@
-<!-- status: planned -->
+<!-- status: in-progress -->
 # 032 — kagent as Central AgentOps Orchestrator
 
 Supersedes: 031 (kagent + kmcp native integration), extends 029 (platform consolidation).

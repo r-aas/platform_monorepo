@@ -36,8 +36,8 @@ import requests
 
 EVAL_URL = os.getenv("EVAL_URL", "http://n8n.platform.127.0.0.1.nip.io/webhook/eval")
 CHAT_URL = os.getenv("CHAT_URL", "http://gateway.platform.127.0.0.1.nip.io/v1/chat/completions")
-LITELLM_URL = os.getenv("LITELLM_URL", "http://litellm.platform.127.0.0.1.nip.io/v1/chat/completions")
-LITELLM_KEY = os.getenv("LITELLM_API_KEY", os.getenv("LITELLM_KEY", "sk-litellm-mewtwo-local"))
+LITELLM_URL = os.getenv("LITELLM_URL", "http://gateway.platform.127.0.0.1.nip.io/v1/chat/completions")
+LITELLM_KEY = os.getenv("LITELLM_API_KEY", os.getenv("LITELLM_KEY", "not-needed"))
 MLFLOW_URL = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow.platform.127.0.0.1.nip.io")
 BENCHMARK_DIR = Path(__file__).parent.parent / "data" / "benchmarks"
 

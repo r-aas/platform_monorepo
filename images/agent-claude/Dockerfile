@@ -7,7 +7,8 @@
 # 4. Outputs result as JSON on last line of stdout
 #
 # Build: docker build -t agent-claude:latest images/agent-claude/
-FROM node:22-slim
+# node:22-slim
+FROM node:22-slim@sha256:80fdb3f57c815e1b638d221f30a826823467c4a56c8f6a8d7aa091cd9b1675ea
 
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -15,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Claude Code CLI globally
-RUN npm install -g @anthropic-ai/claude-code
+RUN npm install -g @anthropic-ai/claude-code@1.0.33
 
 # Non-root user with writable workspace
 RUN useradd -m -s /bin/bash agent \

@@ -1,0 +1,52 @@
+# ═══════════════════════════════════════════════════════
+# Gateway + HTTPRoutes — LLM proxy data plane
+#
+# Separate Gateway on port 4000 for LLM traffic.
+# Drop-in replacement for LiteLLM: consumers just change
+# the service name in their base URL.
+#
+# Routes /v1/chat/completions, /v1/models, /v1/embeddings
+# to the Ollama AI backend via agentgateway (Rust).
+# ═══════════════════════════════════════════════════════
+{{- if .Values.llm.enabled }}
+{{- $ns := .Release.Namespace }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ include "agentgateway.fullname" .Subcharts.agentgateway }}-llm
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: genai-agentgateway
+spec:
+  gatewayClassName: agentgateway
+  listeners:
+  - name: llm-http
+    protocol: HTTP
+    port: 4000
+    allowedRoutes:
+      namespaces:
+        from: Same
+---
+# Route: /v1/* → Ollama via agentgateway
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: llm-route
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: genai-agentgateway
+spec:
+  parentRefs:
+  - name: {{ include "agentgateway.fullname" .Subcharts.agentgateway }}-llm
+    namespace: {{ $ns }}
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /v1
+    backendRefs:
+    - name: llm-ollama
+      group: agentgateway.dev
+      kind: AgentgatewayBackend
+{{- end }}

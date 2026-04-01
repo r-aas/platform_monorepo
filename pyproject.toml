@@ -8,6 +8,7 @@ dependencies = [
     "litellm>=1.81.16",
     "mlflow>=3.5",
     "openai>=2.24.0",
+    "youtube-transcript-api>=1.0.0",
 ]
 
 [dependency-groups]

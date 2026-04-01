@@ -3,16 +3,20 @@ langfuse:
   # Core Langfuse settings
   # ──────────────────────────────────────────────
   langfuse:
+    # Crypto secrets from k8s secret (seed-secrets.sh creates langfuse-crypto)
     salt:
-      value: "ahTzeDP8SkIKFL9424mgDx4OYAGikhMIzOGKUVR28rg="
+      existingSecret: langfuse-crypto
+      existingSecretKey: salt
 
     encryptionKey:
-      value: "3783e3a23f06d9d0fd74c3255cf4f3c4aadf61b674d53f0ef8de68952f61df29"
+      existingSecret: langfuse-crypto
+      existingSecretKey: encryption-key
 
     nextauth:
       url: http://langfuse.platform.127.0.0.1.nip.io
       secret:
-        value: "E7Nt6J/dPwUQUCqyH56Bom4yudMzNpbFtsescvXGE3E="
+        existingSecret: langfuse-crypto
+        existingSecretKey: nextauth-secret
 
     features:
       telemetryEnabled: false
@@ -80,7 +84,8 @@ langfuse:
     deploy: true
     auth:
       username: default
-      password: "clickhouse-langfuse"
+      existingSecret: langfuse-clickhouse
+      existingSecretPasswordKey: password
     # Minimal for local dev — single node, no HA
     replicaCount: 1
     shards: 1
@@ -100,7 +105,8 @@ langfuse:
   redis:
     deploy: true
     auth:
-      password: "valkey-langfuse"
+      existingSecret: langfuse-redis
+      existingSecretPasswordKey: password
     architecture: standalone
     image:
       repository: bitnamilegacy/valkey

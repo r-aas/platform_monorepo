@@ -1,5 +1,8 @@
-<!-- status: planned -->
+<!-- status: superseded -->
 # 031 — kagent + kmcp Native Integration
+
+> **Superseded by 032 (kagent central architecture) and 033 (agentops governance).**
+> Retained for reference. Component interfaces now live in `data/architecture/components.yaml`.
 
 ## Problem
 

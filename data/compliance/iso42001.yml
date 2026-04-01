@@ -1,0 +1,140 @@
+# ISO/IEC 42001:2023 Annex A → AgentOps Policy Compliance Map
+#
+# Format follows rulehub schema (schema_version 1).
+# Each section maps an Annex A domain to enforceable policy checks.
+# Control URNs reference ciso-assistant iso42001-2023.yaml definitions.
+#
+# Profiles: solo (individual architect), enterprise (team/org).
+# Solo skips organizational controls marked [enterprise].
+
+schema_version: 1
+regulation: "ISO/IEC 42001:2023"
+version: "v1"
+
+sections:
+  "A.2 Policies for AI":
+    title: AI policy documented and reviewed
+    controls: [A.2.2, A.2.3, A.2.4]
+    enforcement: audit
+    profile: enterprise
+    notes: >
+      Solo: the AgentOps skill IS the policy. Enterprise: formal document,
+      reviewed quarterly, aligned with org policies.
+
+  "A.3 Internal Organization":
+    title: Roles, responsibilities, reporting channels
+    controls: [A.3.2, A.3.3]
+    policies:
+      - agentops.P-031_roles-defined  # [enterprise]
+    enforcement: static
+    profile: enterprise
+    notes: >
+      Solo: you are every role. Enterprise: RACI matrix, escalation paths.
+
+  "A.4 Resources for AI Systems":
+    title: Inventory, data, tooling, compute, human resources
+    controls: [A.4.2, A.4.3, A.4.4, A.4.5, A.4.6]
+    policies:
+      - agentops.P-001_spec-exists       # A.4.2 inventory
+      - agentops.P-003_toolnames-explicit # A.4.4 tooling
+    enforcement: static
+    notes: Agent spec declares tools, model, env binding = resource inventory.
+
+  "A.5 Assessing Impacts":
+    title: Impact assessment process and documentation
+    controls: [A.5.2, A.5.3, A.5.4, A.5.5]
+    policies:
+      - agentops.P-040_impact-assessed  # [enterprise]
+    enforcement: audit
+    profile: enterprise
+    notes: >
+      Solo: lightweight notes in spec metadata. Enterprise: formal impact
+      assessment per agent, reviewed by compliance.
+
+  "A.6 AI System Life Cycle":
+    title: Development, V&V, deployment, operation, documentation, logging
+    controls: [A.6.1.2, A.6.1.3, A.6.2.2, A.6.2.3, A.6.2.4, A.6.2.5, A.6.2.6, A.6.2.7, A.6.2.8]
+    policies:
+      - agentops.P-001_spec-exists         # A.6.2.2 requirements
+      - agentops.P-002_no-inline-secrets   # A.6.2.3 design docs
+      - agentops.P-011_prompt-versioned    # A.6.2.7 tech docs
+      - agentops.P-012_eval-run-exists     # A.6.2.4 V&V
+      - agentops.P-020_eval-threshold      # A.6.2.4 V&V quality
+      - agentops.P-021_ci-pipeline         # A.6.2.5 deployment
+      - agentops.P-030_promoted            # A.6.2.5/6 deploy + operate
+      - agentops.P-032_observability       # A.6.2.8 event logging
+    enforcement: mixed
+    notes: Core lifecycle domain. Maps 1:1 to AgentOps decision graphs 1-7.
+
+  "A.7 Data for AI Systems":
+    title: Data management, acquisition, quality, provenance, preparation
+    controls: [A.7.2, A.7.3, A.7.4, A.7.5, A.7.6]
+    policies:
+      - agentops.P-010_dataset-exists      # A.7.2/A.7.4
+      - agentops.P-041_data-provenance     # A.7.5
+    enforcement: mixed
+    notes: Eval datasets are the primary data artifact for agents.
+
+  "A.8 Information for Interested Parties":
+    title: User docs, explainability, external reporting, incident comms
+    controls: [A.8.2, A.8.3, A.8.4, A.8.5]
+    policies:
+      - agentops.P-006_purpose-documented  # A.8.2 user info
+      - agentops.P-032_observability       # A.8.3 explainability
+    enforcement: static
+    notes: >
+      A.8.4 (incident comms) and A.8.5 (interested parties) are organizational
+      controls — automated via Graph 6 incident triggers, not policy checks.
+
+  "A.9 Use of AI Systems":
+    title: Responsible use, human oversight, intended use
+    controls: [A.9.2, A.9.3, A.9.4]
+    policies:
+      - agentops.P-003_toolnames-explicit  # A.9.2 intended boundaries
+      - agentops.P-004_tool-budget         # A.9.2 scope limits
+      - agentops.P-005_guardrails-set      # A.9.3 human oversight (basic)
+      - agentops.P-006_purpose-documented  # A.9.4 intended use
+      - agentops.P-022_human-oversight     # A.9.3 approval gates
+    enforcement: static
+    notes: Most automatable domain. Agent spec encodes intended use boundaries.
+
+  "A.10 Third-Party and Customer Relationships":
+    title: Responsibility allocation, supplier management, customer needs
+    controls: [A.10.2, A.10.3, A.10.4]
+    policies:
+      - agentops.P-023_third-party-declared  # [enterprise]
+    enforcement: static
+    profile: enterprise
+    notes: >
+      Solo: deps in spec is enough. Enterprise: supplier assessment, SLA
+      monitoring, formal responsibility allocation.
+
+# ── Related Artifacts ──────────────────────────────────────────────────
+#
+# Taxonomy:           data/compliance/taxonomy.yaml (Clause 4.3 scope)
+# Component registry: data/architecture/components.yaml (deployed inventory)
+# Policy engine:      scripts/agentops-policy.py (18 policies, solo/enterprise)
+# Spec:               specs/033-agentops-governance/spec.md
+# OWASP map:          data/compliance/owasp-agentic-top10.yml (planned)
+# NIST overlay:       data/compliance/nist-cosais.yml (planned)
+
+# ── Coverage Summary ────────────────────────────────────────────────────
+#
+# Total Annex A controls: 38 (9 domains, 29 leaf controls + 9 domain headers)
+# Assessable controls: 29
+# Mapped to policies: 18 (62% of assessable)
+# Automated (static+runtime): 15
+# Manual attestation needed: 3 (audit enforcement)
+# Enterprise-only: 4 (P-023, P-031, P-040 + A.2 domain)
+# Target: 75%+ after OWASP integration (spec 033 Phase 2)
+#
+# Unmapped controls requiring organizational attestation:
+#   A.2.2, A.2.3, A.2.4 — AI policy docs
+#   A.3.3 — Reporting channels
+#   A.4.3, A.4.5, A.4.6 — Data/compute/human resources
+#   A.5.4, A.5.5 — Individual/societal impact
+#   A.6.1.2, A.6.1.3 — Responsible development objectives
+#   A.7.3, A.7.6 — Data acquisition/preparation
+#   A.8.4, A.8.5 — Incident comms, stakeholder info
+#   A.9.4 — Intended use (partially covered by P-006)
+#   A.10.4 — Customer relationships

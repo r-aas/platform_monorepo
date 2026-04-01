@@ -1,0 +1,61 @@
+# Example: Agent lifecycle pipeline
+# Composes CI/CD Catalog components for a full GitOps × AgentOps flow.
+# Copy and customize per-agent, or use as the repo-level pipeline.
+
+stages:
+  - lint
+  - test
+  - deploy
+
+# ── Agent Change Pipeline ──────────────────────────────────────────────
+
+include:
+  # G1: Define — validate agent spec
+  - component: $CI_SERVER_FQDN/root/platform/ci-catalog/agent-lint@main
+    inputs:
+      agent_name: $AGENT_NAME
+      strict: "true"
+
+  # G2: Evaluate — benchmark against MLflow baseline
+  - component: $CI_SERVER_FQDN/root/platform/ci-catalog/agent-eval-gate@main
+    inputs:
+      agent_name: $AGENT_NAME
+      threshold: "0.85"
+
+  # G5/G7: Compliance — taxonomy-scoped policy check
+  - component: $CI_SERVER_FQDN/root/platform/ci-catalog/compliance-check@main
+    inputs:
+      profile: solo
+      agent: $AGENT_NAME
+
+  # G3: Promote — gate for staging
+  - component: $CI_SERVER_FQDN/root/platform/ci-catalog/promotion-gate@main
+    inputs:
+      agent_name: $AGENT_NAME
+      source_env: dev
+      target_env: staging
+
+variables:
+  AGENT_NAME: ""  # Set per-pipeline or via trigger
+
+# ── MCP Server Pipeline (simpler) ─────────────────────────────────────
+# Uncomment and remove agent includes above for MCP server repos:
+#
+# include:
+#   - component: $CI_SERVER_FQDN/root/platform/ci-catalog/mcp-server-deploy@main
+#     inputs:
+#       server_name: mcp-kubernetes
+#       transport: http
+#   - component: $CI_SERVER_FQDN/root/platform/ci-catalog/compliance-check@main
+#     inputs:
+#       type: mcp_server
+
+# ── Nightly Audit ──────────────────────────────────────────────────────
+# Scheduled pipeline for Graph 7 (Audit):
+#
+# include:
+#   - component: $CI_SERVER_FQDN/root/platform/ci-catalog/compliance-check@main
+#     inputs:
+#       standard: all
+#       profile: solo
+#       log_to_mlflow: "true"

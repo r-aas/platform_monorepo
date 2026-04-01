@@ -1,2 +1,3 @@
 secrets:
-  litellmApiKey: "sk-litellm-mewtwo-local"
+  # agentgateway LLM proxy doesn't require auth for local Ollama
+  litellmApiKey: "not-needed"

@@ -35,7 +35,7 @@ services:
     namespace: genai
     host: litellm.genai
     backend:
-      service: genai-litellm
+      service: genai-agentgateway-llm
       port: 4000
 
   - name: minio

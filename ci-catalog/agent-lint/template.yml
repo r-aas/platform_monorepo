@@ -1,0 +1,53 @@
+# GitLab CI/CD Catalog Component: agent-lint
+# Graph: G1 (Define), G2 (Evaluate)
+# Validates agent CRD specs: schema, tool count, secrets, annotations.
+#
+# Usage:
+#   include:
+#     - component: $CI_SERVER_FQDN/root/platform/ci-catalog/agent-lint@main
+#       inputs:
+#         agent_name: mlops
+#         strict: "true"
+
+spec:
+  inputs:
+    agent_name:
+      description: Name of the agent to lint (matches agents/{name}/ and chart templates)
+      type: string
+    strict:
+      description: "Enforce strict mode: tool count ≤ 20, purpose annotation required"
+      type: string
+      default: "false"
+    chart_path:
+      description: Path to kagent Helm chart
+      type: string
+      default: charts/genai-kagent
+
+---
+
+agent-lint:
+  stage: lint
+  image: ghcr.io/r-aas/platform-ci:latest
+  script:
+    - echo "Linting agent $[[ inputs.agent_name ]]..."
+    # CRD schema validation (dry-run)
+    - |
+      helm template $[[ inputs.chart_path ]] \
+        --set global.agentName=$[[ inputs.agent_name ]] \
+        --show-only templates/agents.yaml 2>/dev/null | \
+        kubectl apply --dry-run=client -f - || exit 1
+    # Tool count check
+    - |
+      if [ "$[[ inputs.strict ]]" = "true" ]; then
+        uv run scripts/agent-lint.py --agent $[[ inputs.agent_name ]] --strict
+      else
+        uv run scripts/agent-lint.py --agent $[[ inputs.agent_name ]]
+      fi
+    # No inline secrets
+    - uv run scripts/agentops-policy.py --agent $[[ inputs.agent_name ]] --policy P-002 --gate
+    # Prompt exists and is non-trivial
+    - uv run scripts/agentops-policy.py --agent $[[ inputs.agent_name ]] --policy P-011 --gate
+  rules:
+    - changes:
+        - agents/$[[ inputs.agent_name ]]/**
+        - $[[ inputs.chart_path ]]/templates/agents.yaml

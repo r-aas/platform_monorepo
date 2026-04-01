@@ -26,3 +26,45 @@ spec:
             name: {{ include "agentgateway.fullname" .Subcharts.agentgateway }}-mcp
             port:
               number: 8080
+{{- if .Values.llm.enabled }}
+---
+# ═══════════════════════════════════════════════════════
+# Ingress — LLM proxy under litellm.platform.127.0.0.1.nip.io
+# Backwards-compatible hostname so existing bookmarks/tools work.
+# Also exposed on gateway.platform host at /v1/* path.
+# ═══════════════════════════════════════════════════════
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "agentgateway.fullname" .Subcharts.agentgateway }}-llm
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/part-of: genai-agentgateway
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: litellm.platform.127.0.0.1.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "agentgateway.fullname" .Subcharts.agentgateway }}-llm
+            port:
+              number: 4000
+  - host: gateway.platform.127.0.0.1.nip.io
+    http:
+      paths:
+      - path: /v1
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "agentgateway.fullname" .Subcharts.agentgateway }}-llm
+            port:
+              number: 4000
+{{- end }}

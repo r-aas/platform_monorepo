@@ -40,8 +40,8 @@ spec:
             - name: GITLAB_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "gitlab-ce.fullname" . }}-initial-password
-                  key: initial_root_password
+                  name: {{ .Values.existingRootPasswordSecret | default (printf "%s-initial-password" (include "gitlab-ce.fullname" .)) }}
+                  key: {{ if .Values.existingRootPasswordSecret }}password{{ else }}initial_root_password{{ end }}
           startupProbe:
             httpGet:
               path: /-/readiness

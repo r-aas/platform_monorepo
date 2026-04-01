@@ -1,0 +1,29 @@
+# ═══════════════════════════════════════════════════════
+# AgentgatewayBackend — LLM Gateway (replaces LiteLLM)
+#
+# Routes OpenAI-compatible requests to Ollama on Mac host.
+# Eliminates LiteLLM from the supply chain — one less
+# Python dependency, one fewer attack surface.
+#
+# Agentgateway (Rust) handles:
+#   - OpenAI-compatible /v1/chat/completions
+#   - Streaming (SSE)
+#   - Model aliasing (gpt-4o → glm-4.7-flash)
+#   - Health-based failover
+#   - CEL policy enforcement
+# ═══════════════════════════════════════════════════════
+{{- $ns := .Release.Namespace }}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: llm-ollama
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: genai-agentgateway
+spec:
+  ai:
+    provider:
+      openai: {}
+      host: {{ .Values.llm.ollamaHost | default "192.168.5.2" }}
+      port: {{ .Values.llm.ollamaPort | default 11434 }}

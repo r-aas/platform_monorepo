@@ -8,12 +8,16 @@
 #
 # Env: N8N_BASE_URL, N8N_API_KEY, PORT (default 3000)
 ###############################################################################
-FROM node:22-slim
+# node:22-slim
+FROM node:22-slim@sha256:80fdb3f57c815e1b638d221f30a826823467c4a56c8f6a8d7aa091cd9b1675ea
 
 RUN apt-get update -qq && apt-get install -y -qq python3 python3-pip > /dev/null \
-    && npm install -g n8n-mcp \
-    && pip install --no-cache-dir --break-system-packages mcp-proxy \
+    && npm install -g n8n-mcp@0.1.3 \
+    && pip install --no-cache-dir --break-system-packages mcp-proxy==0.4.0 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN adduser --disabled-password --gecos '' --uid 1001 appuser
+USER 1001
 
 ENV PORT=3000
 EXPOSE 3000

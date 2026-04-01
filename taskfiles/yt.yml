@@ -112,6 +112,12 @@ tasks:
             LIMIT 20;
           "'
 
+  transcript:
+    desc: "Fetch and page through a YouTube transcript"
+    dir: "{{.PLATFORM_DIR}}"
+    cmds:
+      - uv run python scripts/yt-transcript.py {{.CLI_ARGS}}
+
   cookies:
     desc: "Export browser cookies for yt-dlp (requires browser-cookie3)"
     cmds:

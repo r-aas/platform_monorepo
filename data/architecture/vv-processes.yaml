@@ -1,0 +1,217 @@
+# Verification & Validation Processes per System Type
+#
+# Each taxonomy type (from data/compliance/taxonomy.yaml) has a distinct V&V process.
+# Skills reference these by type. The policy engine enforces them.
+# ISO 42001 A.6.2.4 (V&V) requires documented verification for each AI system.
+#
+# Convention:
+#   requirements: what must be true before the system is built
+#   verification: did we build it right? (static checks, tests)
+#   validation: did we build the right thing? (eval, user acceptance)
+#   evidence: where the proof lives (for audit trail)
+
+schema_version: 1
+iso_ref: "ISO/IEC 42001:2023 A.6.2.4 (Verification and Validation)"
+
+processes:
+
+  agent:
+    description: Full lifecycle V&V for autonomous agent systems
+    skill_refs: [kagent-agents, agentops, tdd-orchestrator]
+
+    requirements:
+      template: |
+        - Purpose statement (why this agent exists, what problem it solves)
+        - System type: declarative | autonomous | orchestrator
+        - Tool inventory (explicit toolNames, ≤20 per agent)
+        - Guardrails (what the agent must NOT do)
+        - Success criteria (measurable outcomes)
+        - Eval dataset (≥10 cases for smoke, ≥50 for full)
+        - Observability requirements (trace level, metrics)
+        - Human oversight model (approval gates, escalation)
+      source: agent spec YAML (agents/{name}/agent.yaml)
+      policies: [P-001, P-003, P-004, P-005, P-006]
+
+    verification:
+      static:
+        - CRD schema validation (kubeval + dry-run)
+        - Tool count ≤ 20 (agent-lint.py --strict)
+        - No inline secrets (P-002)
+        - Prompt versioned in experiment tracker (P-011)
+        - All toolNames resolve to RemoteMCPServer resources
+        - System prompt length > 100 chars, no TODO markers
+      runtime:
+        - Agent pod starts without CrashLoopBackOff
+        - A2A invocation returns valid response
+        - At least 1 tool call succeeds
+        - OTEL traces emitted (when W3 complete)
+      evidence:
+        - GitLab CI pipeline logs
+        - kubectl describe agent output
+        - Langfuse trace IDs
+
+    validation:
+      eval_gate:
+        - Benchmark vs MLflow baseline (pass_rate ≥ 85% for staging, ≥ 90% for prod)
+        - No metric regression > 5% vs main branch
+        - eval-triad scoring: correctness + helpfulness + safety
+      soak:
+        - Agent completes ≥ 2 scheduled cycles in staging without error
+        - Error rate < 5% over soak period
+      evidence:
+        - MLflow experiment runs with metrics
+        - Langfuse session scores
+        - Staging pod logs (no errors)
+
+  mcp_server:
+    description: Lightweight V&V for MCP tool providers
+    skill_refs: [kmcp-servers, mcp-development]
+
+    requirements:
+      template: |
+        - Purpose (what backend it wraps, what tools it exposes)
+        - Tool inventory (tool names and descriptions)
+        - Auth mechanism (secret name, key format)
+        - Resource limits (CPU, memory)
+        - Transport type (StreamableHTTP, SSE, stdio)
+      source: MCPServer CRD or Helm values
+      policies: [P-003, P-006]
+
+    verification:
+      static:
+        - Image exists and is ARM64-compatible
+        - MCPServer CRD schema valid
+        - Secret referenced exists in namespace
+      runtime:
+        - Pod starts, health endpoint returns 200
+        - tools/list returns expected tool count
+        - At least 1 tool/call succeeds
+        - RemoteMCPServer auto-created by kmcp
+      evidence:
+        - kubectl get mcpserver status conditions (4-phase: Accepted → ResolvedRefs → Programmed → Ready)
+        - agentgateway /mcp/{name} returns tools
+
+    validation:
+      # MCP servers don't have eval gates — health is enough
+      health_only: true
+      evidence:
+        - smoke test output (task smoke)
+
+  llm_gateway:
+    description: V&V for LLM proxy/routing layer
+    skill_refs: [platform-helm-authoring]
+
+    requirements:
+      template: |
+        - Models served (names, providers, routing rules)
+        - Auth mechanism (API keys, per-key access control)
+        - Logging targets (Langfuse, MLflow)
+        - Rate limits and token budgets
+      source: LiteLLM config YAML + Helm values
+      policies: [P-002, P-032]
+
+    verification:
+      static:
+        - No secrets in config files
+        - All model names resolve to valid backends
+      runtime:
+        - /v1/models returns expected model list
+        - /v1/chat/completions succeeds with test prompt
+        - /v1/embeddings succeeds with test input
+        - Logging callback fires (traces in Langfuse)
+      evidence:
+        - curl output from health + model endpoints
+        - Langfuse traces showing LLM calls
+
+    validation:
+      health_only: true
+      latency_check: "p95 < 5s for simple completion"
+      evidence:
+        - benchmark-smoke output
+
+  eval_pipeline:
+    description: V&V for the evaluation system itself
+    skill_refs: [agentops, tdd-orchestrator]
+
+    requirements:
+      template: |
+        - What it evaluates (agent, prompt, tool)
+        - Dataset requirements (format, size, domains)
+        - Scoring method (LLM judge, exact match, human)
+        - Baseline source (MLflow experiment ID)
+        - Threshold criteria (pass_rate, regression delta)
+      source: benchmark config + dataset JSONL
+      policies: [P-010, P-012, P-020, P-041]
+
+    verification:
+      static:
+        - Dataset exists and validates against schema
+        - Scoring script runs without error on sample
+        - MLflow experiment exists for baseline storage
+      runtime:
+        - Full eval run completes within timeout
+        - Scores logged to MLflow
+        - Results reproducible (run twice, same scores ± noise)
+      evidence:
+        - MLflow experiment runs
+        - Dataset JSONL files in data/benchmarks/
+
+    validation:
+      # Eval pipelines validate themselves via reproducibility
+      reproducibility_check: "Two runs on same data produce scores within 5%"
+      evidence:
+        - Paired MLflow runs showing consistency
+
+  artifact_store:
+    description: V&V for storage and registry components
+    skill_refs: [platform-helm-authoring]
+
+    requirements:
+      template: |
+        - What it stores (models, datasets, artifacts, agent specs)
+        - Access control (who can read/write)
+        - Retention policy
+        - Backup strategy
+      source: Helm values + bucket/database config
+      policies: [P-002, P-041]
+
+    verification:
+      static:
+        - No secrets in config
+        - Storage backend accessible
+      runtime:
+        - Write + read roundtrip succeeds
+        - API returns expected data
+      evidence:
+        - curl output from API endpoints
+
+    validation:
+      health_only: true
+
+  observability:
+    description: V&V for trace/metric collection systems
+    skill_refs: [platform-helm-authoring]
+
+    requirements:
+      template: |
+        - What it collects (traces, metrics, logs)
+        - Ingestion endpoints (OTEL, custom API)
+        - Retention policy
+        - Alert rules
+      source: Helm values + collector config
+      policies: [P-032]
+
+    verification:
+      static:
+        - Ingestion endpoint configured
+        - Storage backend accessible
+      runtime:
+        - Send test trace → appears in UI
+        - Query API returns recent data
+      evidence:
+        - Langfuse UI showing traces
+        - API query results
+
+    validation:
+      health_only: true
+      completeness_check: "All agent invocations produce traces"

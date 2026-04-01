@@ -1,0 +1,82 @@
+# GitLab CI/CD Catalog Component: mcp-server-deploy
+# Graph: G1 (Define)
+# Validates MCPServer CRD, checks image, verifies health after deploy.
+#
+# Usage:
+#   include:
+#     - component: $CI_SERVER_FQDN/root/platform/ci-catalog/mcp-server-deploy@main
+#       inputs:
+#         server_name: mcp-kubernetes
+#         transport: http
+
+spec:
+  inputs:
+    server_name:
+      description: MCPServer name (e.g., mcp-kubernetes)
+      type: string
+    image:
+      description: Container image for the MCP server
+      type: string
+      default: ""
+    transport:
+      description: MCP transport type (http, sse, stdio)
+      type: string
+      default: http
+    namespace:
+      description: Target namespace
+      type: string
+      default: genai
+
+---
+
+mcp-server-validate:
+  stage: lint
+  image: ghcr.io/r-aas/platform-ci:latest
+  script:
+    - echo "Validating MCPServer $[[ inputs.server_name ]]..."
+    # CRD schema validation
+    - |
+      helm template charts/genai-kagent \
+        --show-only templates/mcpservers.yaml 2>/dev/null | \
+        yq eval "select(.metadata.name == \"$[[ inputs.server_name ]]\")" - | \
+        kubectl apply --dry-run=client -f - || exit 1
+    # Secret referenced exists
+    - |
+      SECRET_NAME=$(helm template charts/genai-kagent \
+        --show-only templates/mcpservers.yaml 2>/dev/null | \
+        yq eval "select(.metadata.name == \"$[[ inputs.server_name ]]\") | .spec.deployment.secretRefs[0].name" -)
+      if [ "$SECRET_NAME" != "null" ] && [ -n "$SECRET_NAME" ]; then
+        kubectl get secret "$SECRET_NAME" -n $[[ inputs.namespace ]] || \
+          echo "WARNING: Secret $SECRET_NAME not found — MCPServer will not reach Ready"
+      fi
+    # Taxonomy-scoped compliance
+    - uv run scripts/agentops-policy.py --type mcp_server --gate
+  rules:
+    - changes:
+        - charts/genai-kagent/templates/mcpservers.yaml
+        - images/mcp-*/**
+
+mcp-server-health:
+  stage: deploy
+  image: ghcr.io/r-aas/platform-ci:latest
+  script:
+    - echo "Checking MCPServer $[[ inputs.server_name ]] health..."
+    # Wait for Ready condition
+    - |
+      for i in $(seq 1 30); do
+        STATUS=$(kubectl get mcpserver $[[ inputs.server_name ]] -n $[[ inputs.namespace ]] \
+          -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null)
+        if [ "$STATUS" = "True" ]; then
+          echo "MCPServer $[[ inputs.server_name ]] is Ready"
+          exit 0
+        fi
+        echo "Waiting for Ready... ($i/30)"
+        sleep 10
+      done
+      echo "TIMEOUT: MCPServer $[[ inputs.server_name ]] did not reach Ready"
+      kubectl describe mcpserver $[[ inputs.server_name ]] -n $[[ inputs.namespace ]]
+      exit 1
+  needs: [mcp-server-validate]
+  rules:
+    - changes:
+        - charts/genai-kagent/templates/mcpservers.yaml

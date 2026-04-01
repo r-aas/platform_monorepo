@@ -44,8 +44,8 @@ CHAT_TIMEOUT = 180
 BENCHMARKS_DIR = Path(__file__).parent.parent / "data" / "benchmarks"
 
 # Direct LLM judge config (bypasses n8n eval workflow for speed + reliability)
-LITELLM_URL = os.getenv("LITELLM_URL", os.getenv("AGENT_GATEWAY_URL", "http://litellm.platform.127.0.0.1.nip.io"))
-LITELLM_KEY = os.getenv("LITELLM_API_KEY", "sk-litellm-mewtwo-local")
+LITELLM_URL = os.getenv("LITELLM_URL", os.getenv("AGENT_GATEWAY_URL", "http://gateway.platform.127.0.0.1.nip.io"))
+LITELLM_KEY = os.getenv("LITELLM_API_KEY", "not-needed")
 JUDGE_MODEL = os.getenv("JUDGE_MODEL", "glm-4.7-flash")
 
 

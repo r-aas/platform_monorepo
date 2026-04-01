@@ -59,7 +59,7 @@ The platform uses best-of-breed OSS components for each layer:
 | **Agent Runtime** | kagent (CNCF Sandbox) | K8s CRDs for agents, MCP servers, memory. A2A protocol. Google ADK execution |
 | **MCP Proxy** | agentgateway (Linux Foundation) | Rust, multiplexes MCP servers, tool federation (243 tools), CEL policies, Gateway API |
 | **Artifact Registry** | agentregistry | Agents, skills, prompts catalog. pgvector semantic search. Blueprints |
-| **LLM Proxy** | LiteLLM | OpenAI-compatible, routes to Ollama, per-key access control |
+| **LLM Proxy** | agentgateway LLM Gateway | OpenAI-compatible, routes to Ollama via Rust proxy (replaced LiteLLM after supply chain attack) |
 | **Scheduling** | k8s CronJobs | POST to kagent A2A endpoints on cadence |
 | **Orchestration** | agent-gateway (custom, slimmed) | Skill catalog, semantic tool discovery, orchestration glue |
 
@@ -108,7 +108,7 @@ Python 3.12 + FastAPI. Being reduced to orchestration glue as kagent + agentgate
 - ~~Agent registry~~ → kagent CRDs
 - ~~MCP proxy~~ → agentgateway (Rust)
 - ~~A2A cards~~ → kagent A2A protocol
-- ~~OpenAI chat~~ → LiteLLM
+- ~~OpenAI chat~~ → agentgateway LLM Gateway
 
 ## Agentgateway (`charts/genai-agentgateway/`)
 
@@ -163,7 +163,7 @@ kubectl rollout restart deployment/genai-agent-gateway -n genai
 | `genai-agent-gateway` | genai | Agent gateway service |
 | `genai-n8n` | genai | Workflow automation |
 | `genai-mlflow` | genai | Experiment tracking, prompt registry |
-| `genai-litellm` | genai | LLM proxy to Ollama |
+| `genai-agentgateway` | genai | MCP/A2A proxy + LLM Gateway (replaces LiteLLM) |
 | `genai-langfuse` | genai | LLM observability |
 | `genai-odd-platform` | genai | Data catalog (ODD Platform) |
 | `genai-minio` | genai | Object storage |
@@ -212,7 +212,7 @@ Inside k8s pods, use service DNS: `genai-agent-gateway.genai.svc.cluster.local`
 
 All secrets managed via `scripts/seed-secrets.sh` reading from `~/work/envs/secrets.env`.
 
-Secrets covered: PostgreSQL passwords (n8n, mlflow, plane, pgvector/ODD Platform), n8n encryption key, MLflow flask key, MinIO credentials, LiteLLM key, GitLab PAT, Plane API token, Langfuse keys, n8n API key.
+Secrets covered: PostgreSQL passwords (n8n, mlflow, plane, pgvector/ODD Platform), n8n encryption key, MLflow flask key, MinIO credentials, GitLab PAT/root password, Plane API token, Langfuse keys (API + crypto), n8n API key.
 
 Use `--force` flag to recreate existing secrets.
 

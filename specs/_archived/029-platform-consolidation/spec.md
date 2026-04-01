@@ -1,9 +1,20 @@
 <!-- status: in-progress -->
 # 029 - Platform Consolidation
 
+Partially superseded by: 030 (shipped), 031, 032, 033.
+
 ## Summary
 
-Replace the custom agent-gateway monolith with a composition of best-of-breed OSS components: **kagent** (agent runtime), **agentgateway** (MCP/A2A proxy), **agentregistry** (catalog + discovery), **MetaMCP** (namespace scoping), and **LiteLLM** (LLM proxy, already deployed). The custom agent-gateway shrinks to a thin orchestration glue layer.
+Replace the custom agent-gateway monolith with a composition of best-of-breed OSS components: **kagent** (agent runtime), **agentgateway** (MCP/A2A proxy), **agentregistry** (catalog + discovery), and **LiteLLM** (LLM proxy, already deployed). The custom agent-gateway shrinks to a thin orchestration glue layer.
+
+## Status
+
+- **Phase 1** (agentgateway MCP proxy): **Shipped** (spec 030). agentgateway running, 8 backends, CEL policies, n8n wired.
+- **Phase 2** (agentregistry): **Shipped**. pgvector catalog seeded with 6 agents, 9 MCP servers, 21 skills.
+- **Phase 3** (kagent native): **Planned** (spec 031/032). Direct CRD authoring, kmcp for MCP server lifecycle.
+- **Phase 4** (MetaMCP): **Dropped**. agentgateway CEL policies + per-backend routes solve namespace scoping. MetaMCP artifacts deleted.
+- **Phase 5** (slim agent-gateway): **Shipped**. -2679 lines removed.
+- **New**: Spec 033 adds governance layer (ISO 42001 compliance, taxonomy, admission policies).
 
 ## Problem
 

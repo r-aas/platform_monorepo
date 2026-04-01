@@ -17,8 +17,10 @@ omnibus:
   sharedBuffers: "256MB"
   prometheusMonitoring: false
 
-# Initial root password (override via --set or secret)
-initialRootPassword: "changeme123"
+# Initial root password — use existingSecret or override via --set
+# Default empty: seed-secrets.sh creates gitlab-root-password secret
+initialRootPassword: ""
+existingRootPasswordSecret: "gitlab-root-password"
 
 # Resource limits
 resources:

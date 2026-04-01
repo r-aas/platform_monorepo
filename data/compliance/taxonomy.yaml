@@ -1,0 +1,117 @@
+# AI System Taxonomy — ISO 42001 Clause 4.3 Scope Definition
+#
+# Defines what constitutes an "AI system" in this platform.
+# ISO 42001 requires organizations to define their AIMS scope.
+# ISO 22989 provides broad definitions; we specialize them here.
+#
+# Each type declares: which policies apply, what eval is required,
+# what observability level is mandated, and what risk tier it carries.
+
+schema_version: 1
+standard_refs:
+  - "ISO/IEC 22989:2022 §3.1.4 (AI system)"
+  - "ISO/IEC 22989:2022 §3.1.29 (AI agent)"
+  - "ISO/IEC 23053:2022 (functional components)"
+  - "ISO/IEC 42001:2023 Clause 4.3 (AIMS scope)"
+
+types:
+  agent:
+    iso_ref: "ISO 22989 §3.1.29"
+    description: Autonomous entity that senses environment and acts toward objectives
+    subtypes:
+      declarative:
+        description: Fixed tool set and system prompt, no dynamic planning
+        risk_tier: medium
+        examples: [platform-admin, project-coordinator]
+      autonomous:
+        description: Dynamic planning, tool selection, persistent memory
+        risk_tier: high
+        examples: [developer, mlops, data-engineer]
+      orchestrator:
+        description: Coordinates other agents (multi-agent patterns)
+        risk_tier: high
+        examples: [qa-eval]
+    policy_scope:
+      - P-001  # spec-exists
+      - P-002  # no-inline-secrets
+      - P-003  # toolnames-explicit
+      - P-004  # tool-budget
+      - P-005  # guardrails-set
+      - P-006  # purpose-documented
+      - P-010  # dataset-exists
+      - P-011  # prompt-versioned
+      - P-012  # eval-run-exists
+      - P-020  # eval-threshold
+      - P-021  # ci-pipeline
+      - P-022  # human-oversight
+      - P-023  # third-party-declared
+      - P-030  # promoted
+      - P-031  # roles-defined
+      - P-032  # observability
+      - P-040  # impact-assessed
+      - P-041  # data-provenance
+    eval_required: true
+    observability_level: span-per-tool-call
+    iso_controls: [A.4.2, A.6.2.2, A.6.2.3, A.6.2.4, A.6.2.5, A.6.2.6, A.6.2.7, A.6.2.8, A.7.2, A.8.2, A.9.2, A.9.3]
+
+  mcp_server:
+    iso_ref: "ISO 23053 §5.3 (tool component)"
+    description: Tool provider exposing capabilities via Model Context Protocol
+    risk_tier: low
+    examples: [mcp-kubernetes, mcp-gitlab, mcp-mlflow, mcp-langfuse, mcp-minio, mcp-ollama, mcp-plane, mcp-n8n, mcp-odd-platform]
+    policy_scope:
+      - P-003  # toolnames-explicit
+      - P-006  # purpose-documented
+      - P-032  # observability
+    eval_required: false  # health check only
+    observability_level: request-count
+    iso_controls: [A.4.4, A.8.2]
+
+  llm_gateway:
+    iso_ref: "ISO 23053 §5.2 (inference component)"
+    description: Proxy routing LLM requests to inference backends
+    risk_tier: medium
+    examples: [litellm]
+    policy_scope:
+      - P-002  # no-inline-secrets
+      - P-032  # observability
+    eval_required: false
+    observability_level: request-response-log
+    iso_controls: [A.4.4, A.6.2.8]
+
+  eval_pipeline:
+    iso_ref: "ISO 23053 §5.4 (monitoring component)"
+    description: Automated quality gate producing pass/fail verdicts
+    risk_tier: medium
+    examples: [benchmark-runner, agentops-policy.py]
+    policy_scope:
+      - P-010  # dataset-exists
+      - P-012  # eval-run-exists
+      - P-020  # eval-threshold
+      - P-041  # data-provenance
+    eval_required: false  # evals don't eval themselves
+    observability_level: run-level-metrics
+    iso_controls: [A.6.2.4, A.7.2, A.7.4, A.7.5]
+
+  artifact_store:
+    iso_ref: "ISO 23053 §5.1 (data management component)"
+    description: Versioned storage for datasets, models, agent snapshots
+    risk_tier: low
+    examples: [mlflow, minio, agentregistry]
+    policy_scope:
+      - P-002  # no-inline-secrets
+      - P-041  # data-provenance
+    eval_required: false
+    observability_level: audit-log
+    iso_controls: [A.4.3, A.7.5]
+
+  observability:
+    iso_ref: "ISO 23053 §5.4 (monitoring component)"
+    description: Trace collection, cost tracking, session replay
+    risk_tier: low
+    examples: [langfuse, otel-collector]
+    policy_scope:
+      - P-032  # observability (meta — observability of observability)
+    eval_required: false
+    observability_level: self-monitoring
+    iso_controls: [A.6.2.8, A.8.3]

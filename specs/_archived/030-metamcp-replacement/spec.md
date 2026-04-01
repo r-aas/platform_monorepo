@@ -1,4 +1,4 @@
-<!-- status: in-progress -->
+<!-- status: shipped -->
 
 # Spec 030: Replace MetaMCP with agentgateway
 

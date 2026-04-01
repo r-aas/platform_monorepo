@@ -13,9 +13,10 @@
 #
 # Build: docker build -t genai-mcp-gitlab -f gitlab.Dockerfile .
 ###############################################################################
-FROM node:22-alpine
+# node:22-alpine
+FROM node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3
 
-RUN npm install -g @modelcontextprotocol/server-gitlab
+RUN npm install -g @modelcontextprotocol/server-gitlab@2025.4.25
 
 # Entrypoint script: if GITLAB_HOST is set, add /etc/hosts entry
 # pointing it to the Docker host gateway (host.docker.internal resolution).
@@ -34,5 +35,8 @@ exec mcp-server-gitlab "$@"
 ENTRY
 
 RUN chmod +x /entrypoint.sh
+
+RUN adduser -D -u 1001 appuser
+USER 1001
 
 ENTRYPOINT ["/entrypoint.sh"]

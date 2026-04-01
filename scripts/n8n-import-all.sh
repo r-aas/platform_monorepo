@@ -103,8 +103,8 @@ import urllib.request
 
 API_URL = os.environ.get("N8N_API_URL", "http://localhost:5678/api/v1")
 API_KEY = os.environ.get("N8N_KEY", "")
-LITELLM_BASE = os.environ.get("INFERENCE_BASE_URL", "http://genai-litellm.genai.svc.cluster.local:4000/v1")
-LITELLM_KEY = os.environ.get("LITELLM_API_KEY", "sk-litellm-mewtwo-local")
+LITELLM_BASE = os.environ.get("INFERENCE_BASE_URL", "http://genai-agentgateway-llm.genai.svc.cluster.local:4000/v1")
+LITELLM_KEY = os.environ.get("LITELLM_API_KEY", "not-needed")
 
 def api_get(path):
     req = urllib.request.Request(

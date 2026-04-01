@@ -1,0 +1,87 @@
+# GitLab CI/CD Catalog Component: promotion-gate
+# Graph: G3 (Promote)
+# Validates agent is ready for promotion: eval pass, soak, regression check.
+#
+# Usage:
+#   include:
+#     - component: $CI_SERVER_FQDN/root/platform/ci-catalog/promotion-gate@main
+#       inputs:
+#         agent_name: mlops
+#         source_env: dev
+#         target_env: staging
+
+spec:
+  inputs:
+    agent_name:
+      description: Agent to promote
+      type: string
+    source_env:
+      description: Source environment (dev, staging)
+      type: string
+      default: dev
+    target_env:
+      description: Target environment (staging, production)
+      type: string
+      default: staging
+    threshold:
+      description: "Minimum pass_rate for target env (staging=0.85, production=0.90)"
+      type: string
+      default: ""
+    soak_cycles:
+      description: Minimum scheduled cycles in source env before promotion
+      type: string
+      default: "2"
+    baseline_experiment:
+      description: MLflow experiment for baseline comparison
+      type: string
+      default: __baselines
+
+---
+
+promotion-gate:
+  stage: deploy
+  image: ghcr.io/r-aas/platform-ci:latest
+  variables:
+    MLFLOW_TRACKING_URI: http://genai-mlflow.genai.svc.cluster.local:5000
+  script:
+    - echo "Promotion gate: $[[ inputs.agent_name ]] ($[[ inputs.source_env ]] → $[[ inputs.target_env ]])..."
+    # Determine threshold
+    - |
+      THRESHOLD="${[[ inputs.threshold ]]}"
+      if [ -z "$THRESHOLD" ]; then
+        case "$[[ inputs.target_env ]]" in
+          staging)    THRESHOLD="0.85" ;;
+          production) THRESHOLD="0.90" ;;
+          *)          THRESHOLD="0.80" ;;
+        esac
+      fi
+      echo "Using threshold: $THRESHOLD"
+    # 1. Check eval run exists for current version
+    - |
+      uv run scripts/eval-gate.py \
+        --agent $[[ inputs.agent_name ]] \
+        --threshold $THRESHOLD \
+        --baseline-experiment $[[ inputs.baseline_experiment ]] \
+        --gate
+    # 2. Soak check: agent ran ≥ N cycles in source env without error
+    - |
+      uv run scripts/soak-check.py \
+        --agent $[[ inputs.agent_name ]] \
+        --namespace genai-$[[ inputs.source_env ]] \
+        --min-cycles $[[ inputs.soak_cycles ]]
+    # 3. Regression check: no metric worse than production baseline
+    - |
+      uv run scripts/regression-check.py \
+        --agent $[[ inputs.agent_name ]] \
+        --baseline-experiment $[[ inputs.baseline_experiment ]]
+    # 4. Log promotion decision to MLflow
+    - |
+      uv run scripts/log-promotion.py \
+        --agent $[[ inputs.agent_name ]] \
+        --source $[[ inputs.source_env ]] \
+        --target $[[ inputs.target_env ]] \
+        --status passed
+    - echo "Promotion gate passed. ArgoCD will sync to genai-$[[ inputs.target_env ]]."
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" && "$[[ inputs.target_env ]]" == "staging"
+    - if: $CI_COMMIT_TAG =~ /^v/ && "$[[ inputs.target_env ]]" == "production"

@@ -29,9 +29,24 @@ P0 = blocking/broken, P1 = high value, P2 = planned, P3 = nice-to-have
 - [x] P1 Replace DataHub with ODD Platform — removed 8-container stack, added 1-container ODD Platform + mcp-odd-platform MCP server (2026-03-31)
 - [x] P1 Agent tool count gate — agent-lint.py --strict blocks >20 tools per agent, trimmed all 6 agents (374→103 tools) (2026-03-31)
 - [x] P1 CEL policies — 4 AgentgatewayPolicy CRDs: deny-dangerous-tools, deny-model-mutation, kubernetes-read-only, gitlab-write-protection (2026-03-31)
+- [x] P0 Replace LiteLLM with agentgateway LLM Gateway — supply chain attack remediation, Rust proxy replaces Python (2026-04-01)
+- [x] P0 Supply chain hardening — digest-pinned images, pinned deps, non-root containers, secrets externalized (2026-04-01)
 - [ ] P1 task up clean bootstrap test — verify ghcr.io pulls work end-to-end from zero
+- [ ] P1 W3: OTEL → Langfuse trace pipeline — enable kagent otel, deploy OTEL Collector, route to Langfuse
+- [x] P1 W1: MCP server secrets — seed-secrets.sh already creates all 5, MCPServer CRDs wired, old charts deleted (2026-04-01)
+- [x] P1 W2: Delete transpiler + custom agent format — all three artifacts already gone (2026-04-01)
+- [x] P1 W11: GitLab CI/CD Catalog — 5 components scaffolded in ci-catalog/ (2026-04-01)
+- [x] P1 W12: GitOps × AgentOps lifecycle — spec, skill, components.yaml updated with graph→executor mapping (2026-04-01)
+- [ ] P2 W4: Delete 5 redundant n8n workflows — chat, a2a, eval, claude-auto, prompt-resolve
+- [ ] P2 W5: Agent promotion pipeline — genai-dev/stage/prod namespaces + eval gates
+- [x] P2 W6: Taxonomy-aware policy engine — --type flag, --scope-doc for ISO 42001 Clause 4.3 (2026-04-01)
+- [x] P2 W7: OWASP Agentic Top 10 policies — P-050 through P-059, --standard owasp flag, compliance map (2026-04-01)
+- [ ] P2 W8: Admission policies — CEL/Kyverno for agent CRD validation
+- [ ] P2 W9: Compliance dashboard — MLflow + Langfuse metrics
+- [ ] P2 W10: Slim agent-gateway to ~500 LOC — delete everything OSS components cover
 - [ ] P2 Tailscale integration — tunnel platform services for remote access
 - [ ] P2 Multi-model benchmark — compare glm-4.7-flash vs qwen3:32b
+- [ ] P3 NIST COSAiS overlay — tracking only, nist-cosais.yml
 - [x] P1 Activate autonomous loop — runner on :7777, claude-autonomous workflow active (4h cron), MLflow logging (2026-03-29)
 - [x] P2 Benchmark tuning — smoke 100% (3/3), glm-4.7-flash judge, scoring guide, relaxed criteria (2026-03-29)
 - [x] P2 DataOps Phase 4: domain tags — 5 domains, 22 datasets tagged (agent, eval, trace, workflow, research) (2026-03-29)

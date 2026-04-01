@@ -1,0 +1,150 @@
+# OWASP Agentic Security Initiative (ASI) Top 10 — Policy Mapping
+#
+# Maps ASI-01 through ASI-10 to platform policies (P-050..P-059),
+# detection patterns, and enforcement points.
+#
+# Sources:
+#   - OWASP Agentic Security Initiative (ASI) Top 10
+#   - agent-audit (AST-based detection, ~/work/clones/policy-as-code/agent-audit)
+#   - agent-governance-toolkit (YAML policy-as-code, ~/work/clones/policy-as-code/agent-governance-toolkit)
+#   - pattern8 (zero-trust tool blacklist, ~/work/clones/policy-as-code/pattern8)
+#   - hipocap (header-based NHI identity, ~/work/clones/policy-as-code/hipocap)
+
+schema_version: 1
+
+policies:
+  P-050:
+    name: prompt-injection-defense
+    asi_ref: ASI-01
+    title: Prompt Injection
+    description: System prompt includes injection mitigation instructions
+    level: L2
+    enforcement: static
+    detection:
+      - Check system_prompt for defensive keywords (boundary, sanitize, ignore instructions)
+      - Require at least 2 defense-related terms in prompt
+    patterns_from:
+      - "agent-audit: f-string injection detection via AST"
+      - "agent-governance-toolkit: weighted threat scoring (urgency 0.15, coercive 0.25, bypass 0.35)"
+    remediation: "Add injection defense instructions to system_prompt in agent spec"
+
+  P-051:
+    name: tool-permission-boundaries
+    asi_ref: ASI-02
+    title: Tool Misuse / Excessive Permissions
+    description: All tool server references have explicit toolNames, allow, or deny lists
+    level: L2
+    enforcement: static
+    detection:
+      - Every tool server reference must have toolNames or allow/deny config
+      - Overlaps with P-003 (toolnames-explicit) but adds allow/deny patterns
+    patterns_from:
+      - "pattern8: deny-by-default tool blacklist"
+    remediation: "Add explicit toolNames to all server references in agent spec"
+
+  P-052:
+    name: privilege-escalation-guard
+    asi_ref: ASI-03
+    title: Privilege Escalation
+    description: No agent can grant itself elevated permissions without approval gate
+    level: L2
+    enforcement: static
+    detection:
+      - Check for self-grant patterns in spec (grant/elevate/promote permission)
+      - Privileged tools (admin, sudo, exec, apply, delete) require approval gate
+    patterns_from:
+      - "hipocap: header-based NHI, X-Agent-Id, API key hashing"
+      - "agentgateway CEL policies: deny-dangerous-tools, kubernetes-read-only"
+    remediation: "Add privileged tools to guardrails.require_approval_for list"
+
+  P-053:
+    name: tool-output-validation
+    asi_ref: ASI-04
+    title: Output Handling / Indirect Prompt Injection
+    description: Agent spec declares output schema or validation for tool results
+    level: L2
+    enforcement: static
+    detection:
+      - Check for output_schema, output_validation, or guardrails.validate_output
+      - autonomy.verify config also satisfies this (validates outputs)
+    remediation: "Add output_schema or guardrails.validate_output to agent spec"
+
+  P-054:
+    name: cross-agent-trust-boundary
+    asi_ref: ASI-05
+    title: Insecure Agent-Agent Communication
+    description: Multi-agent calls go through A2A protocol, not direct invocation
+    level: L3
+    enforcement: static
+    detection:
+      - Check collaborators use A2A/HTTP/gRPC protocol
+      - No direct function calls between agents
+    patterns_from:
+      - "kagent A2A protocol: /.well-known/agent-card.json"
+    remediation: "Use A2A protocol for all inter-agent communication"
+
+  P-055:
+    name: memory-poisoning-defense
+    asi_ref: ASI-06
+    title: Memory Poisoning
+    description: Persistent memory has TTL and source tagging
+    level: L3
+    enforcement: static
+    detection:
+      - Check autonomy.memory for ttl/max_age/expiry
+      - Check for source_tag/provenance/store config
+    gaps:
+      - "Anomaly detection for memory poisoning not yet implemented (needs runtime)"
+    remediation: "Add ttl and source_tag to autonomy.memory config"
+
+  P-056:
+    name: cascading-hallucination-guard
+    asi_ref: ASI-07
+    title: Cascading Hallucination
+    description: Multi-hop tool chains have depth limit
+    level: L2
+    enforcement: static
+    detection:
+      - Check guardrails for max_turns, max_depth, or max_iterations
+    patterns_from:
+      - "pattern8: 30s timeout enforcement"
+    remediation: "Add max_turns or max_depth to guardrails in agent spec"
+
+  P-057:
+    name: resource-exhaustion-limit
+    asi_ref: ASI-08
+    title: Resource Exhaustion / DoS
+    description: Token budget and timeout declared in agent spec
+    level: L1
+    enforcement: static
+    detection:
+      - Check guardrails for max_budget_usd, max_tokens, or token_budget
+      - Check for timeout or max_execution_time
+    remediation: "Add max_budget_usd and timeout to guardrails in agent spec"
+
+  P-058:
+    name: supply-chain-integrity
+    asi_ref: ASI-09
+    title: Supply Chain / Dependency Risks
+    description: All container images from signed/trusted registries
+    level: L3
+    enforcement: static
+    detection:
+      - Scan agent spec and Helm templates for image references
+      - Verify all images from trusted registries (ghcr.io, docker.io, registry.k8s.io, quay.io, cr.agentgateway.dev)
+    remediation: "Move images to ghcr.io or other trusted registry"
+
+  P-059:
+    name: logging-completeness
+    asi_ref: ASI-10
+    title: Insufficient Logging / Monitoring
+    description: OTEL traces enabled, Langfuse scoring active
+    level: L3
+    enforcement: static
+    detection:
+      - Check autonomy.verify config (output validation logging)
+      - Check autonomy.memory.store config (trace persistence)
+    patterns_from:
+      - "Langfuse scoring: per-agent trace analysis"
+      - "MLflow: benchmark metrics logging"
+    remediation: "Add verify and memory.store to autonomy config"

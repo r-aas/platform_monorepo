@@ -1,0 +1,599 @@
+# Platform Component Registry
+# Machine-readable inventory of every deployed component and its interfaces.
+# Source of truth for: integration diagrams, smoke tests, spec generation, Clause 4.3 scope.
+#
+# Convention:
+#   Each component declares EXPOSES (what it offers) and CONSUMES (what it needs).
+#   Every edge here must have a corresponding smoke test assertion.
+
+schema_version: 1
+
+# ── Agent Runtimes ──────────────────────────────────────────────────────
+
+kagent:
+  type: agent_runtime
+  chart: genai-kagent
+  namespace: genai
+  description: Kubernetes-native agent runtime. CRDs for Agent, Tool, ModelConfig, Memory.
+  exposes:
+    - name: a2a-api
+      port: 8083
+      protocol: http
+      purpose: Agent-to-Agent task invocation
+    - name: controller-grpc
+      port: 8083
+      protocol: grpc
+      purpose: CRD reconciliation, agent lifecycle
+  consumes:
+    - component: pgvector
+      interface: postgresql
+      database: kagent
+      purpose: Agent memory, state
+    - component: litellm
+      interface: openai-compat
+      purpose: LLM inference (chat + embeddings)
+    - component: mcp-servers
+      interface: mcp-http
+      purpose: Tool execution via RemoteMCPServer CRDs
+    - component: otel-collector
+      interface: otlp-grpc
+      port: 4317
+      purpose: Trace export (disabled, Phase 5c in 032)
+  agents:
+    - platform-admin
+    - project-coordinator
+    - data-engineer
+    - mlops
+    - developer
+    - qa-eval
+  taxonomy_type: agent  # from compliance/taxonomy.yaml
+
+# ── MCP Proxy ───────────────────────────────────────────────────────────
+
+agentgateway:
+  type: mcp_proxy
+  chart: genai-agentgateway
+  namespace: genai
+  description: Rust MCP/A2A proxy. Tool federation, CEL policies, Gateway API.
+  exposes:
+    - name: mcp-proxy
+      port: 8080
+      protocol: http
+      purpose: "MCP data plane: tools/list, tools/call"
+      paths:
+        - /mcp/all         # aggregated (243 tools)
+        - /mcp/kubernetes
+        - /mcp/gitlab
+        - /mcp/mlflow
+        - /mcp/langfuse
+        - /mcp/minio
+        - /mcp/ollama
+        - /mcp/plane
+        - /mcp/kagent-tools
+        - /mcp/odd-platform
+    - name: controller-grpc
+      port: 9978
+      protocol: grpc
+      purpose: xDS config distribution
+    - name: metrics
+      port: 9092
+      protocol: http
+      purpose: Prometheus metrics
+  consumes:
+    - component: mcp-servers
+      interface: mcp-http
+      purpose: Backend tool execution (9 servers)
+    - component: k8s-api
+      interface: k8s-watch
+      purpose: Watch AgentgatewayBackend CRDs
+  policies:
+    - deny-dangerous-tools
+    - deny-model-mutation
+    - kubernetes-read-only
+    - gitlab-write-protection
+  taxonomy_type: mcp_server
+
+# ── Agent Registry ──────────────────────────────────────────────────────
+
+agentregistry:
+  type: catalog
+  chart: genai-agentregistry
+  namespace: genai
+  description: Agent/skill/MCP catalog with pgvector semantic search and blueprints.
+  exposes:
+    - name: http-api
+      port: 12121
+      protocol: http
+      purpose: Agent/skill/MCP CRUD + search
+    - name: grpc-api
+      port: 21212
+      protocol: grpc
+      purpose: Streaming catalog operations
+    - name: mcp-api
+      port: 31313
+      protocol: mcp
+      purpose: MCP tool interface to catalog
+  consumes:
+    - component: pgvector
+      interface: postgresql
+      database: agentregistry
+      purpose: Catalog storage + vector embeddings
+  taxonomy_type: artifact_store
+
+# ── LLM Gateway ─────────────────────────────────────────────────────────
+
+litellm:
+  type: llm_gateway
+  chart: genai-litellm
+  namespace: genai
+  description: OpenAI-compatible LLM proxy. Routes to Ollama, per-key access control.
+  exposes:
+    - name: openai-compat
+      port: 4000
+      protocol: http
+      purpose: "/v1/chat/completions, /v1/embeddings"
+  consumes:
+    - component: ollama
+      interface: openai-compat
+      host: "192.168.5.2:11434"
+      purpose: Local LLM inference (Metal GPU)
+    - component: pgvector
+      interface: postgresql
+      database: litellm
+      purpose: Usage tracking, virtual keys
+    - component: langfuse
+      interface: http
+      purpose: LLM call logging (callback)
+  taxonomy_type: llm_gateway
+
+# ── Observability ───────────────────────────────────────────────────────
+
+langfuse:
+  type: observability
+  chart: genai-langfuse
+  namespace: genai
+  description: LLM observability. Traces, scores, cost tracking, session replay.
+  exposes:
+    - name: web-ui
+      port: 3000
+      protocol: http
+      purpose: Dashboard + API
+    - name: otel-ingestion
+      port: 3000
+      protocol: http
+      path: /api/public/otel/v1/traces
+      purpose: OTEL trace ingestion
+  consumes:
+    - component: pgvector
+      interface: postgresql
+      database: langfuse
+      purpose: Trace/score storage
+    - component: clickhouse
+      interface: native
+      purpose: Analytics (subchart, co-deployed)
+    - component: minio
+      interface: s3
+      purpose: Media/attachment storage
+  taxonomy_type: observability
+
+# ── Experiment Tracker ──────────────────────────────────────────────────
+
+mlflow:
+  type: experiment_tracker
+  chart: genai-mlflow
+  namespace: genai
+  description: Experiment tracking, prompt registry, model lifecycle.
+  exposes:
+    - name: tracking-api
+      port: 5000
+      protocol: http
+      purpose: Experiments, runs, metrics, model registry
+  consumes:
+    - component: pg-mlflow
+      interface: postgresql
+      purpose: Experiment metadata
+    - component: minio
+      interface: s3
+      purpose: Artifact storage (models, datasets)
+  taxonomy_type: artifact_store
+
+# ── Workflow Engine ─────────────────────────────────────────────────────
+
+n8n:
+  type: workflow_engine
+  chart: genai-n8n
+  namespace: genai
+  description: Workflow automation. Human-in-the-loop, data pipelines, API pass-through.
+  exposes:
+    - name: web-ui
+      port: 5678
+      protocol: http
+      purpose: Workflow editor + webhook endpoints
+  consumes:
+    - component: litellm
+      interface: openai-compat
+      purpose: LLM calls from workflows
+    - component: agentgateway
+      interface: mcp-http
+      path: /mcp/all
+      purpose: Tool calls via MCP Client node
+    - component: mlflow
+      interface: http
+      purpose: Experiment logging
+    - component: pg-n8n
+      interface: postgresql
+      purpose: Workflow storage, execution history
+    - component: gitlab-ce
+      interface: http
+      purpose: Git operations
+    - component: plane
+      interface: http
+      purpose: Issue sync
+  taxonomy_type: agent  # chat workflows act as agents
+
+# ── Data Catalog ────────────────────────────────────────────────────────
+
+odd-platform:
+  type: data_catalog
+  chart: genai-odd-platform
+  namespace: genai
+  description: Lightweight data catalog. Lineage, quality, schema discovery.
+  exposes:
+    - name: rest-api
+      port: 8080
+      protocol: http
+      purpose: Catalog API + web UI
+  consumes:
+    - component: pgvector
+      interface: postgresql
+      database: odd_platform
+      purpose: Catalog storage
+  taxonomy_type: artifact_store
+
+# ── Object Storage ──────────────────────────────────────────────────────
+
+minio:
+  type: object_store
+  chart: genai-minio
+  namespace: genai
+  description: S3-compatible object storage.
+  exposes:
+    - name: s3-api
+      port: 9000
+      protocol: s3
+      purpose: Bucket operations
+  consumes: []
+  buckets: [mlflow, langfuse, plane-uploads]
+  taxonomy_type: artifact_store
+
+# ── Databases ───────────────────────────────────────────────────────────
+
+pgvector:
+  type: database
+  chart: genai-pgvector
+  namespace: genai
+  description: Shared PostgreSQL + pgvector. Multiple logical databases.
+  exposes:
+    - name: postgresql
+      port: 5432
+      protocol: postgresql
+      purpose: Relational + vector storage
+  consumes: []
+  databases: [kagent, litellm, langfuse, odd_platform, agentregistry, agent_registry]
+  taxonomy_type: artifact_store
+
+pg-mlflow:
+  type: database
+  chart: genai-pg-mlflow
+  namespace: genai
+  description: Dedicated PostgreSQL for MLflow.
+  exposes:
+    - name: postgresql
+      port: 5432
+      protocol: postgresql
+  consumes: []
+
+pg-n8n:
+  type: database
+  chart: genai-pg-n8n
+  namespace: genai
+  description: Dedicated PostgreSQL for n8n.
+  exposes:
+    - name: postgresql
+      port: 5432
+      protocol: postgresql
+  consumes: []
+
+pg-plane:
+  type: database
+  chart: genai-pg-plane
+  namespace: genai
+  description: Dedicated PostgreSQL for Plane.
+  exposes:
+    - name: postgresql
+      port: 5432
+      protocol: postgresql
+  consumes: []
+
+# ── Project Management ──────────────────────────────────────────────────
+
+plane:
+  type: project_management
+  chart: genai-plane
+  namespace: genai
+  description: Issue tracking, sprints, cycles.
+  exposes:
+    - name: api
+      port: 8000
+      protocol: http
+      purpose: Project API
+    - name: web-ui
+      port: 3000
+      protocol: http
+      purpose: Web dashboard
+  consumes:
+    - component: pg-plane
+      interface: postgresql
+      purpose: Issue storage
+    - component: minio
+      interface: s3
+      purpose: Attachments
+
+# ── Source Control ──────────────────────────────────────────────────────
+
+gitlab-ce:
+  type: source_control
+  chart: gitlab-ce
+  namespace: platform
+  description: In-cluster Git. Source of truth for ArgoCD. Hosts CI/CD pipelines.
+  exposes:
+    - name: http-api
+      port: 8181
+      protocol: http
+      purpose: Git repos, MRs, pipelines, registry, CI/CD Catalog
+  consumes: []
+  agentops_role:
+    graphs: [G1, G2, G3, G7]
+    purpose: VCS for agent specs, CI pipelines for quality gates, MR-driven promotion
+
+# ── GitOps ──────────────────────────────────────────────────────────────
+
+argocd:
+  type: gitops
+  chart: argocd
+  namespace: platform
+  description: GitOps controller. Manages all Helm releases post-bootstrap. Drives Graph 3 (Promote) and Graph 6 (Incident rollback).
+  exposes:
+    - name: web-ui
+      port: 8080
+      protocol: http
+      purpose: Dashboard + API
+    - name: grpc
+      port: 8083
+      protocol: grpc
+      purpose: CLI + controller comms
+  consumes:
+    - component: gitlab-ce
+      interface: http
+      purpose: Git source polling
+  agentops_role:
+    graphs: [G3, G6]
+    purpose: Namespace-based promotion (dev→stage→prod), rollback to known-good SHA on incident
+
+gitlab-ci-catalog:
+  type: ci_cd
+  path: ci-catalog/
+  namespace: n/a
+  description: Reusable GitLab CI/CD Catalog components. Quality gates for agent lifecycle.
+  components:
+    - name: agent-lint
+      inputs: [agent_name, strict]
+      gates: [G1, G2]
+      purpose: CRD schema lint, tool count, no secrets
+    - name: agent-eval-gate
+      inputs: [agent_name, threshold, baseline_source]
+      gates: [G2, G3]
+      purpose: Benchmark vs MLflow baseline
+    - name: mcp-server-deploy
+      inputs: [server_name, image, transport]
+      gates: [G1]
+      purpose: MCPServer CRD validation + health
+    - name: compliance-check
+      inputs: [profile, standard, type]
+      gates: [G5, G7]
+      purpose: agentops-policy.py with taxonomy scoping
+    - name: promotion-gate
+      inputs: [agent_name, source_env, target_env]
+      gates: [G3]
+      purpose: Soak, integration test, regression check
+  agentops_role:
+    graphs: [G1, G2, G3, G5, G7]
+    purpose: CI/CD quality gates for all AgentOps decision points
+
+# ── Orchestration Glue ──────────────────────────────────────────────────
+
+agent-gateway:
+  type: orchestrator
+  chart: genai-agent-gateway
+  namespace: genai
+  description: "Slim orchestrator: skill catalog, semantic discovery, scheduling glue, sandbox."
+  exposes:
+    - name: http-api
+      port: 8000
+      protocol: http
+      purpose: Skill search, health aggregation, sandbox
+  consumes:
+    - component: pgvector
+      interface: postgresql
+      database: agent_registry
+      purpose: Skill embeddings
+    - component: mlflow
+      interface: http
+      purpose: Eval metrics
+    - component: litellm
+      interface: openai-compat
+      purpose: Embedding generation
+  taxonomy_type: agent
+
+# ── MCP Servers (9) ─────────────────────────────────────────────────────
+
+mcp-kubernetes:
+  type: mcp_server
+  chart: genai-mcp-kubernetes
+  namespace: genai
+  description: Kubernetes operations via MCP.
+  exposes:
+    - name: mcp
+      port: 3000
+      protocol: mcp-http
+  consumes:
+    - component: k8s-api
+      interface: k8s-client
+      purpose: kubectl operations
+  taxonomy_type: mcp_server
+
+mcp-gitlab:
+  type: mcp_server
+  chart: genai-mcp-gitlab
+  namespace: genai
+  exposes:
+    - name: mcp
+      port: 3000
+      protocol: mcp-http
+  consumes:
+    - component: gitlab-ce
+      interface: http
+  taxonomy_type: mcp_server
+
+mcp-n8n:
+  type: mcp_server
+  chart: genai-mcp-n8n
+  namespace: genai
+  exposes:
+    - name: mcp
+      port: 3000
+      protocol: mcp-http
+  consumes:
+    - component: n8n
+      interface: http
+  taxonomy_type: mcp_server
+
+mcp-mlflow:
+  type: mcp_server
+  chart: genai-mcp-mlflow
+  namespace: genai
+  exposes:
+    - name: mcp
+      port: 3000
+      protocol: mcp-http
+  consumes:
+    - component: mlflow
+      interface: http
+  taxonomy_type: mcp_server
+
+mcp-langfuse:
+  type: mcp_server
+  chart: genai-mcp-langfuse
+  namespace: genai
+  exposes:
+    - name: mcp
+      port: 3000
+      protocol: mcp-http
+  consumes:
+    - component: langfuse
+      interface: http
+  taxonomy_type: mcp_server
+
+mcp-minio:
+  type: mcp_server
+  chart: genai-mcp-minio
+  namespace: genai
+  exposes:
+    - name: mcp
+      port: 3000
+      protocol: mcp-http
+  consumes:
+    - component: minio
+      interface: s3
+  taxonomy_type: mcp_server
+
+mcp-ollama:
+  type: mcp_server
+  chart: genai-mcp-ollama
+  namespace: genai
+  exposes:
+    - name: mcp
+      port: 3000
+      protocol: mcp-http
+  consumes:
+    - component: ollama
+      interface: http
+      host: "192.168.5.2:11434"
+  taxonomy_type: mcp_server
+
+mcp-plane:
+  type: mcp_server
+  chart: genai-mcp-plane
+  namespace: genai
+  exposes:
+    - name: mcp
+      port: 3000
+      protocol: mcp-http
+  consumes:
+    - component: plane
+      interface: http
+  taxonomy_type: mcp_server
+
+mcp-odd-platform:
+  type: mcp_server
+  chart: genai-mcp-odd-platform
+  namespace: genai
+  exposes:
+    - name: mcp
+      port: 3000
+      protocol: mcp-http
+  consumes:
+    - component: odd-platform
+      interface: http
+  taxonomy_type: mcp_server
+
+# ── External (not managed by us) ───────────────────────────────────────
+
+ollama:
+  type: llm_inference
+  managed: false
+  description: Native Mac LLM inference (Metal GPU). NOT containerized.
+  exposes:
+    - name: openai-compat
+      host: "192.168.5.2"
+      port: 11434
+      protocol: http
+  consumes: []
+  taxonomy_type: llm_gateway
+
+# ── Ontology Engine ────────────────────────────────────────────────────
+
+open-ontologies:
+  type: knowledge_engine
+  chart: genai-open-ontologies
+  namespace: genai
+  description: OWL2/SHACL/SPARQL engine for domain ontologies.
+  exposes:
+    - name: sparql
+      port: 8080
+      protocol: http
+      purpose: SPARQL queries + OWL2 reasoning
+  consumes: []
+
+# ── Scheduling ──────────────────────────────────────────────────────────
+
+agent-schedules:
+  type: scheduler
+  chart: genai-agent-schedules
+  namespace: genai
+  description: CronJobs that POST tasks to kagent A2A endpoints.
+  exposes: []
+  consumes:
+    - component: kagent
+      interface: a2a-api
+      purpose: Scheduled agent task invocation

@@ -1,0 +1,86 @@
+# GitLab CI/CD Catalog Component: compliance-check
+# Graph: G5 (Monitor), G7 (Audit)
+# Runs agentops-policy.py with taxonomy scoping. Logs results to MLflow.
+#
+# Usage:
+#   include:
+#     - component: $CI_SERVER_FQDN/root/platform/ci-catalog/compliance-check@main
+#       inputs:
+#         profile: solo
+#         standard: iso42001
+#
+#   # Or for MCP servers only:
+#     - component: $CI_SERVER_FQDN/root/platform/ci-catalog/compliance-check@main
+#       inputs:
+#         type: mcp_server
+
+spec:
+  inputs:
+    profile:
+      description: Compliance profile (solo or enterprise)
+      type: string
+      default: solo
+    standard:
+      description: "Standard to check: iso42001, owasp, all"
+      type: string
+      default: all
+    type:
+      description: "Taxonomy type scope (agent, mcp_server, llm_gateway, etc.). Empty = all types."
+      type: string
+      default: ""
+    agent:
+      description: "Specific agent to check. Empty = all agents."
+      type: string
+      default: ""
+    gate:
+      description: "Fail pipeline on policy violations"
+      type: string
+      default: "true"
+    log_to_mlflow:
+      description: "Log compliance results to MLflow __agentops_compliance experiment"
+      type: string
+      default: "true"
+
+---
+
+compliance-check:
+  stage: test
+  image: ghcr.io/r-aas/platform-ci:latest
+  variables:
+    MLFLOW_TRACKING_URI: http://genai-mlflow.genai.svc.cluster.local:5000
+  script:
+    - echo "Running compliance check (profile=$[[ inputs.profile ]], standard=$[[ inputs.standard ]])..."
+    - |
+      ARGS="--profile $[[ inputs.profile ]]"
+      if [ -n "$[[ inputs.type ]]" ]; then
+        ARGS="$ARGS --type $[[ inputs.type ]]"
+      fi
+      if [ -n "$[[ inputs.agent ]]" ]; then
+        ARGS="$ARGS --agent $[[ inputs.agent ]]"
+      fi
+      if [ "$[[ inputs.standard ]]" != "all" ]; then
+        ARGS="$ARGS --standard $[[ inputs.standard ]]"
+      fi
+      if [ "$[[ inputs.gate ]]" = "true" ]; then
+        ARGS="$ARGS --gate"
+      fi
+      ARGS="$ARGS --json"
+      uv run scripts/agentops-policy.py $ARGS | tee compliance-results.json
+    # Log to MLflow
+    - |
+      if [ "$[[ inputs.log_to_mlflow ]]" = "true" ]; then
+        uv run scripts/compliance-to-mlflow.py \
+          --results compliance-results.json \
+          --experiment __agentops_compliance
+      fi
+  artifacts:
+    paths:
+      - compliance-results.json
+    when: always
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - changes:
+        - agents/**
+        - charts/genai-kagent/**
+        - data/compliance/**
+        - scripts/agentops-policy.py

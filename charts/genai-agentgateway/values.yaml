@@ -52,3 +52,12 @@ agentgateway:
   # No Gateway API inference extension needed
   inferenceExtension:
     enabled: false
+
+# ── LLM Gateway — replaces LiteLLM ──────────────────
+# Routes OpenAI-compatible traffic to Ollama on Mac host.
+# Exposes port 4000 (same as LiteLLM) for drop-in replacement.
+# 192.168.5.2 = Docker Desktop Lima gateway to Mac host.
+llm:
+  enabled: true
+  ollamaHost: "192.168.5.2"
+  ollamaPort: 11434
