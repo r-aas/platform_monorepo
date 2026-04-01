@@ -11,7 +11,7 @@
 # Env: MLFLOW_TRACKING_URI, PORT (default 3000)
 ###############################################################################
 # python:3.12-slim
-FROM python:3.12-slim@sha256:3d5ed973e45820f5ba5e46bd065bd88b3a504ff0724d85980dcd05eab361fcf4
+FROM python:3.14-slim@sha256:fb83750094b46fd6b8adaa80f66e2302ecbe45d513f6cece637a841e1025b4ca
 
 RUN pip install --no-cache-dir mlflow-mcp==0.2.0 mcp-proxy==0.4.0
 
