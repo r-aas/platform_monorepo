@@ -11,7 +11,7 @@
 # Env: PORT (default 3000)
 ###############################################################################
 # node:22-slim
-FROM node:22-slim@sha256:80fdb3f57c815e1b638d221f30a826823467c4a56c8f6a8d7aa091cd9b1675ea
+FROM node:25-slim@sha256:71be4054ee7a5fc8d0b2a66060705988b09a782025d70ba9318b29ff1a931fc0
 
 # Install kubectl at a pinned version with checksum verification
 ARG KUBECTL_VERSION=v1.32.3
