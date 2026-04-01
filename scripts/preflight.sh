@@ -73,12 +73,20 @@ if [ "$QUICK" != "--quick" ]; then
       warn "Restart Ollama: pkill ollama && OLLAMA_HOST=0.0.0.0:11434 ollama serve &"
     fi
 
+    # Check performance env vars
+    FLASH_ATN=$(launchctl getenv OLLAMA_FLASH_ATTENTION 2>/dev/null || echo "")
+    if [ "$FLASH_ATN" = "1" ]; then
+      ok "Flash attention enabled"
+    else
+      warn "OLLAMA_FLASH_ATTENTION not set — run: launchctl setenv OLLAMA_FLASH_ATTENTION 1"
+    fi
+
     # Check if a model is available
     MODEL_COUNT=$(curl -sf http://localhost:11434/api/tags | jq '.models | length' 2>/dev/null || echo "0")
     if [ "$MODEL_COUNT" -gt 0 ]; then
       ok "${MODEL_COUNT} model(s) available"
     else
-      warn "No models pulled — run: ollama pull qwen2.5:14b"
+      warn "No models pulled — run: ollama pull glm-4.7-flash"
     fi
   else
     warn "Ollama not running — genai workloads will timeout"

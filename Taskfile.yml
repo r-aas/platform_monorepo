@@ -94,8 +94,10 @@ tasks:
     cmds:
       - |
         # Set performance env vars (lost on reboot)
+        # Autoresearch findings: flash_attention +1.5%, max_loaded_models=1 prevents GPU OOM
         launchctl setenv OLLAMA_NUM_PARALLEL 4 2>/dev/null || true
         launchctl setenv OLLAMA_FLASH_ATTENTION 1 2>/dev/null || true
+        launchctl setenv OLLAMA_MAX_LOADED_MODELS 1 2>/dev/null || true
         launchctl setenv OLLAMA_HOST "0.0.0.0:11434" 2>/dev/null || true
         if pgrep -x ollama > /dev/null; then
           echo "  ✓ Ollama running (PID $(pgrep -x ollama))"
@@ -124,6 +126,15 @@ tasks:
             echo "  ✓ ${model} pulled"
           fi
         done
+        # Apply optimized context window for glm-4.7-flash (autoresearch: +25% throughput)
+        # num_ctx=1024 reduces KV cache bandwidth; num_batch=1024 matches for optimal prefill
+        if ollama show glm-4.7-flash --modelfile 2>/dev/null | grep -q "num_ctx 1024"; then
+          echo "  ✓ glm-4.7-flash already tuned (num_ctx=1024)"
+        else
+          echo "  ▸ Applying optimized params to glm-4.7-flash..."
+          printf 'FROM glm-4.7-flash\nPARAMETER num_ctx 1024\nPARAMETER num_batch 1024\n' | ollama create glm-4.7-flash -f - 2>/dev/null
+          echo "  ✓ glm-4.7-flash tuned (num_ctx=1024, num_batch=1024)"
+        fi
 
   ensure-secrets:
     desc: "Ensure critical k8s secrets exist (idempotent)"
