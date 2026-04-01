@@ -13,7 +13,7 @@
 # Build: docker build -t genai-mcp-n8n-manager -f n8n-manager.Dockerfile .
 ###############################################################################
 # node:22-alpine
-FROM node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3
+FROM node:25-alpine@sha256:cf38e1f3c28ac9d81cdc0c51d8220320b3b618780e44ef96a39f76f7dbfef023
 
 RUN npm install -g @leonardsellem/n8n-mcp-server@1.0.9
 
