@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "platform-tools": {
+      "type": "sse",
+      "url": "http://gateway.platform.127.0.0.1.nip.io/mcp/all",
+      "note": "Aggregated: kubernetes, gitlab, mlflow, langfuse, minio, ollama, plane, odd-platform, kagent-tools (243 tools)"
+    },
+    "kubernetes": {
+      "type": "sse",
+      "url": "http://gateway.platform.127.0.0.1.nip.io/mcp/kubernetes",
+      "note": "Scoped: kubernetes-only tools"
+    },
+    "gitlab": {
+      "type": "sse",
+      "url": "http://gateway.platform.127.0.0.1.nip.io/mcp/gitlab",
+      "note": "Scoped: gitlab-only tools"
+    },
+    "mlflow": {
+      "type": "sse",
+      "url": "http://gateway.platform.127.0.0.1.nip.io/mcp/mlflow",
+      "note": "Scoped: mlflow-only tools"
+    }
+  }
+}

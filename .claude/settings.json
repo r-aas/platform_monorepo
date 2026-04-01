@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(kubectl get *)",
+      "Bash(kubectl describe *)",
+      "Bash(kubectl logs *)",
+      "Bash(helm lint *)",
+      "Bash(helm template *)",
+      "Bash(task *)",
+      "Bash(curl *)",
+      "Bash(git *)",
+      "Bash(uv run *)",
+      "Bash(docker *)",
+      "mcp__Kubernetes_MCP_Server__*"
+    ]
+  }
+}

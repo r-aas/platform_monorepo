@@ -32,7 +32,7 @@ BACKLOG.md           # Prioritized task queue (P0-P3)
 ## Key Commands
 
 ```bash
-task up              # Full bootstrap: colima → k3d → helmfile → GitLab → images → ArgoCD → n8n → agents → smoke
+task up              # Full bootstrap: docker → k3d → helmfile → GitLab → images → ArgoCD → n8n → agents → smoke
 task start           # Resume paused cluster (single command, ~7 min)
 task stop            # Pause cluster (single command, ~21s)
 task down            # Destroy cluster (PV data preserved)
